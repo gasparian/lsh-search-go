@@ -8,5 +8,6 @@ There are a lot of approaches, but, obviously, one of the most convenient ways t
 The project consists of two major, separate parts:  
  - images hashing service;  
  - hashes search engine;  
+
 For the first one - I'll use Go, since it's good for developing robust web-services and has opencv and [tensorflow bindings](https://syslog.ravelin.com/go-tensorflow-74d1101fab3f) to be able to work with images.  
 To create and use the search index itself, I'll use distributed approximate neasrest neighbors search engine [open-sourced by microsoft](https://github.com/microsoft/SPTAG).  
