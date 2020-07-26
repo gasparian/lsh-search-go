@@ -5,6 +5,12 @@
 One of the fundamental topic in the image-retrieval field is perceptual hashing.  
 The goal of this project is to build fast image search service based on p-hashes.  
 There are a lot of approaches, but, obviously, one of the most convenient ways to create perceptual hash - is feature extraction using pretrained CNNs.  
+
+Use cases:  
+ - finding dublicates;  
+ - finding original images (for example high-res, having only low-res);  
+ - finding sources where searched image appears;  
+ 
 The project consists of two major, separable parts:  
  - images hashing service;  
  - hashes search engine;  
@@ -14,7 +20,3 @@ To create and use a search index, I'll use distributed approximate nearest neigh
 Here is a high-level diagram of a whole service:  
 <p align="center"> <img src="https://github.com/gasparian/visual-search-go/blob/master/imgs/random - images-search.jpg" height=500 /> </p>  
 
-Use cases:  
- - finding dublicates;  
- - finding original images (for example high-res, having only low-res);  
- - finding sources where searched image appears;   
