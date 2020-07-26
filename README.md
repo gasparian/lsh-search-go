@@ -14,3 +14,7 @@ To create and use a search index, I'll use distributed approximate nearest neigh
 Here is a high-level diagram of a whole service:  
 <p align="center"> <img src="https://github.com/gasparian/visual-search-go/blob/master/imgs/random - images-search.jpg" height=500 /> </p>  
 
+Use cases:  
+ - finding dublicates;  
+ - finding original images (for example high-res, having only low-res);  
+ - finding sources where searched image appears;   
