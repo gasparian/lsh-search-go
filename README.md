@@ -5,7 +5,7 @@
 One of the fundamental topic in the image-retrieval field is perceptual hashing.  
 The goal of this project is to build fast image search service based on p-hashes.  
 There are a lot of approaches, but, obviously, one of the most convenient ways to create perceptual hash - is feature extraction using pretrained CNNs.  
-The project consists of two major, separate parts:  
+The project consists of two major, separable parts:  
  - images hashing service;  
  - hashes search engine;  
 
