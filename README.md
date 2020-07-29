@@ -17,7 +17,7 @@ The project consists of two major, separable parts:
 
 For the first one - I'll use Go, since it's good for developing robust web-services and has opencv and [tensorflow bindings](https://syslog.ravelin.com/go-tensorflow-74d1101fab3f) to be able to work with images.  
 
-To create search index, I chossing between local-sensetive hashing and trees.   
+To create the search index, I'am choosing between local-sensetive hashing and tree-based ANN.  
 Actually, there is a production-ready implementation of approximate nearest neighbors search engine [open-sourced by microsoft](https://github.com/microsoft/SPTAG).  
 All hashes' dump should be stored in some cheap and easy-to-use key-value storage, like AWS S3.  
 Here is a high-level diagram of a whole service:  
