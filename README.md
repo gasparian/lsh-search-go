@@ -2,14 +2,13 @@
 
 ### Proposal  
 
-One of the most common (and interesting) topics in machine learning is a problem of search in high-dimensional vector spaces.  
-The goal of this project is to build fast image search service based on perceptual hashes.  
+One of the both most common and interesting topics in machine learning is a problem of search in high-dimensional vector spaces.  
+The goal of this project is to build the fast image search service based on perceptual hashes.  
 There are a lot of approaches, but, obviously, one of the most convenient ways to create perceptual hash is feature extraction using pretrained CNNs.  
 
 Possible use cases:  
- - finding dublicates;  
+ - finding close dublicates;  
  - finding original images (for example high-res, having only low-res);  
- - finding sources where searched image appears;  
  
 The project consists of two major, separable parts:  
  - images hashing service;  
