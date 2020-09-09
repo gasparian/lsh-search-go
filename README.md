@@ -2,11 +2,11 @@
 
 ### Proposal  
 
-One of the fundamental topics in the image-retrieval field is perceptual hashing.  
-The goal of this project is to build fast image search service based on p-hashes.  
-There are a lot of approaches, but, obviously, one of the most convenient ways to create perceptual hash - is feature extraction using pretrained CNNs.  
+One of the most common (and interesting) topics in machine learning is a problem of search in high-dimensional vector spaces.  
+The goal of this project is to build fast image search service based on perceptual hashes.  
+There are a lot of approaches, but, obviously, one of the most convenient ways to create perceptual hash is feature extraction using pretrained CNNs.  
 
-Use cases:  
+Possible use cases:  
  - finding dublicates;  
  - finding original images (for example high-res, having only low-res);  
  - finding sources where searched image appears;  
@@ -15,11 +15,10 @@ The project consists of two major, separable parts:
  - images hashing service;  
  - hashes search engine;  
 
-For the first one - I'll use Go, since it's good for developing robust web-services and has opencv and [tensorflow bindings](https://syslog.ravelin.com/go-tensorflow-74d1101fab3f) to be able to work with images.  
+For the first one - I'll use [Tensorflow](https://syslog.ravelin.com/go-tensorflow-74d1101fab3f)+OpenCV(?) for the web-part.   
 
-To create the search index, I'am choosing between local-sensetive hashing and tree-based ANN.  
-Actually, there is a production-ready implementation of approximate nearest neighbors search engine [open-sourced by microsoft](https://github.com/microsoft/SPTAG).  
-All hashes' dump should be stored in some cheap and easy-to-use key-value storage, like AWS S3.  
-Here is a high-level diagram of a whole service:  
+To create the search index, I'll use LSH (local sensetive hashing), with a distributed index (ideally).  
+Finally, I want to avoid keep the index in-memory, so I need to use some on-disk key-value storage, with a some sort of LRU/MFU in-memory cache.  
+Here is a high-level diagram sketch of a whole service:  
 <p align="center"> <img src="https://github.com/gasparian/visual-search-go/blob/master/imgs/random - images-search.jpg" height=500 /> </p>  
 
