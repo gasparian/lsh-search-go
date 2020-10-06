@@ -14,10 +14,11 @@ The project consists of two major, separable parts:
  - images hashing service;  
  - hashes search engine;  
 
-For the first one - I'll use [Tensorflow](https://syslog.ravelin.com/go-tensorflow-74d1101fab3f)+OpenCV(?) for image processing.   
+For the first one - I'll use [Tensorflow](https://syslog.ravelin.com/go-tensorflow-74d1101fab3f)+OpenCV/ffmpeg (??) for image processing.   
 
 To create the search index, I'll use LSH (local sensetive hashing), with a distributed index (ideally).  
 Finally, I want to avoid keep the index in-memory, so I need to use some on-disk key-value storage, with a some sort of LRU/MFU in-memory cache.  
+Myabe the good choice can be [boltdb](https://github.com/boltdb/bolt). To keep a tree there, you can keep two buckets with `parentId -> Id` and `Id -> value` pairs. Investigation needed  here!  
 Here is a high-level diagram sketch of a whole service:  
 <p align="center"> <img src="https://github.com/gasparian/visual-search-go/blob/master/imgs/random - images-search2.jpg" height="500" /> </p>  
 
