@@ -3,6 +3,7 @@ package main
 import (
     tf "github.com/tensorflow/tensorflow/tensorflow/go"
     "github.com/tensorflow/tensorflow/tensorflow/go/op"
+    "github.com/boltdb/bolt"
     "fmt"
 )
 
@@ -25,4 +26,12 @@ func main() {
         panic(err)
     }
     fmt.Println(output[0].Value())
+
+    // checking the boltdb
+    db, err := bolt.Open("my.db", 0600, nil)
+	if err != nil {
+		panic(err)
+    }
+    fmt.Println("Bolt db created successfully!")
+	defer db.Close()
 }
