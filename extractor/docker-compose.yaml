@@ -1,0 +1,12 @@
+version: '2.4'
+services:
+  extractor:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    image: go-extractor:latest 
+    restart: on-failure
+    ports:
+      - '8080:8080'
+    cpus: '4'
+    mem_limit: 4096M
