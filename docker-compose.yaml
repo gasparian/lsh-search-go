@@ -4,7 +4,7 @@ services:
     build:
       context: ./
       dockerfile: Dockerfile
-    image: go-extractor:latest 
+    image: visual-search-go:latest 
     restart: on-failure
     ports:
       - '8080:8080'

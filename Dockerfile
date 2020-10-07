@@ -138,7 +138,7 @@ RUN mkdir -p /model && \
   chmod -R 777 /model
 
 # Set up project directory
-WORKDIR "/go/src/github.com/gasparian/visual-search-go/extractor"
+WORKDIR "/go/src/github.com/gasparian/visual-search-go"
 COPY . .
 
 # Install the app
