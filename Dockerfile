@@ -142,7 +142,11 @@ WORKDIR "/go/src/github.com/gasparian/visual-search-go"
 COPY . .
 
 # Install the app
-RUN go build -o /usr/bin/app .
+# RUN go build -o /usr/bin/app .
 
 # Run the app
-CMD [ "app" ]
+# CMD [ "app" ]
+#############################################
+
+# FOR DEBUG:
+ENTRYPOINT ["bash"]

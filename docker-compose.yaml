@@ -1,12 +1,15 @@
+# docker run --rm -it visual-search-go
 version: '2.4'
 services:
-  extractor:
+  visual-search-go:
     build:
       context: ./
       dockerfile: Dockerfile
     image: visual-search-go:latest 
     restart: on-failure
+    volumes:
+        - './db-dump:/go/src/github.com/gasparian/visual-search-go/db-dump'
     ports:
       - '8080:8080'
-    cpus: '4'
+    cpus: '8'
     mem_limit: 4096M

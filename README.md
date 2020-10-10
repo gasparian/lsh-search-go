@@ -25,14 +25,14 @@ Here is a high-level diagram sketch of a whole service:
 ### Steps  
 
 1. Build API for images' feature extraction. Use [tiny-imagenet](http://cs231n.stanford.edu/tiny-imagenet-200.zip) dataset for experiments.  
-2. Convert tiny-imagenet dataset into vectors.  
-3. Implement naive O(N) KNN search. Store all vectors in some db or just in-memory map.  
-4. Make simple web-interface for making image query and showing the search result.  
-5. Implement the LSH algorithm, store the hash-map in memory.  
-6. Build (... or use existing?) kv-store with `put` and `get` operations.  
-7. Add an LRU/MFU cache to that.  
-8. Make a distributed version of the kv-store (aka search index).  
-9. Make API for building search index from scratch and expand existing operations with `pop`.  
-10. Makesome sort of service config, docker files if needed + docs!  
-
+2. Make sure that we can use any type of pretrained CNN without any pain - so refactor the prediction API if needed.  
+3. Convert tiny-imagenet dataset into vectors and store it at some kv-db. Maybe it's worth to use [this distrib-kv](https://github.com/YuriyNasretdinov/distribkv) implenetation based in bolt-db.  
+4. Implement naive O(N) KNN search. Store all vectors in some db or just in-memory map.  
+5. Make simple web-interface for making image query and showing the search result.  
+6. Enhance the distrib-kv service with ability to store buckets inside buckets (this property needed to store search index).  
+7. Add the consistent hashing to this db.  
+8. Implement the LSH algorithm and learn how to store it in a right way!  
+9. Make API for building search index from scratch.  
+10. Make sure that all needed tests exists.  
+11. Add monitoring.  
  
