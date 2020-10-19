@@ -6,12 +6,7 @@ import (
 	// tensorflow part
 	tf "github.com/tensorflow/tensorflow/tensorflow/go"
 	"github.com/tensorflow/tensorflow/tensorflow/go/op"
-
-	// db stuff
-	// "github.com/boltdb/bolt"
-
 	// internal packages
-	"github.com/gasparian/visual-search-go/extractor"
 )
 
 func main() {
@@ -22,7 +17,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	// Execute the graph in a session.
 	sess, err := tf.NewSession(graph, nil)
 	if err != nil {
@@ -33,28 +27,47 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(output[0].Value())
+	///////////////////////////////////////////////////////////////////////
 
-	// test downloaded pretrained models
-	var tfgraph extractor.TfModel
-	if err := tfgraph.LoadModel("/model/frozen_graph.pb"); err != nil {
+	// Test downloaded pretrained models
+	savedModel, err := tf.LoadSavedModel("./model/efficientnet", []string{"serve"}, nil)
+	if err != nil {
 		panic(err)
 	}
-
-	// var tfgraph extractor.TfModel
-	// if err := tfgraph.LoadModel("/model", "train"); err != nil {
-	// 	panic(err)
+	if op := savedModel.Graph.Operation("images"); op == nil {
+		fmt.Printf("not found in graph")
+	}
+	fmt.Printf("SavedModel: %+v\n", savedModel)
+	// for k := range savedModel.Signatures {
+	// 	fmt.Println(k)
 	// }
 
-	// tfmodel, err := LoadModel("/model/saved_model.pb", "train")
+	// var tfmodel extractor.TfModel
+	// if err := tfmodel.LoadModel("./model/inception_frozen_graph.pb"); err != nil {
+	// 	panic(err)
+	// }
+	// ops := tfmodel.Graph.Operations()
+	// for i, op := range ops {
+	// 	if i <= 5 || i >= (len(ops)-5) {
+	// 		fmt.Println(op.Name())
+	// 	}
+	// }
+
+	// img1, err := ioutil.ReadFile("./test_data/754c2ca07fa87ce18b6fa0249f8a07b24f50c36a.jpg")
 	// if err != nil {
 	// 	panic(err)
 	// }
-
-	// // checking the boltdb
-	// db, err := bolt.Open("./db-dump/my.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	// img2, err := ioutil.ReadFile("./test_data/e65b4de000f7db3d77b9919d018171f1fcfc8a79.jpg")
 	// if err != nil {
 	// 	panic(err)
 	// }
-	// fmt.Println("Bolt db created successfully!")
-	// defer db.Close()
+	// images := [][]byte{img1, img2}
+	// fmt.Println("Images has been read: " + strconv.Itoa(len(images)))
+
+	// features, err := tfmodel.Predict(&images)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// fmt.Println(features)
+	///////////////////////////////////////////////////////////////////////
 }

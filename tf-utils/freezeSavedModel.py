@@ -1,5 +1,17 @@
-# This code helps to convert tf1 saved model to frozen graph to be able to use in golang
-# Based on tf-tools file: import_pb_to_tensorboard.py
+'''
+NOTE: 
+This code helps to convert tf1 saved model to frozen graph to be able to use in golang
+Based on tf-tools file: import_pb_to_tensorboard.py
+
+Dowbload pretrained model:  
+   wget "https://tfhub.dev/google/efficientnet/b0/feature-vector/1?tf-hub-format=compressed" \
+        -O /tmp/efficientnet_b0_feature-vector_1.tar.gz && \
+   tar -C /tmp -zxvf /tmp/efficientnet_b0_feature-vector_1.tar.gz && \
+   rm /tmp/efficientnet_b0_feature-vector_1.tar.gz
+
+Usage:  
+    python ./tf-utils/freezeSavedModel.py --model_dir=/tmp/saved_model.pb --output_dir=/model
+'''
 
 from __future__ import absolute_import
 from __future__ import division

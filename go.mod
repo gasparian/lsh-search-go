@@ -1,4 +1,4 @@
-module github.com/gasparian/visual-search-go
+module github.com/gasparian/vector-search-go
 
 require (
 	github.com/boltdb/bolt v1.3.1

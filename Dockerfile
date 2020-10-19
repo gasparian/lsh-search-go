@@ -1,4 +1,5 @@
 FROM tensorflow/tensorflow:1.15.0
+# FROM ubuntu:16.04
 # Install TensorFlow C library
 RUN curl -L \
    "https://storage.googleapis.com/tensorflow/libtensorflow/libtensorflow-cpu-linux-x86_64-1.15.0.tar.gz" | \
@@ -7,7 +8,6 @@ RUN ldconfig
 # Hide some warnings
 ENV TF_CPP_MIN_LOG_LEVEL 2
 
-# gcc for cgo
 RUN apt-get update && apt-get install -y --no-install-recommends \
 		g++ \
 		gcc \
@@ -129,38 +129,9 @@ RUN apt-get clean \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/cache/apt/*
 
-# Tensorflow saved models ######################
-################################################
-
-RUN mkdir -p /model && \
-  wget "https://tfhub.dev/google/efficientnet/b0/feature-vector/1?tf-hub-format=compressed" \
-       -O /model/efficientnet_b0_feature-vector_1.tar.gz && \
-  tar -C /model -zxvf /model/efficientnet_b0_feature-vector_1.tar.gz && \
-  rm /model/efficientnet_b0_feature-vector_1.tar.gz
-
-# RUN mkdir -p /model && \
-#   wget "https://tfhub.dev/tensorflow/efficientnet/lite0/feature-vector/2?tf-hub-format=compressed" \
-#        -O /model/efficientnet_lite0_feature-vector_2.tar.gz && \
-#   tar -C /model -zxvf /model/efficientnet_lite0_feature-vector_2.tar.gz && \
-#   rm /model/efficientnet_lite0_feature-vector_2.tar.gz
-
-# RUN mkdir -p /model && \
-#   wget "https://tfhub.dev/google/imagenet/mobilenet_v1_075_224/quantops/feature_vector/3?tf-hub-format=compressed" \
-#        -O /model/imagenet_mobilenet_v1_075_224_quantops_feature_vector_3.tar.gz && \
-#   tar -C /model -zxvf /model/imagenet_mobilenet_v1_075_224_quantops_feature_vector_3.tar.gz && \
-#   rm /model/imagenet_mobilenet_v1_075_224_quantops_feature_vector_3.tar.gz
-
-################################################
-
 # Set up project directory
-WORKDIR "/go/src/github.com/gasparian/visual-search-go"
+WORKDIR "/go/src/github.com/gasparian/vector-search-go"
 COPY . .
-
-# SHOULD BE REMOVED LATER (need to be done outside the container)
-# Convert tf saved model to the frozen graph
-RUN python ./tf-utils/freezeSavedModel.py --model_dir=/model/saved_model.pb --output_dir=/model
-
-RUN chmod -R 777 /model
 
 # Install the app
 RUN go build -o /usr/bin/app .
