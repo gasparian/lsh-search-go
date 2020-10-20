@@ -1,5 +1,0 @@
-github.com/boltdb/bolt v1.3.1 h1:JQmyP4ZBrce+ZQu0dY660FMfatumYDLun9hBCUVIkF4=
-github.com/boltdb/bolt v1.3.1/go.mod h1:clJnj/oiGkjum5o1McbSZDSLxVThjynRyGBgiAx27Ps=
-github.com/tensorflow/tensorflow v1.15.0 h1:ujwCjW4LRUwUp7YrAK+menE0GZkeJgkQT5FgdWNpVCk=
-github.com/tensorflow/tensorflow v1.15.0/go.mod h1:itOSERT4trABok4UOoG+X4BoKds9F3rIsySdn+Lvu90=
-github.com/tensorflow/tensorflow v2.3.1+incompatible h1:44Q8jLdwktDbzAaP6QuRWFl8oAk3a6DE15CJ7t5eGD4=

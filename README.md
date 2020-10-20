@@ -22,3 +22,6 @@ Myabe the good choice can be [boltdb](https://github.com/boltdb/bolt). To keep a
 #### Useful links:  
 
 - [ANN-benchmarks](https://github.com/erikbern/ann-benchmarks);  
+
+#### Notes  
+

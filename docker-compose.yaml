@@ -1,4 +1,4 @@
-# docker run --rm -it -v /model:/model vector-search-go
+# docker run --rm -it -v /db-dump:/db-dump vector-search-go
 version: '2.4'
 services:
   vector-search-go:
@@ -9,7 +9,6 @@ services:
     restart: on-failure
     volumes:
         - './db-dump:/go/src/github.com/gasparian/vector-search-go/db-dump'
-        - './model:/model'
     ports:
       - '8080:8080'
     cpus: '4'
