@@ -1,5 +1,11 @@
+*.md
+*.hdf5
+*.swp
+*.db
 Dockerfile
 docker-compose.yaml
-/data
 /imgs
 /db-dump
+/data/tiny-imagenet-200
+/data/*.swp
+/data/*.hdf5

@@ -1,2 +1,8 @@
-/data
+*.hdf5
+*.swp
+*.db
+/imgs
 /db-dump
+/data/tiny-imagenet-200
+/data/*.swp
+/data/*.hdf5

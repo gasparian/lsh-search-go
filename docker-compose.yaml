@@ -8,7 +8,7 @@ services:
     image: vector-search-go:latest 
     restart: on-failure
     volumes:
-        - './db-dump:/go/src/github.com/gasparian/vector-search-go/db-dump'
+        - './db-dump:/db-dump'
     ports:
       - '8080:8080'
     cpus: '4'
