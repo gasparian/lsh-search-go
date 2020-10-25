@@ -18,8 +18,8 @@ RUN go mod tidy && go build -o /usr/bin/app ./main.go
 RUN go build -o /usr/bin/run_prep_data ./run_prep_data.go
 
 EXPOSE 8080
-# ENTRYPOINT [ "sh" ]
+ENTRYPOINT [ "sh" ]
 
-CMD [ "run_prep_data" ]
+# CMD [ "run_prep_data" ]
 
 
