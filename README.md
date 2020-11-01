@@ -13,7 +13,9 @@ wget http://ann-benchmarks.com/deep-image-96-angular.hdf5 -P ./data
 ```   
 
 Everything runs inside a docker. Just build it with `./build.sh` and run with `./run.sh`.  
-You can deploy db separately.  
+Remember, that you can deploy db and main service separately.  
+
+After entering the running container, you can run `./run_data_prep` to get the dataset stats, if you don't have one in the `config.toml`.  
 
 ### Steps  
 
