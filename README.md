@@ -6,6 +6,15 @@ One of the both most common and interesting topics in machine learning is a prob
 The goal of this project is to build the fast vector search service with kv storage.  
 To create the search index, I'll use LSH (local sensetive hashing).  
 
+### Reference  
+Download benchmark dataset:  
+```
+wget http://ann-benchmarks.com/deep-image-96-angular.hdf5 -P ./data
+```   
+
+Everything runs inside a docker. Just build it with `./build.sh` and run with `./run.sh`.  
+You can deploy db separately.  
+
 ### Steps  
 
 1. ~~Download [ANN benchmark](http://ann-benchmarks.com/deep-image-96-angular.hdf5) dataset and calculate mean and std~~.  
@@ -25,3 +34,8 @@ To create the search index, I'll use LSH (local sensetive hashing).
 6. Add to the API methods to query the nearest neighbours.  
 7. Add monitoring to the service and convenient config files.  
  
+### TO DO:  
+ - make multistage docker builds for app and db, to run them separately;  
+ - API skeleton for the main app;  
+ - API sekelton for the db, make it run independently, but using the same config;  
+ - make config parser;  

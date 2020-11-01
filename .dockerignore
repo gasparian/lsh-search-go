@@ -2,6 +2,7 @@
 *.hdf5
 *.swp
 *.db
+*.sum
 Dockerfile
 docker-compose.yaml
 /imgs

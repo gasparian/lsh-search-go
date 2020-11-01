@@ -2,6 +2,7 @@
 *.swp
 *.db
 *.txt
+*.sum
 /imgs
 /db-dump
 /data/tiny-imagenet-200
