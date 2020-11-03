@@ -12,16 +12,18 @@ Download benchmark dataset:
 wget http://ann-benchmarks.com/deep-image-96-angular.hdf5 -P ./data
 ```   
 
-Everything runs inside a docker. Just build it with `./build.sh` and run with `./run.sh`.  
-Remember, that you can deploy db and main service separately.  
+Everything runs inside a docker. Just launch it with:  
+ - `./launch.sh ./main.go` if you want to launch the main app;  
+ - `./launch.sh ./db/main_db.go` if you want to launch the database;  
+Don't forget to add the actual db socket in the config.  
 
-After entering the running container, you can run `./run_data_prep` to get the dataset stats, if you don't have one in the `config.toml`.  
+After entering the running container, you can run `./run_data_prep` on the machine with benchmark dataset to get its' stats, if you didn't have one in the `config.toml` already.  
 
 ### Steps  
 
 1. ~~Download [ANN benchmark](http://ann-benchmarks.com/deep-image-96-angular.hdf5) dataset and calculate mean and std~~.  
 2. Prepare [db](https://github.com/boltdb/bolt) for creating new buckets with search indeces and storing search tree leaves - we need to keep resulting vectors/ids inside buckets.  
-3. Make comprehensive config file and parser for it (toml file?):  
+3. Make comprehensive config file and parser for it (toml?):  
     - mean and std vectors;  
     - url of the db;  
     - number of hyper-planes ot split;  
@@ -37,7 +39,6 @@ After entering the running container, you can run `./run_data_prep` to get the d
 7. Add monitoring to the service and convenient config files.  
  
 ### TO DO:  
- - make multistage docker builds for app and db, to run them separately;  
  - API skeleton for the main app;  
  - API sekelton for the db, make it run independently, but using the same config;  
  - make config parser;  
