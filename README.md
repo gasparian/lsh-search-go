@@ -17,7 +17,12 @@ Everything runs inside a docker. Just launch it with:
  - `./launch.sh ./db/main_db.go` if you want to launch the database;  
 Don't forget to add the actual db socket in the config.  
 
-After entering the running container, you can run `./run_data_prep` on the machine with benchmark dataset to get its' stats, if you didn't have one in the `config.toml` already.  
+In order to get stats of the test dataset (I've already placed the stats inside `config.toml`), after entering the running container, you must compile and run prepared script:  
+```
+cd ./data
+go mod tidy && build -o /usr/bin/run_prep_data run_prep_data.go
+./run_data_prep
+```  
 
 ### Reference   
 LSH algorithm implies generation of random plane equation coefs. So, depending on similarity metric, often we just need to define "bias" coef as zero (for "angular" metric) or non-zero. Also, we need to limit coefs range, based on data stats (I just use mean and std).  
