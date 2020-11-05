@@ -21,7 +21,7 @@ After entering the running container, you can run `./run_data_prep` on the machi
 
 ### Reference   
 LSH algorithm implies generation of random plane equation coefs. So, depending on similarity metric, often we just need to define "bias" coef as zero (for "angular" metric) or non-zero. Here are example visualizations:  
-<img src="https://github.com/gasparian/vector-search-go/blob/master/pics/non-biased.png" height=280 >  <img src="https://github.com/gasparian/vector-search-go/blob/master/pics/biased.png" height=280 >  
+<img src="https://github.com/gasparian/vector-search-go/blob/master/pics/non-biased.png" height=300 >  <img src="https://github.com/gasparian/vector-search-go/blob/master/pics/biased.png" height=300 >  
 
 ### Steps  
 
