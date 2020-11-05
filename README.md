@@ -6,7 +6,7 @@ One of the both most common and interesting topics in machine learning is a prob
 The goal of this project is to build the fast vector search service with kv storage.  
 To create the search index, I'll use LSH (local sensetive hashing).  
 
-### Reference  
+### Usage  
 Download benchmark dataset:  
 ```
 wget http://ann-benchmarks.com/deep-image-96-angular.hdf5 -P ./data
@@ -18,6 +18,10 @@ Everything runs inside a docker. Just launch it with:
 Don't forget to add the actual db socket in the config.  
 
 After entering the running container, you can run `./run_data_prep` on the machine with benchmark dataset to get its' stats, if you didn't have one in the `config.toml` already.  
+
+### Reference   
+LSH algorithm implies generation of random plane equation coefs. So, depending on similarity metric, often we just need to define "bias" coef as zero (for "angular" metric) or non-zero. Here are example visualizations:  
+<img src="https://github.com/gasparian/vector-search-go/blob/master/pics/non-biased.png" height=280 >  <img src="https://github.com/gasparian/vector-search-go/blob/master/pics/biased.png" height=280 >  
 
 ### Steps  
 
