@@ -20,7 +20,8 @@ Don't forget to add the actual db socket in the config.
 After entering the running container, you can run `./run_data_prep` on the machine with benchmark dataset to get its' stats, if you didn't have one in the `config.toml` already.  
 
 ### Reference   
-LSH algorithm implies generation of random plane equation coefs. So, depending on similarity metric, often we just need to define "bias" coef as zero (for "angular" metric) or non-zero. Here are example visualizations:  
+LSH algorithm implies generation of random plane equation coefs. So, depending on similarity metric, often we just need to define "bias" coef as zero (for "angular" metric) or non-zero. Also, we need to limit coefs range, based on data stats (I just use mean and std).  
+Here are example visualizations:  
 <img src="https://github.com/gasparian/vector-search-go/blob/master/pics/non-biased.png" height=300 >  <img src="https://github.com/gasparian/vector-search-go/blob/master/pics/biased.png" height=300 >  
 
 ### Steps  
