@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 go mod tidy
-go build -o /usr/bin/app ${APP_PATH} 
+go build -o /usr/bin/app ./main.go
 ./app

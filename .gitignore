@@ -4,8 +4,8 @@
 *.txt
 *.sum
 /imgs
-/db-dump
-/data/tiny-imagenet-200
-/data/*.swp
-/data/*.hdf5
-/data/*.txt
+/db/mongo/*
+/db/tiny-imagenet-200
+/db/*.swp
+/db/*.hdf5
+/db/*.txt

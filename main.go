@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	dbLocation = flag.String("db-location", "./db/index.db", "The path to the bolt db database")
+	dbLocation = flag.String("db-location", "127.0.0.1:27017", "The path to the bolt db database")
 	httpAddr   = flag.String("http-addr", "127.0.0.1:8080", "HTTP host and port")
 	configFile = flag.String("config", "config.toml", "Config file for the application")
 )
