@@ -1,31 +1,27 @@
 package algorithm
 
-type Vector struct {
-	Values []float64
-	Size   int
-}
-
 type IVector interface {
 	DotProd(*Vector) float64
 	L2(*Vector) float64
 	CosineSim(*Vector) float64
 }
 
-// rand.Seed(time.Now().UnixNano())
-type RandomPlaneGenerator struct {
-	dims int
-	bias float64
+type Vector struct {
+	Values []float64
+	Size   int
 }
 
 type ILSHIndex interface {
-	Build()
+	Build() error
 	Dump(string)
 	Load(string)
-	GetHash(*Vector)
+	GetHash(*Vector) uint64
 }
 
+// rand.Seed(time.Now().UnixNano())
 type LSHIndex struct {
-	RandomPlaneGenerator
+	dims    int
+	bias    float64
 	nPlanes int
 	Planes  []Vector
 }

@@ -45,14 +45,40 @@ func (vec *Vector) CosineSim(inpVec *Vector) float64 {
 	return cosine
 }
 
-func (gen *RandomPlaneGenerator) GetRandomPlane() ([]float64, error) {
-	if gen.dims <= 0 {
-		return nil, errors.New("Dimensions number must be a positive integer")
+func (lsh *LSHIndex) getRandomPlane() *Vector {
+	coefs := &Vector{
+		Values: make([]float64, lsh.dims+1),
+		Size:   lsh.dims + 1,
 	}
-	coefs := make([]float64, gen.dims+1)
-	for i := 0; i < gen.dims; i++ {
-		coefs[i] = -1.0 + rand.Float64()*2
+	for i := 0; i < lsh.dims; i++ {
+		coefs.Values[i] = -1.0 + rand.Float64()*2
 	}
-	coefs[len(coefs)-1] = -1.0*gen.bias + rand.Float64()*gen.bias*2
-	return coefs, nil
+	coefs.Values[coefs.Size-1] = -1.0*lsh.bias + rand.Float64()*lsh.bias*2
+	return coefs
+}
+
+func (lsh *LSHIndex) Build() error {
+	if lsh.dims <= 0 {
+		return errors.New("Dimensions number must be a positive integer")
+	}
+	var vec *Vector
+	for i := 0; i < lsh.nPlanes; i++ {
+		vec = lsh.getRandomPlane()
+		lsh.Planes = append(lsh.Planes, *vec)
+	}
+	return nil
+}
+
+func (lsh *LSHIndex) GetHash(inpVec *Vector) uint64 {
+	var hash uint64
+	var vec Vector
+	var dpSign bool
+	for i := 0; i < lsh.nPlanes; i++ {
+		vec = lsh.Planes[i]
+		dpSign = math.Signbit(inpVec.DotProd(&vec))
+		if !dpSign {
+			hash |= (1 << i)
+		}
+	}
+	return hash
 }
