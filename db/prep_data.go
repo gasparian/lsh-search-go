@@ -12,6 +12,7 @@ type FeatureVec = [96]float32
 type NeighborsIds = [100]uint32
 type DistanceVec = [100]float32
 
+// MinInt returns minimal integer of two
 func MinInt(x, y int) int {
 	if x > y {
 		return y
@@ -24,6 +25,7 @@ type concurrentSlice struct {
 	items []float32
 }
 
+// Concurrently calculates mean and std of slice of slices
 func CalcMeanStd(vals *[]FeatureVec, chunksize int, meanVec *[]float32) ([]float32, error) {
 	size := len(*vals)
 	if size == 0 {
@@ -79,6 +81,7 @@ func CalcMeanStd(vals *[]FeatureVec, chunksize int, meanVec *[]float32) ([]float
 	return result.items, nil
 }
 
+// WriteNewDataHDF5 add new fields to the existing hdf5 file
 func WriteNewDataHDF5(file *hdf5.File, dsName string, vals *[]float32) error {
 	if len(*vals) == 0 {
 		return errors.New("Cannot write empty slice")

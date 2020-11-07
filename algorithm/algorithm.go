@@ -10,6 +10,7 @@ import (
 	"os"
 )
 
+// NewVector creates new vector by given slice of floats
 func NewVector(inpVec []float64) *Vector {
 	return &Vector{
 		Values: inpVec,
@@ -17,14 +18,16 @@ func NewVector(inpVec []float64) *Vector {
 	}
 }
 
-func (lvec *Vector) Add(rvec *Vector) *Vector {
-	sum := NewVector(make([]float64, lvec.Size))
-	for i := range lvec.Values {
-		sum.Values[i] = lvec.Values[i] + rvec.Values[i]
+// Add two vectors of the same dimnsionality
+func (vec *Vector) Add(rvec *Vector) *Vector {
+	sum := NewVector(make([]float64, vec.Size))
+	for i := range vec.Values {
+		sum.Values[i] = vec.Values[i] + rvec.Values[i]
 	}
 	return sum
 }
 
+// ConstMul multiplicates vector with provided constant float
 func (vec *Vector) ConstMul(constant float64) *Vector {
 	newVec := NewVector(make([]float64, vec.Size))
 	for i := range vec.Values {
@@ -33,6 +36,7 @@ func (vec *Vector) ConstMul(constant float64) *Vector {
 	return newVec
 }
 
+// DotProd calculates dot product between two vectors
 func (vec *Vector) DotProd(inpVec *Vector) float64 {
 	var dp float64 = 0.0
 	for i := range vec.Values {
@@ -41,6 +45,7 @@ func (vec *Vector) DotProd(inpVec *Vector) float64 {
 	return dp
 }
 
+// L2 calculates l2-distance of two vectors (or norm, if the inpVec is zero vector)
 func (vec *Vector) L2(inpVec *Vector) float64 {
 	var l2 float64
 	var diff float64
@@ -51,6 +56,7 @@ func (vec *Vector) L2(inpVec *Vector) float64 {
 	return math.Sqrt(l2)
 }
 
+// CosineSim calculates cosine similarity of two given vectors
 func (vec *Vector) CosineSim(inpVec *Vector) float64 {
 	zeroVec := &Vector{
 		Values: make([]float64, vec.Size),
@@ -75,6 +81,7 @@ func (lsh *LSHIndex) getRandomPlane() *Vector {
 	return coefs
 }
 
+// GetPointPlaneDist calculates distance between origin and plane
 func GetPointPlaneDist(planeCoefs *Vector) *Vector {
 	values := make([]float64, planeCoefs.Size-1)
 	dCoef := planeCoefs.Values[planeCoefs.Size-1]
@@ -91,6 +98,7 @@ func GetPointPlaneDist(planeCoefs *Vector) *Vector {
 	}
 }
 
+// Build creates set of planes which will be used to calculate hash
 func (lsh *LSHIndex) Build() error {
 	if lsh.dims <= 0 {
 		return errors.New("Dimensions number must be a positive integer")
@@ -106,6 +114,7 @@ func (lsh *LSHIndex) Build() error {
 	return nil
 }
 
+// Dump write LSHIndex object to disk
 func (lsh *LSHIndex) Dump(path string) error {
 	buf := &bytes.Buffer{}
 	enc := gob.NewEncoder(buf)
@@ -128,6 +137,7 @@ func (lsh *LSHIndex) Dump(path string) error {
 	return nil
 }
 
+// Load loads LSHIndex struct into memory
 func (lsh *LSHIndex) Load(path string) error {
 	buf := &bytes.Buffer{}
 	f, err := os.Open(path)
@@ -147,6 +157,7 @@ func (lsh *LSHIndex) Load(path string) error {
 	return nil
 }
 
+// GetHash calculates LSH
 func (lsh *LSHIndex) GetHash(inpVec *Vector) uint64 {
 	var hash uint64
 	var vec *Vector
