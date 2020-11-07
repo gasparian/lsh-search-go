@@ -30,7 +30,8 @@ go mod tidy && build -o /usr/bin/run_prep_data run_prep_data.go
 
 ### Reference   
 
-LSH algorithm implies generation of random plane equation coefs. So, depending on similarity metric, often we just need to define "bias" coef as zero (for "angular" metric) or non-zero. Also, we need to limit coefs range, based on data stats (I just use mean and std).  
+LSH algorithm implies generation of random plane equation coefs. So, depending on the similarity metric, often we just need to define "bias" coef "d" as zero (for "angular" metric) or non-zero.  
+Also, we need to limit coefs range, based on data points deviation.
 Here are example visualizations:  
 <img src="https://github.com/gasparian/vector-search-go/blob/master/pics/non-biased.png" height=300 >  <img src="https://github.com/gasparian/vector-search-go/blob/master/pics/biased.png" height=300 >  
 
@@ -52,7 +53,7 @@ Here are example visualizations:
 3. Implement the LSH algorithm:  
     - ~~write functions for random planes generation~~;  
     - ~~write functions to perform basic vector operations~~;  
-    - add structure to store generated plane coefs on disk;  
+    - ~~add ability to store generated plane coefs on disk~~;  
     - add unit tests for public functions;  
 4. Make main app API:  
     - app must read and parses the config file;  
