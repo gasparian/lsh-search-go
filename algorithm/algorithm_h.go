@@ -1,6 +1,8 @@
 package algorithm
 
 type IVector interface {
+	Add(*Vector) *Vector
+	ConstMul(float64) *Vector
 	DotProd(*Vector) float64
 	L2(*Vector) float64
 	CosineSim(*Vector) float64
@@ -11,17 +13,22 @@ type Vector struct {
 	Size   int
 }
 
-type ILSHIndex interface {
+type Indexer interface {
 	Build() error
-	Dump(string)
-	Load(string)
+	Dump(string) error
+	Load(string) error
 	GetHash(*Vector) uint64
 }
 
-// rand.Seed(time.Now().UnixNano())
+type Plane struct {
+	Coefs      *Vector
+	InnerPoint *Vector
+}
+
+// Add in the main code: rand.Seed(time.Now().UnixNano())
 type LSHIndex struct {
 	dims    int
 	bias    float64
 	nPlanes int
-	Planes  []Vector
+	Planes  []Plane
 }

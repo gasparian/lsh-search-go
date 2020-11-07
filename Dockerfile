@@ -12,6 +12,7 @@ RUN ./configure  --prefix=/usr/local && \
 
 RUN mkdir -p "$GOPATH/src/vector-search-go/data"
 WORKDIR $GOPATH/src/vector-search-go
+RUN echo "module vector-search-go" > go.sum
 COPY . .
 RUN chmod 777 ./entrypoint.sh
 

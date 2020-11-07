@@ -2,8 +2,9 @@
 *.swp
 *.db
 *.txt
+*.mod
 *.sum
-*.lsh
+*.index
 /imgs
 /db/mongo/*
 /db/tiny-imagenet-200
