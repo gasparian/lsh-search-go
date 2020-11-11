@@ -27,6 +27,84 @@ cd ./data
 go mod tidy && build -o /usr/bin/run_prep_data run_prep_data.go
 ./run_data_prep
 ```  
+If you want to clean up connect to the mongodb through cli, first check out monogodb [manual](https://docs.mongodb.com/manual/mongo/).  
+Then get inside the docker:  
+```
+docker exec -ti mongo mongo
+```  
+Then drop needed db or collections:  
+```
+show dbs
+use ann_bench
+db.vectors_train.find().limit(2)
+```  
+Clean the collection:  
+```
+db.vectors_train.remove({})
+```  
+
+Get mean and std vectors:  
+```
+db.vectors_train.aggregate([
+  {
+    $unwind: {
+      path: "$featureVec",
+      includeArrayIndex: "i"
+    }
+  },
+  {
+    $group: {
+      _id: "$i",
+      avg: {
+        $avg: "$featureVec"
+      }
+    }
+  },
+  {
+    $sort: {
+      "_id": 1
+    }
+  },
+  {
+    $group: {
+      _id: null,
+      avg: {
+        $push: "$avg"
+      }
+    }
+  }
+])
+
+db.vectors_train.aggregate([
+  {
+    $unwind: {
+      path: "$featureVec",
+      includeArrayIndex: "i"
+    }
+  },
+  {
+    $group: {
+      _id: "$i",
+      std: {
+        $stdDevSamp: "$featureVec"
+      }
+    }
+  },
+  {
+    $sort: {
+      "_id": 1
+    }
+  },
+  {
+    $group: {
+      _id: null,
+      std: {
+        $push: "$std"
+      }
+    }
+  }
+])
+```  
 
 ### Reference   
 
@@ -35,12 +113,16 @@ Also, we need to limit coefs range, based on data points deviation.
 Here are example visualizations:  
 <img src="https://github.com/gasparian/vector-search-go/blob/master/pics/non-biased.png" height=300 >  <img src="https://github.com/gasparian/vector-search-go/blob/master/pics/biased.png" height=300 >  
 
+*Complexety*
+
+*Quality metrics*
+
 ### Dev. plan:   
 
 1. Prepare the [ANN benchmark dataset](http://ann-benchmarks.com/deep-image-96-angular.hdf5):  
     - ~~download dataset and write script for stats calculating using the hdf5;~~  
     - ~~add mongodb in project~~;  
-    - write a script to fill mongodb with the benchmarked dataset. Search index will be stored as new fields in the documents;  
+    - ~~write a script to fill mongodb with the benchmarked dataset.~~ Search index will be stored as new fields in the documents;  
     - add unit tests for basic db functions;  
 2. Make comprehensive config file and parser for it (toml):  
     - mean and std vectors (?);  

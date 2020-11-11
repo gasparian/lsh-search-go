@@ -3,10 +3,14 @@
 *.swp
 *.db
 *.sum
+*.mod
 Dockerfile
 docker-compose.yaml
 /imgs
+/pics
 /db-dump
 /data/tiny-imagenet-200
 /data/*.swp
 /data/*.hdf5
+/db/*.hdf5
+/db/mongo/*

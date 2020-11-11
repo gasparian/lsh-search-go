@@ -10,11 +10,18 @@ RUN ./configure  --prefix=/usr/local && \
     make && make install && \
     rm -rf /tmp/*
 
-RUN mkdir -p "$GOPATH/src/vector-search-go/data"
+RUN mkdir -p "$GOPATH/src/vector-search-go"
 WORKDIR $GOPATH/src/vector-search-go
-RUN echo "module vector-search-go" > go.sum
 COPY . .
-RUN chmod 777 ./entrypoint.sh
+
+# RUN go mod init && \
+#     go mod tidy && \
+#     go build -o /usr/bin/app ./main.go
+
+RUN go mod init && \
+    go mod tidy && \
+    go build -o /usr/bin/app ./prep_bench_data.go
 
 EXPOSE 8080
-ENTRYPOINT [ "./entrypoint.sh" ]
+CMD [ "app" ]
+# ENTRYPOINT [ "sh" ]

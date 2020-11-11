@@ -8,6 +8,6 @@ docker run --rm -it \
            --name mongo \
            -p 27017:27017 \
            -v $PWD/mongo:/data/db \
-           -cpus 4 \
-           -m 4096 \
+           --cpus 4 \
+           -m 4096m \
            mvertes/alpine-mongo
