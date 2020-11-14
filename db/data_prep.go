@@ -2,6 +2,9 @@ package db
 
 import (
 	"context"
+	"log"
+	"runtime"
+	"time"
 	"unsafe"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -50,7 +53,8 @@ func GetNeighborsFromHDF5(table *hdf5.File, datasetName string) ([]NeighborsIds,
 
 // SetDataMongoDb sends batches of provided data to the mongodb
 func LoadDatasetMongoDb(collection *mongo.Collection, data []FeatureVec, neighbors []NeighborsIds, batchSize int) error {
-	batch := make([]interface{}, batchSize)
+	// batch := make([]interface{}, batchSize)
+	var batch []interface{} = nil
 	dataLen := len(data)
 	neighborsLen := len(neighbors)
 	var batchIdx int = 0
@@ -69,18 +73,37 @@ func LoadDatasetMongoDb(collection *mongo.Collection, data []FeatureVec, neighbo
 				tmpRecord.NeighborsIds[valIdx] = neighbors[idx][valIdx]
 			}
 		}
-		batch[batchIdx] = tmpRecord
+		// batch[batchIdx] = tmpRecord
+		batch = append(batch, tmpRecord)
 
 		if batchIdx == batchSize-1 || idx == dataLen-1 {
-			_, err := collection.InsertMany(context.TODO(), batch[:batchIdx+1])
+			// _, err := collection.InsertMany(context.TODO(), batch[:batchIdx+1])
+			_, err := collection.InsertMany(context.TODO(), batch)
 			if err != nil {
 				return err
 			}
-			batch = make([]interface{}, batchSize)
 			batchIdx = 0
+			batch = nil
+
+			time.Sleep(time.Millisecond * 50)
+			runtime.GC()
+			// printMemUsage()
 		} else {
 			batchIdx++
 		}
 	}
 	return nil
+}
+
+func printMemUsage() {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	log.Printf("Alloc = %v MiB", bToMb(m.Alloc))
+	log.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
+	log.Printf("\tSys = %v MiB", bToMb(m.Sys))
+	log.Printf("\tNumGC = %v\n", m.NumGC)
+}
+
+func bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
 }

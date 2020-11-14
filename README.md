@@ -11,10 +11,20 @@ To create the search index, I'll use [LSH](https://en.wikipedia.org/wiki/Localit
 
 To run the app, the only thing you need to be installed on your host machine - is docker.  
 
+If youre not logged as root, you can add yourself to the sudoers:  
+```
+sudo usermod -aG sudo ${USER}
+```  
+
 Download benchmark dataset:  
 ```
 wget http://ann-benchmarks.com/deep-image-96-angular.hdf5 -P ./data
 ```   
+The list of objects inside the hdf5:  
+ - `train` - train points;  
+ - `test` - test points;  
+ - `neighbors` - 100 nearest points for each point;  
+ - `distances` - 100 distances (angular) to the nearest points;  
 
 Everything runs inside a docker. Just launch it with:  
  - `./launch.sh` if you want to launch the main app;  

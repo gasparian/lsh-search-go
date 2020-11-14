@@ -14,13 +14,11 @@ RUN mkdir -p "$GOPATH/src/vector-search-go"
 WORKDIR $GOPATH/src/vector-search-go
 COPY . .
 
-# RUN go mod init && \
-#     go mod tidy && \
-#     go build -o /usr/bin/app ./main.go
-
 RUN go mod init && \
-    go mod tidy && \
-    go build -o /usr/bin/app ./prep_bench_data.go
+    go mod tidy
+
+RUN go build -o /usr/bin/app ./main.go && \
+    go build -o /usr/bin/prep_bench_data ./prep_bench_data.go
 
 EXPOSE 8080
 CMD [ "app" ]

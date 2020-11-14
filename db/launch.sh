@@ -9,5 +9,5 @@ docker run --rm -it \
            -p 27017:27017 \
            -v $PWD/mongo:/data/db \
            --cpus 4 \
-           -m 4096m \
+           -m 6000m \
            mvertes/alpine-mongo

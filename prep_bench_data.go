@@ -17,10 +17,11 @@ import (
 )
 
 var (
-	dbLocation       = os.Getenv("MONGO_ADDR")
-	dbName           = os.Getenv("DB_NAME")
-	dbCollectionName = os.Getenv("COLLECTION_NAME")
-	batchSize, _     = strconv.Atoi(os.Getenv("BATCH_SIZE"))
+	dbLocation          = os.Getenv("MONGO_ADDR")
+	dbName              = os.Getenv("DB_NAME")
+	batchSize, _        = strconv.Atoi(os.Getenv("BATCH_SIZE"))
+	trainCollectionName = os.Getenv("TRAIN_COLLECTION_NAME")
+	testCollectionName  = os.Getenv("TEST_COLLECTION_NAME")
 )
 
 func main() {
@@ -42,8 +43,8 @@ func main() {
 	}
 
 	database := client.Database(dbName)
-	// vectorsTrainCollection := database.Collection("vectors_train")
-	vectorsTestCollection := database.Collection("vectors_test")
+	vectorsTrainCollection := database.Collection(trainCollectionName)
+	vectorsTestCollection := database.Collection(testCollectionName)
 
 	f, err := hdf5.OpenFile("./db/deep-image-96-angular.hdf5", hdf5.F_ACC_RDWR)
 	if err != nil {
@@ -51,23 +52,32 @@ func main() {
 	}
 	defer f.Close()
 
-	featuresTest, err := db.GetVectorsFromHDF5(f, "test")
-	if err != nil {
-		log.Fatal(err)
-	}
-	neighbors, err := db.GetNeighborsFromHDF5(f, "neighbors")
-	if err != nil {
-		log.Fatal(err)
+	{
+		featuresTest, err := db.GetVectorsFromHDF5(f, "test")
+		if err != nil {
+			log.Fatal(err)
+		}
+		neighbors, err := db.GetNeighborsFromHDF5(f, "neighbors")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = db.LoadDatasetMongoDb(vectorsTestCollection, featuresTest, neighbors, batchSize)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Println("Test data has been saved to mongo!")
 	}
 
-	err = db.LoadDatasetMongoDb(vectorsTestCollection, featuresTest, neighbors, batchSize)
-	if err != nil {
-		log.Fatal(err)
+	{
+		featuresTrain, err := db.GetVectorsFromHDF5(f, "train")
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = db.LoadDatasetMongoDb(vectorsTrainCollection, featuresTrain, []db.NeighborsIds{}, batchSize)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Println("Train data has been saved to mongo!")
 	}
-	log.Println("Test data has been saved to mongo!")
-
-	// featuresTest, err := db.GetVectorsFromHDF5(f, "test")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
 }
