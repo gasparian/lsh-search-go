@@ -1,7 +1,49 @@
 package db
 
 import (
+	"context"
+	"os"
+	"strconv"
+
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
+
+var (
+	sampleSize, _ = strconv.Atoi(os.Getenv("SAMPLE_SIZE"))
+
+	// GroupMeanStd holds pipeline for mongodb aggregation
+	GroupMeanStd = mongo.Pipeline{
+		bson.D{{"$sample", bson.D{
+			{"size", sampleSize},
+		}}},
+		bson.D{{"$unwind", bson.D{
+			{"path", "$featureVec"},
+			{"includeArrayIndex", "i"},
+		}}},
+		bson.D{{"$group", bson.D{
+			{"_id", "$i"},
+			{"avg", bson.D{
+				{"$avg", "$featureVec"},
+			}},
+			{"std", bson.D{
+				{"$stdDevSamp", "$featureVec"},
+			}},
+		}}},
+		bson.D{{"$sort", bson.D{
+			{"_id", 1},
+		}}},
+		bson.D{{"$group", bson.D{
+			{"_id", "null"},
+			{"avg", bson.D{
+				{"$push", "$avg"},
+			}},
+			{"std", bson.D{
+				{"$push", "$std"},
+			}},
+		}}},
+	}
 )
 
 // Objects inside the hdf5:
@@ -21,4 +63,10 @@ type VectorRecord struct {
 	NeighborsIds []int32            `bson:"neighborsIds,omitempty"`
 	FeatureVec   []float64          `bson:"featureVec,omitempty"`
 	Hashes       map[int32]uint64   `bson:"hashes,omitempty"`
+}
+
+// MongoClient holds client for connecting to the mongodb
+type MongoClient struct {
+	Ctx    context.Context
+	Client *mongo.Client
 }

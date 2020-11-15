@@ -30,10 +30,11 @@ type Plane struct {
 }
 
 // LSHIndex holds data for local sensetive hashing algorithm
-// Add in the main code: rand.Seed(time.Now().UnixNano())
+// To make results random every run, update random seed like this: rand.Seed(time.Now().UnixNano())
 type LSHIndex struct {
 	dims    int
 	bias    float64
+	MeanVec *Vector
 	nPlanes int
 	Planes  []Plane
 }

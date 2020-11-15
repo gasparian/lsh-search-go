@@ -53,9 +53,14 @@ Clean the collection:
 db.vectors_train.remove({})
 ```  
 
-Get mean and std vectors:  
+Get mean and std vectors on random data sample:  
 ```
-db.vectors_train.aggregate([
+db.train.aggregate([
+  {
+    $sample: {
+      size: 10000
+    }
+  },
   {
     $unwind: {
       path: "$featureVec",
@@ -67,34 +72,7 @@ db.vectors_train.aggregate([
       _id: "$i",
       avg: {
         $avg: "$featureVec"
-      }
-    }
-  },
-  {
-    $sort: {
-      "_id": 1
-    }
-  },
-  {
-    $group: {
-      _id: null,
-      avg: {
-        $push: "$avg"
-      }
-    }
-  }
-])
-
-db.vectors_train.aggregate([
-  {
-    $unwind: {
-      path: "$featureVec",
-      includeArrayIndex: "i"
-    }
-  },
-  {
-    $group: {
-      _id: "$i",
+      },
       std: {
         $stdDevSamp: "$featureVec"
       }
@@ -108,6 +86,9 @@ db.vectors_train.aggregate([
   {
     $group: {
       _id: null,
+      avg: {
+        $push: "$avg"
+      },
       std: {
         $push: "$std"
       }
@@ -132,32 +113,23 @@ Here are example visualizations:
 1. Prepare the [ANN benchmark dataset](http://ann-benchmarks.com/deep-image-96-angular.hdf5):  
     - ~~download dataset and write script for stats calculating using the hdf5;~~  
     - ~~add mongodb in project~~;  
-    - ~~write a script to fill mongodb with the benchmarked dataset.~~ Search index will be stored as new fields in the documents;  
+    - ~~write a script to fill mongodb with the benchmarked dataset. Search index will be stored as new fields in the documents~~;  
     - add unit tests for basic db functions;  
-2. Make comprehensive config file and parser for it (toml):  
-    - mean and std vectors (?);  
-    - url of the db;  
-    - number of hyper-planes to split the space;  
-    - target distance metric;  
-    - number of LSH permutations (there will new buckets in the db with separate index);  
-    - defaults (like number of results in a response and etc.);  
-    - add unittests for the config parser (all functions);  
-3. Implement the LSH algorithm:  
+2. Implement the LSH algorithm:  
     - ~~write functions for random planes generation~~;  
     - ~~write functions to perform basic vector operations~~;  
     - ~~add ability to store generated plane coefs on disk~~;  
     - add unit tests for public functions;  
-4. Make main app API:  
-    - app must read and parses the config file;  
-    - (create) the app needs to get dataset stats from the db (using mongo's aggregations) and iterate over the documents to update the search index field;  
-    - (get) app returns the NNs' "names" of the queried point;  
+3. Make main app API:  
+    - (build) the app needs to get dataset stats from the db (using mongo's aggregations) and iterate over the documents to update the search index field. Should stop and block other running tasks;  
+    - (get) app returns the NNs' "names" of the queried data point;  
     - (put) app adds new document into the db, and calculates the hashes;  
     - (pop) clean the search index by the given point "name";  
     - add unit tests for API methods;  
-5. Add search quality testing using the test part of the benchmark dataset:  
+4. Add search quality testing using the test part of the benchmark dataset:  
     - write a script that sends the test data points to the seach index, and compares the answers with the ground truth;  
     - script must also write out the log with all needed mertrics (FPR, FNG, ROC, f1 and etc.);  
     - add unit tests for metrics calculation funcs;  
-6. Add monitoring to the service:  
+5. Add monitoring to the service:  
     - add perf check on the remotely running service;  
     - add metrics and dashboard for overall usage analytics;  

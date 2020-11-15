@@ -157,7 +157,7 @@ func (lsh *LSHIndex) Load(path string) error {
 	return nil
 }
 
-// GetHash calculates LSH
+// GetHash calculates LSH code
 func (lsh *LSHIndex) GetHash(inpVec *Vector) uint64 {
 	var hash uint64
 	var vec *Vector
@@ -165,7 +165,8 @@ func (lsh *LSHIndex) GetHash(inpVec *Vector) uint64 {
 	var dpSign bool
 	for i := 0; i < lsh.nPlanes; i++ {
 		plane = &lsh.Planes[i]
-		vec = inpVec.Add(plane.InnerPoint.ConstMul(-1.0))
+		vec = inpVec.Add(lsh.MeanVec.ConstMul(-1.0))
+		vec = vec.Add(plane.InnerPoint.ConstMul(-1.0))
 		dpSign = math.Signbit(vec.DotProd(plane.Coefs))
 		if !dpSign {
 			hash |= (1 << i)
