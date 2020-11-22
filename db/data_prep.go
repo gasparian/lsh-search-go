@@ -51,9 +51,8 @@ func GetNeighborsFromHDF5(table *hdf5.File, datasetName string) ([]NeighborsIds,
 	return ticks, nil
 }
 
-// SetDataMongoDb sends batches of provided data to the mongodb
+// LoadDatasetMongoDb sends batches of provided data to the mongodb
 func LoadDatasetMongoDb(collection *mongo.Collection, data []FeatureVec, neighbors []NeighborsIds, batchSize int) error {
-	// batch := make([]interface{}, batchSize)
 	var batch []interface{} = nil
 	dataLen := len(data)
 	neighborsLen := len(neighbors)
@@ -73,11 +72,9 @@ func LoadDatasetMongoDb(collection *mongo.Collection, data []FeatureVec, neighbo
 				tmpRecord.NeighborsIds[valIdx] = neighbors[idx][valIdx]
 			}
 		}
-		// batch[batchIdx] = tmpRecord
 		batch = append(batch, tmpRecord)
 
 		if batchIdx == batchSize-1 || idx == dataLen-1 {
-			// _, err := collection.InsertMany(context.TODO(), batch[:batchIdx+1])
 			_, err := collection.InsertMany(context.TODO(), batch)
 			if err != nil {
 				return err

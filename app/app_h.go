@@ -1,7 +1,12 @@
 package app
 
+import (
+	alg "vector-search-go/algorithm"
+	"vector-search-go/db"
+)
+
 var (
-	// HelloMessage just holds message which describes public api
+	// HelloMessage just holds message which describes the public api
 	HelloMessage = []byte(`{
 		"methods": {
 			"GET": {
@@ -16,3 +21,9 @@ var (
 	    }
 	}`)
 )
+
+// SearchIndexHandler holds Indexer itself and mongo Client
+type SearchIndexHandler struct {
+	Index       alg.LSHIndex
+	MongoClient db.MongoClient
+}

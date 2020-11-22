@@ -8,18 +8,19 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"time"
 )
 
 // NewVector creates new vector by given slice of floats
-func NewVector(inpVec []float64) *Vector {
-	return &Vector{
+func NewVector(inpVec []float64) Vector {
+	return Vector{
 		Values: inpVec,
 		Size:   len(inpVec),
 	}
 }
 
 // Add two vectors of the same dimnsionality
-func (vec *Vector) Add(rvec *Vector) *Vector {
+func (vec *Vector) Add(rvec Vector) Vector {
 	sum := NewVector(make([]float64, vec.Size))
 	for i := range vec.Values {
 		sum.Values[i] = vec.Values[i] + rvec.Values[i]
@@ -28,7 +29,7 @@ func (vec *Vector) Add(rvec *Vector) *Vector {
 }
 
 // ConstMul multiplicates vector with provided constant float
-func (vec *Vector) ConstMul(constant float64) *Vector {
+func (vec *Vector) ConstMul(constant float64) Vector {
 	newVec := NewVector(make([]float64, vec.Size))
 	for i := range vec.Values {
 		newVec.Values[i] = vec.Values[i] * constant
@@ -37,7 +38,7 @@ func (vec *Vector) ConstMul(constant float64) *Vector {
 }
 
 // DotProd calculates dot product between two vectors
-func (vec *Vector) DotProd(inpVec *Vector) float64 {
+func (vec *Vector) DotProd(inpVec Vector) float64 {
 	var dp float64 = 0.0
 	for i := range vec.Values {
 		dp += vec.Values[i] * inpVec.Values[i]
@@ -45,8 +46,8 @@ func (vec *Vector) DotProd(inpVec *Vector) float64 {
 	return dp
 }
 
-// L2 calculates l2-distance of two vectors (or norm, if the inpVec is zero vector)
-func (vec *Vector) L2(inpVec *Vector) float64 {
+// L2 calculates l2-distance of two vectors
+func (vec *Vector) L2(inpVec Vector) float64 {
 	var l2 float64
 	var diff float64
 	for i := range vec.Values {
@@ -56,33 +57,22 @@ func (vec *Vector) L2(inpVec *Vector) float64 {
 	return math.Sqrt(l2)
 }
 
-// CosineSim calculates cosine similarity of two given vectors
-func (vec *Vector) CosineSim(inpVec *Vector) float64 {
-	zeroVec := &Vector{
+// L2Norm calculates l2 norm of a vector
+func (vec *Vector) L2Norm() float64 {
+	zeroVec := Vector{
 		Values: make([]float64, vec.Size),
 	}
-	cosine := vec.DotProd(inpVec) / (vec.L2(zeroVec) * inpVec.L2(zeroVec))
+	return vec.L2(zeroVec)
+}
+
+// CosineSim calculates cosine similarity of two given vectors
+func (vec *Vector) CosineSim(inpVec Vector) float64 {
+	cosine := vec.DotProd(inpVec) / (vec.L2Norm() * inpVec.L2Norm())
 	return cosine
 }
 
-func (lsh *LSHIndex) getRandomPlane() *Vector {
-	coefs := &Vector{
-		Values: make([]float64, lsh.dims+1),
-		Size:   lsh.dims + 1,
-	}
-	var l2 float64 = 0.0
-	for i := 0; i < lsh.dims; i++ {
-		coefs.Values[i] = -1.0 + rand.Float64()*2
-		l2 += coefs.Values[i] * coefs.Values[i]
-	}
-	l2 = math.Sqrt(l2)
-	bias := l2 * lsh.bias
-	coefs.Values[coefs.Size-1] = -1.0*bias + rand.Float64()*bias*2
-	return coefs
-}
-
 // GetPointPlaneDist calculates distance between origin and plane
-func GetPointPlaneDist(planeCoefs *Vector) *Vector {
+func GetPointPlaneDist(planeCoefs Vector) Vector {
 	values := make([]float64, planeCoefs.Size-1)
 	dCoef := planeCoefs.Values[planeCoefs.Size-1]
 	var denom float64 = 0.0
@@ -92,18 +82,51 @@ func GetPointPlaneDist(planeCoefs *Vector) *Vector {
 	for i := range values {
 		values[i] = planeCoefs.Values[i] * dCoef / denom
 	}
-	return &Vector{
+	return Vector{
 		Values: values,
 		Size:   len(values),
 	}
 }
 
+// NewLSHIndexRecord creates new instance of LSHIndex object
+func NewLSHIndexRecord(meanVec, stdVec Vector, maxNPlanes int) (LSHIndexRecord, error) {
+	lshIndex := LSHIndexRecord{
+		Dims:       meanVec.Size,
+		Bias:       stdVec.L2Norm(),
+		MaxNPlanes: maxNPlanes,
+		MeanVec:    meanVec,
+	}
+	err := lshIndex.Build()
+	if err != nil {
+		return LSHIndexRecord{}, err
+	}
+	return lshIndex, nil
+}
+
+func (lsh *LSHIndexRecord) getRandomPlane() Vector {
+	coefs := Vector{
+		Values: make([]float64, lsh.Dims+1),
+		Size:   lsh.Dims + 1,
+	}
+	var l2 float64 = 0.0
+	for i := 0; i < lsh.Dims; i++ {
+		coefs.Values[i] = -1.0 + rand.Float64()*2
+		l2 += coefs.Values[i] * coefs.Values[i]
+	}
+	l2 = math.Sqrt(l2)
+	bias := l2 * lsh.Bias
+	coefs.Values[coefs.Size-1] = -1.0*bias + rand.Float64()*bias*2
+	return coefs
+}
+
 // Build creates set of planes which will be used to calculate hash
-func (lsh *LSHIndex) Build() error {
-	if lsh.dims <= 0 {
+func (lsh *LSHIndexRecord) Build() error {
+	if lsh.Dims <= 0 {
 		return errors.New("Dimensions number must be a positive integer")
 	}
-	var coefs *Vector
+
+	rand.Seed(time.Now().UnixNano())
+	var coefs Vector
 	for i := 0; i < lsh.nPlanes; i++ {
 		coefs = lsh.getRandomPlane()
 		lsh.Planes = append(lsh.Planes, Plane{
@@ -114,53 +137,10 @@ func (lsh *LSHIndex) Build() error {
 	return nil
 }
 
-// Dump write LSHIndex object to disk
-func (lsh *LSHIndex) Dump(path string) error {
-	buf := &bytes.Buffer{}
-	enc := gob.NewEncoder(buf)
-	err := enc.Encode(*lsh)
-	if err != nil {
-		return err
-	}
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	if _, err := f.Write(buf.Bytes()); err != nil {
-		return err
-	}
-	if err := f.Sync(); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Load loads LSHIndex struct into memory
-func (lsh *LSHIndex) Load(path string) error {
-	buf := &bytes.Buffer{}
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(buf, f)
-	if err != nil {
-		return err
-	}
-	f.Close()
-	dec := gob.NewDecoder(buf)
-	err = dec.Decode(lsh)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // GetHash calculates LSH code
-func (lsh *LSHIndex) GetHash(inpVec *Vector) uint64 {
+func (lsh *LSHIndexRecord) GetHash(inpVec *Vector) uint64 {
 	var hash uint64
-	var vec *Vector
+	var vec Vector
 	var plane *Plane
 	var dpSign bool
 	for i := 0; i < lsh.nPlanes; i++ {
@@ -173,4 +153,62 @@ func (lsh *LSHIndex) GetHash(inpVec *Vector) uint64 {
 		}
 	}
 	return hash
+}
+
+// Dump writes to disk LSHIndex object as a byte-array
+func (lsh *LSHIndex) Dump(path string) ([]byte, error) {
+	if len(lsh.Entries) == 0 {
+		return nil, errors.New("Search index must contain at least one object")
+	}
+	buf := &bytes.Buffer{}
+	enc := gob.NewEncoder(buf)
+	err := enc.Encode(*lsh)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// Load loads LSHIndex struct into memory from byte-array file
+func (lsh *LSHIndex) Load(inp []byte) error {
+	buf := &bytes.Buffer{}
+	buf.Write(inp)
+	dec := gob.NewDecoder(buf)
+	err := dec.Decode(lsh)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// DumpBytesToFile writes byte array to the file
+func DumpBytesToFile(inp []byte, path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if _, err := f.Write(inp); err != nil {
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// LoadBytesFromFile loads byte array from file
+func LoadBytesFromFile(path string) ([]byte, error) {
+	buf := &bytes.Buffer{}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	_, err = io.Copy(buf, f)
+	if err != nil {
+		return nil, err
+	}
+	f.Close()
+	return buf.Bytes(), nil
 }

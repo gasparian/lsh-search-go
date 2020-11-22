@@ -41,7 +41,7 @@ func GetDbClient(dbLocation string) (*MongoClient, error) {
 	return mongodb, nil
 }
 
-// Disconnects client from the context
+// Disconnect client from the context
 func (mongodb *MongoClient) Disconnect() {
 	mongodb.Client.Disconnect(mongodb.Ctx)
 }
@@ -54,17 +54,27 @@ func (mongodb *MongoClient) GetDb(dbName string) *mongo.Database {
 // GetAggregation runs prepared aggregation pipeline in mongodb
 func GetAggregation(coll *mongo.Collection, groupStage mongo.Pipeline) ([]bson.M, error) {
 	opts := options.Aggregate().SetMaxTime(time.Duration(dbtimeOut) * time.Second)
-	// cursor, err := coll.Aggregate(context.TODO(), mongo.Pipeline{groupStage}, opts)
 	cursor, err := coll.Aggregate(context.TODO(), groupStage, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	// get a list of all returned documents and print them out
-	// see the mongo.Cursor documentation for more examples of using cursors
 	var results []bson.M
 	if err = cursor.All(context.TODO(), &results); err != nil {
 		return nil, err
 	}
 	return results, nil
+}
+
+// GetHashesMongoPipeline generates pipeline
+// by the given of permutations
+func GetHashesMongoPipeline() mongo.Pipeline {
+	return mongo.Pipeline{}
+}
+
+// SetSearchHashes gets all documents in the db,
+// calculates hashes, and update these documents with
+// the new fields
+func SetSearchHashes() {
+
 }

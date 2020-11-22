@@ -104,7 +104,7 @@ Also, we need to limit coefs range, based on data points deviation.
 Here are example visualizations:  
 <img src="https://github.com/gasparian/vector-search-go/blob/master/pics/non-biased.png" height=300 >  <img src="https://github.com/gasparian/vector-search-go/blob/master/pics/biased.png" height=300 >  
 
-*Complexety*
+*Complexity*
 
 *Quality metrics*
 
@@ -122,9 +122,13 @@ Here are example visualizations:
     - add unit tests for public functions;  
 3. Make main app API:  
     - (build) the app needs to get dataset stats from the db (using mongo's aggregations) and iterate over the documents to update the search index field. Should stop and block other running tasks;  
-    - (get) app returns the NNs' "names" of the queried data point;  
+    - (get) app returns the NNs' "ids" of the queried data point;  
     - (put) app adds new document into the db, and calculates the hashes;  
     - (pop) clean the search index by the given point "name";  
+    - rewrite the the functions to save and load search index to hold the slice of LSHIndex objects instead of a single one;  
+    - add ability to store the build sync. status and the LSH index object in special collection in the same mongodb (using [GridFS](https://www.mongodb.com/blog/post/quick-start-golang--mongodb--a-quick-look-at-gridfs));  
+    - add decorators on repeatable ops (on handler functions);  
+    - add requests cancelation via context;  
     - add unit tests for API methods;  
 4. Add search quality testing using the test part of the benchmark dataset:  
     - write a script that sends the test data points to the seach index, and compares the answers with the ground truth;  
@@ -133,3 +137,28 @@ Here are example visualizations:
 5. Add monitoring to the service:  
     - add perf check on the remotely running service;  
     - add metrics and dashboard for overall usage analytics;  
+
+### Notes:  
+ - The go client is a connection pool already so it is thread safe: https://github.com/mongodb/mongo-go-driver/blob/master/mongo/client.go#L42  
+ Quote from the code:  
+```
+ // Client is a handle representing a pool of connections to a MongoDB deployment. It is safe for concurrent use by
+ // multiple goroutines.
+ //
+ // The Client type opens and closes connections automatically and maintains a pool of idle connections. For
+ // connection pool configuration options, see documentation for the ClientOptions type in the mongo/options package.
+```  
+ - use mongo's `find` only with limiting, otherwise - db starts lagging. Not sure why...;  
+ - monitor mongodb mem usage:  
+ ```
+ db.serverStatus().mem
+    {
+    	"bits" : 64,
+    	"resident" : 907,
+    	"virtual" : 1897,
+    	"supported" : true,
+    	"mapped" : 0,
+    	"mappedWithJournal" : 0
+    }
+```  
+ - if the mongo consumes too much ram while running inside the docker - just try to specify the WiredTiger mem cache  `-wiredTigerCacheSizeGB 2.5` to some lower value, like `(docker_mem_limit - 1) / 2`;  

@@ -1,7 +1,7 @@
 #!/bin/sh
-if [ "$(docker inspect mvertes/alpine-mongo 1> /dev/null)" != "" ] 
+if [ "$(docker inspect mongo 1> /dev/null)" != "" ] 
 then
-    docker pull mvertes/alpine-mongo
+    docker pull mongo:4.0-xenial
     wait $!
 fi
 docker run --rm -it \
@@ -10,4 +10,5 @@ docker run --rm -it \
            -v $PWD/mongo:/data/db \
            --cpus 4 \
            -m 6000m \
-           mvertes/alpine-mongo
+           mongo:4.0-xenial \
+           --wiredTigerCacheSizeGB 2.5
