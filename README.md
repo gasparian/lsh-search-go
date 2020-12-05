@@ -138,8 +138,9 @@ Here are example visualizations:
     - (get) app returns the NNs' "ids" of the queried data point;  
     - (put) app adds new document into the db, and calculates the hashes;  
     - (pop) clean the search index by the given point "name";  
-    - rewrite the the functions to save and load search index to hold the slice of LSHIndex objects instead of a single one;  
-    - add ability to store the build sync. status and the LSH index object in special collection in the same mongodb (using [GridFS](https://www.mongodb.com/blog/post/quick-start-golang--mongodb--a-quick-look-at-gridfs));  
+    - ~~rewrite the functions to save and load search index to hold the slice of LSHIndex objects instead of a single one~~;  
+    - make master service, which will redirect requests to workers and admin the build process;  
+    - add ability to store the build sync. status and the LSH index object in special collection in the same mongodb (maybe using [GridFS](https://www.mongodb.com/blog/post/quick-start-golang--mongodb--a-quick-look-at-gridfs));  
     - add decorators on repeatable ops (on handler functions);  
     - add requests cancelation via context;  
     - add unit tests for API methods;  
