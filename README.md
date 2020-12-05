@@ -7,7 +7,7 @@ The goal of this project is to build the simple and reliable vector search servi
 It can be used as a core of recommender systems and semantic search applications.   
 To create the search index, I'll use [LSH](https://en.wikipedia.org/wiki/Locality-sensitive_hashing) (local sensetive hashing).  
 
-### Usage  
+### Building and running  
 
 To run the app, the only thing you need to be installed on your host machine - is docker.  
 
@@ -28,8 +28,21 @@ The list of objects inside the hdf5:
 
 Everything runs inside a docker. Just launch it with:  
  - `./launch.sh` if you want to launch the main app;  
- - `./db/launch.sh` if you want to launch the database;  
+ - `cd ./db && ./launch.sh` if you want to launch the database;  
 Don't forget to add the actual db socket in the config.  
+
+Also, for more convenient development, you can run all locally. First, install deps:  
+```
+sudo apt-get install libhdf5-serial-dev
+go mod init vector-search-go
+go mod tidy
+```  
+Then compile and run, passing args from config file:  
+```
+go build -o ./main ./main.go
+export $(grep -v '^#' config.env | xargs) && ./main
+```  
+### Usage  
 
 In order to get stats of the test dataset (I've already placed the stats inside `config.toml`), after entering the running container, you must compile and run prepared script:  
 ```
@@ -97,7 +110,7 @@ db.train.aggregate([
 ])
 ```  
 
-### Reference   
+### ANN reference   
 
 LSH algorithm implies generation of random plane equation coefs. So, depending on the similarity metric, often we just need to define "bias" coef "d" as zero (for "angular" metric) or non-zero.  
 Also, we need to limit coefs range, based on data points deviation.
