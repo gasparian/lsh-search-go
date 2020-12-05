@@ -139,7 +139,7 @@ Here are example visualizations:
     - (put) app adds new document into the db, and calculates the hashes;  
     - (pop) clean the search index by the given point "name";  
     - ~~rewrite the functions to save and load search index to hold the slice of LSHIndex objects instead of a single one~~;  
-    - make master service, which will redirect requests to workers and admin the build process;  
+    - make master service, which will redirect requests to workers and admin the build process ([example](https://github.com/YuriyNasretdinov/distribkv/blob/master/web/web.go));  
     - add ability to store the build sync. status and the LSH index object in special collection in the same mongodb (maybe using [GridFS](https://www.mongodb.com/blog/post/quick-start-golang--mongodb--a-quick-look-at-gridfs));  
     - add decorators on repeatable ops (on handler functions);  
     - add requests cancelation via context;  
