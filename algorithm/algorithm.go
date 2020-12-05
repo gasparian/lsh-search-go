@@ -88,9 +88,9 @@ func GetPointPlaneDist(planeCoefs Vector) Vector {
 	}
 }
 
-// NewLSHIndexRecord creates new instance of LSHIndex object
-func NewLSHIndexRecord(meanVec, stdVec Vector, maxNPlanes int) (LSHIndexRecord, error) {
-	lshIndex := LSHIndexRecord{
+// NewLSHIndexInstance creates new instance of LSHIndex object
+func NewLSHIndexInstance(meanVec, stdVec Vector, maxNPlanes int) (LSHIndexInstance, error) {
+	lshIndex := LSHIndexInstance{
 		Dims:       meanVec.Size,
 		Bias:       stdVec.L2Norm(),
 		MaxNPlanes: maxNPlanes,
@@ -98,12 +98,29 @@ func NewLSHIndexRecord(meanVec, stdVec Vector, maxNPlanes int) (LSHIndexRecord, 
 	}
 	err := lshIndex.Build()
 	if err != nil {
-		return LSHIndexRecord{}, err
+		return LSHIndexInstance{}, err
 	}
 	return lshIndex, nil
 }
 
-func (lsh *LSHIndexRecord) getRandomPlane() Vector {
+// NewLSHIndex creates slice of LSHIndexInstances to hold several permutations results
+func NewLSHIndex(convMean, convStd Vector) (*LSHIndex, error) {
+	lshIndex := &LSHIndex{
+		Entries: make([]LSHIndexInstance, globNPermutes),
+	}
+	var tmpLSHIndex LSHIndexInstance
+	var err error
+	for i := 0; i < globNPermutes; i++ {
+		tmpLSHIndex, err = NewLSHIndexInstance(convMean, convStd, globMaxNPlanes)
+		if err != nil {
+			return nil, err
+		}
+		lshIndex.Entries[i] = tmpLSHIndex
+	}
+	return lshIndex, nil
+}
+
+func (lsh *LSHIndexInstance) getRandomPlane() Vector {
 	coefs := Vector{
 		Values: make([]float64, lsh.Dims+1),
 		Size:   lsh.Dims + 1,
@@ -120,7 +137,7 @@ func (lsh *LSHIndexRecord) getRandomPlane() Vector {
 }
 
 // Build creates set of planes which will be used to calculate hash
-func (lsh *LSHIndexRecord) Build() error {
+func (lsh *LSHIndexInstance) Build() error {
 	if lsh.Dims <= 0 {
 		return errors.New("Dimensions number must be a positive integer")
 	}
@@ -138,7 +155,7 @@ func (lsh *LSHIndexRecord) Build() error {
 }
 
 // GetHash calculates LSH code
-func (lsh *LSHIndexRecord) GetHash(inpVec *Vector) uint64 {
+func (lsh *LSHIndexInstance) GetHash(inpVec *Vector) uint64 {
 	var hash uint64
 	var vec Vector
 	var plane *Plane

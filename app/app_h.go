@@ -24,6 +24,6 @@ var (
 
 // SearchIndexHandler holds Indexer itself and mongo Client
 type SearchIndexHandler struct {
-	Index       alg.LSHIndex
+	Index       *alg.LSHIndex
 	MongoClient db.MongoClient
 }

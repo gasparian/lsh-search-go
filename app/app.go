@@ -3,14 +3,11 @@ package app
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	alg "vector-search-go/algorithm"
 	"vector-search-go/db"
@@ -21,8 +18,6 @@ var (
 	dbName             = os.Getenv("DB_NAME")
 	dataCollectionName = os.Getenv("COLLECTION_NAME")
 	testCollectionName = os.Getenv("TEST_COLLECTION_NAME")
-	maxNPlanes, _      = strconv.Atoi(os.Getenv("MAX_N_PLANES"))
-	nPermutes, _       = strconv.Atoi(os.Getenv("N_PERMUTS"))
 )
 
 // HealthCheck just checks that server is up and running;
@@ -39,25 +34,6 @@ func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	out, _ := json.Marshal(raw)
 	w.Write(out)
-}
-
-func convertAggResult(inp interface{}) (alg.Vector, error) {
-	val, ok := inp.(primitive.A)
-	if !ok {
-		return alg.Vector{}, errors.New("Type conversion failed")
-	}
-	conv := alg.Vector{
-		Values: make([]float64, len(val)),
-		Size:   len(val),
-	}
-	for i := range conv.Values {
-		v, ok := val[i].(float64)
-		if !ok {
-			return alg.Vector{}, errors.New("Type conversion failed")
-		}
-		conv.Values[i] = v
-	}
-	return conv, nil
 }
 
 // BuildIndex updates the existing db documents with the
@@ -82,45 +58,26 @@ func BuildIndex() (SearchIndexHandler, error) {
 	database := mongodb.GetDb(dbName)
 	coll := database.Collection(dataCollectionName)
 
-	results, err := db.GetAggregation(coll, db.GroupMeanStd)
+	convMean, convStd, err := db.GetAggregatedStats(coll)
 	if err != nil {
-		log.Println("Making db aggregation: " + err.Error())
-		return SearchIndexHandler{}, err
-	}
-	convMean, err := convertAggResult(results[0]["avg"])
-	if err != nil {
-		log.Println("Parsing aggregation result: " + err.Error())
-		return SearchIndexHandler{}, err
-	}
-	convStd, err := convertAggResult(results[0]["std"])
-	if err != nil {
-		log.Println("Parsing aggregation result: " + err.Error())
 		return SearchIndexHandler{}, err
 	}
 
 	log.Println(convMean.Values) // DEBUG
 	log.Println(convStd.Values)  // DEBUG
 
+	// TO DO: If there is no existing Index object stored in the database
+	lshIndex, err := alg.NewLSHIndex(convMean, convStd)
+	if err != nil {
+		return SearchIndexHandler{}, err
+	}
+
 	searchHandler := SearchIndexHandler{
-		Index: alg.LSHIndex{
-			Entries: make([]alg.LSHIndexRecord, nPermutes),
-		},
+		Index:       lshIndex,
 		MongoClient: *mongodb,
 	}
 
-	var tmpLSHIndex alg.LSHIndexRecord
-	for i := 0; i < nPermutes; i++ {
-		tmpLSHIndex, err = alg.NewLSHIndexRecord(convMean, convStd, maxNPlanes)
-		if err != nil {
-			return SearchIndexHandler{}, err
-		}
-		searchHandler.Index.Entries[i] = tmpLSHIndex
-	}
-
 	log.Println(searchHandler.Index.Entries[0]) // DEBUG
-
-	// If the new indexer object has been created -
-	// - update all documents in the db
 
 	return searchHandler, nil
 }

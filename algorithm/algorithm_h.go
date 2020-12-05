@@ -1,7 +1,14 @@
 package algorithm
 
 import (
+	"os"
+	"strconv"
 	"sync"
+)
+
+var (
+	globMaxNPlanes, _ = strconv.Atoi(os.Getenv("MAX_N_PLANES"))
+	globNPermutes, _  = strconv.Atoi(os.Getenv("N_PERMUTS"))
 )
 
 // IVector here just to quicly observe which methods exists on Vector struct
@@ -31,8 +38,8 @@ type Plane struct {
 	InnerPoint Vector
 }
 
-// LSHIndexRecord holds data for local sensetive hashing algorithm
-type LSHIndexRecord struct {
+// LSHIndexInstance holds data for local sensetive hashing algorithm
+type LSHIndexInstance struct {
 	Dims       int
 	Bias       float64
 	MaxNPlanes int
@@ -42,8 +49,8 @@ type LSHIndexRecord struct {
 	nPlanes    int
 }
 
-// LSHIndex holds N_PERMUTS number of LSHIndexRecord instances
+// LSHIndex holds N_PERMUTS number of LSHIndexInstance instances
 type LSHIndex struct {
 	sync.Mutex
-	Entries []LSHIndexRecord
+	Entries []LSHIndexInstance
 }
