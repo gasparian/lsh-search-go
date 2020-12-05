@@ -110,16 +110,16 @@ db.train.aggregate([
 ])
 ```  
 
-### ANN reference   
+### Local sensitive hashing  reference   
 
 LSH algorithm implies generation of random plane equation coefs. So, depending on the similarity metric, often we just need to define "bias" coef "d" as zero (for "angular" metric) or non-zero.  
 Also, we need to limit coefs range, based on data points deviation.
 Here are example visualizations:  
 <img src="https://github.com/gasparian/vector-search-go/blob/master/pics/non-biased.png" height=300 >  <img src="https://github.com/gasparian/vector-search-go/blob/master/pics/biased.png" height=300 >  
 
-*Complexity*
+*TO DO: Complexity*
 
-*Quality metrics*
+*TO DO: Quality metrics*
 
 ### Dev. plan:   
 
