@@ -8,13 +8,13 @@ import (
 )
 
 func main() {
-	searchIndexHandler, err := app.BuildIndex()
+	searchIndexServer, err := app.NewSearchIndexServer()
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	defer searchIndexHandler.MongoClient.Disconnect()
+	defer searchIndexServer.MongoClient.Disconnect()
 
 	http.HandleFunc("/", app.HealthCheck)
-	http.HandleFunc("/get", searchIndexHandler.GetNeighbors)
+	http.HandleFunc("/get", searchIndexServer.GetNeighbors)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

@@ -1,14 +1,7 @@
 package algorithm
 
 import (
-	"os"
-	"strconv"
 	"sync"
-)
-
-var (
-	globMaxNPlanes, _ = strconv.Atoi(os.Getenv("MAX_N_PLANES"))
-	globNPermutes, _  = strconv.Atoi(os.Getenv("N_PERMUTS"))
 )
 
 // IVector here just to quicly observe which methods exists on Vector struct

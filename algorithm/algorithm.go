@@ -8,7 +8,13 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"strconv"
 	"time"
+)
+
+var (
+	globMaxNPlanes, _ = strconv.Atoi(os.Getenv("MAX_N_PLANES"))
+	globNPermutes, _  = strconv.Atoi(os.Getenv("N_PERMUTS"))
 )
 
 // NewVector creates new vector by given slice of floats
