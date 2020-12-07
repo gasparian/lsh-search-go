@@ -9,7 +9,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	alg "vector-search-go/algorithm"
+	alg "vector-search-go/lsh"
 	"vector-search-go/db"
 )
 
@@ -36,27 +36,28 @@ func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Write(out)
 }
 
-// NewSearchIndexServer returns empty index object with initialized mongo client
-func NewSearchIndexServer() (SearchIndexServer, error) {
+// NewANNServer returns empty index object with initialized mongo client
+func NewANNServer() (ANNServer, error) {
 	mongodb, err := db.GetDbClient(dbLocation)
 	if err != nil {
 		log.Println("Creating db client: " + err.Error())
-		return SearchIndexServer{}, err
+		return ANNServer{}, err
 	}
-	// defer mongodb.Disconnect() // should be placed on some upper level
+	// defer mongodb.Disconnect() // should be placed on the upper level
 
-	searchHandler := SearchIndexServer{
+	searchHandler := ANNServer{
 		MongoClient: *mongodb,
 	}
 
 	return searchHandler, nil
 }
 
-// BuildIndex updates the existing db documents with the
+// BuildIndexerHandler updates the existing db documents with the
 // new computed hashes based on dataset stats;
 // Also we need to store somewhere the build status
 // to prevent any db requests during this process
-func (searchIndex *SearchIndexServer) BuildIndexer() error {
+// TO DO
+func (annServer *ANNServer) BuildIndexerHandler() error {
 
 	/*
 		TO DO: add here retrieving of the LSHIndex object from the database
@@ -65,7 +66,7 @@ func (searchIndex *SearchIndexServer) BuildIndexer() error {
 		       of build, to prevent other "workers" to do any work
 	*/
 
-	database := searchIndex.MongoClient.GetDb(dbName)
+	database := annServer.MongoClient.GetDb(dbName)
 	coll := database.Collection(dataCollectionName)
 
 	convMean, convStd, err := db.GetAggregatedStats(coll)
@@ -81,42 +82,65 @@ func (searchIndex *SearchIndexServer) BuildIndexer() error {
 		return err
 	}
 
-	searchIndex.Index = lshIndex
+	annServer.Index = lshIndex
 
-	log.Println(searchIndex.Index.Entries[0]) // DEBUG
+	log.Println(annServer.Index.Entries[0]) // DEBUG
 
 	return nil
 }
 
-// LoadIndexer loads indexer object from db if it exists
-func (searchIndex *SearchIndexServer) LoadIndexer() error {
+// UpdateDbHashes updates entries in the data collection with the new set of hashes
+// TO DO
+func (annServer *ANNServer) UpdateDbHashes() {
+
+}
+
+// DbLoadIndexer loads indexer object from db if it exists
+// TO DO
+func (annServer *ANNServer) DbLoadIndexer() error {
 	return nil
 }
 
-// SaveIndexer uploads indexer object to the db
-func (searchIndex *SearchIndexServer) SaveIndexer() error {
+// DbSaveIndexer uploads indexer object to the db
+// TO DO
+func (annServer *ANNServer) DbSaveIndexer() error {
 	return nil
 }
 
-// LockIndexer updates status in special document inside the db
+// DbLockIndexer updates status in special document inside the db
 // so other service workers blocks any operation while search index is updated
-func (searchIndex *SearchIndexServer) LockIndexer() error {
+// TO DO
+func (annServer *ANNServer) DbLockIndexer() error {
 	return nil
 }
 
-// UnlockIndexer updates status in special document inside the db
+// DbUnlockIndexer updates status in special document inside the db
 // so other service workers could start using created search index
 // and retrieve fresh indexer object
-func (searchIndex *SearchIndexServer) UnlockIndexer() error {
+// TO DO
+func (annServer *ANNServer) DbUnlockIndexer() error {
 	return nil
 }
 
-// GetNeighbors makes query to the db and returns all
+// PutHashHandler calculates and updates the document with hashes
+// TO DO
+func (annServer *ANNServer) PutHashHandler(w http.ResponseWriter, r *http.Request) {
+
+}
+
+// PopHashHandler drops fields with hashes from the queried db entry
+// TO DO
+func (annServer *ANNServer) PopHashHandler(w http.ResponseWriter, r *http.Request) {
+
+}
+
+// GetNeighborsHandler makes query to the db and returns all
 // Neighbors in the MaxDist
-func (searchIndex *SearchIndexServer) GetNeighbors(w http.ResponseWriter, r *http.Request) {
+// TO DO
+func (annServer *ANNServer) GetNeighborsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	// DEBUG CODE
-	database := searchIndex.MongoClient.GetDb(dbName)
+	database := annServer.MongoClient.GetDb(dbName)
 	coll := database.Collection(dataCollectionName)
 
 	opts := options.Find().SetLimit(2)
@@ -139,14 +163,4 @@ func (searchIndex *SearchIndexServer) GetNeighbors(w http.ResponseWriter, r *htt
 	}
 	w.WriteHeader(http.StatusOK)
 	// DEBUG CODE
-}
-
-// PutHash updates the document with calculated  hashes
-func (searchIndex *SearchIndexServer) PutHash(w http.ResponseWriter, r *http.Request) {
-
-}
-
-// PopHash drops fields with hashes from the queried document
-func (searchIndex *SearchIndexServer) PopHash(w http.ResponseWriter, r *http.Request) {
-
 }

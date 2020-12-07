@@ -1,8 +1,8 @@
 package app
 
 import (
-	alg "vector-search-go/algorithm"
 	"vector-search-go/db"
+	alg "vector-search-go/lsh"
 )
 
 var (
@@ -22,8 +22,8 @@ var (
 	}`)
 )
 
-// SearchIndexServer holds Indexer itself and the mongo Client
-type SearchIndexServer struct {
+// ANNServer holds Indexer itself and the mongo Client
+type ANNServer struct {
 	Index       *alg.LSHIndex
 	MongoClient db.MongoClient
 }
