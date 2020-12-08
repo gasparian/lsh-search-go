@@ -18,17 +18,19 @@ import (
 )
 
 var (
-	dbtimeOut, _ = strconv.Atoi(os.Getenv("DB_CLIENT_TIMEOUT"))
+	dbtimeOut, _          = strconv.Atoi(os.Getenv("DB_CLIENT_TIMEOUT"))
+	createIndexMaxTime, _ = strconv.Atoi(os.Getenv("CREATE_INDEX_MAX_TIME"))
 )
 
-// GetDbClient creates client for talking to mongodb
+// GetDbClient creates client for talking to the mongodb
 func GetDbClient(dbLocation string) (*MongoClient, error) {
 	client, err := mongo.NewClient(options.Client().ApplyURI(dbLocation))
 	if err != nil {
 		return nil, err
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
+	defer cancel()
 	err = client.Connect(ctx)
 	if err != nil {
 		return nil, err
@@ -39,7 +41,6 @@ func GetDbClient(dbLocation string) (*MongoClient, error) {
 		return nil, err
 	}
 	mongodb := &MongoClient{
-		Ctx:    ctx,
 		Client: client,
 	}
 	return mongodb, nil
@@ -47,12 +48,51 @@ func GetDbClient(dbLocation string) (*MongoClient, error) {
 
 // Disconnect client from the context
 func (mongodb *MongoClient) Disconnect() {
-	mongodb.Client.Disconnect(mongodb.Ctx)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
+	defer cancel()
+	mongodb.Client.Disconnect(ctx)
 }
 
 // GetDb returns database object
 func (mongodb *MongoClient) GetDb(dbName string) *mongo.Database {
 	return mongodb.Client.Database(dbName)
+}
+
+// CreateIndexesByFields just creates the new unique ascending
+// indexes based on field name (type should be int)
+func (mongodb *MongoClient) CreateIndexesByFields(coll *mongo.Collection, fields []string, unique bool) error {
+	models := make([]mongo.IndexModel, len(fields))
+	for i, field := range fields {
+		models[i] = mongo.IndexModel{
+			Keys: bson.M{
+				field: 1,
+			},
+			Options: options.MergeIndexOptions(
+				options.Index().SetUnique(unique),
+				options.Index().SetSparse(true),
+			),
+		}
+	}
+	opts := options.CreateIndexes().SetMaxTime(time.Duration(createIndexMaxTime) * time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	_, err := coll.Indexes().CreateMany(ctx, models, opts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// DropIndexByField sends command to drop the selected index;
+// Input format should be in the following format: ""Some Field_1""
+func DropIndexByField(coll *mongo.Collection, indexName string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(createIndexMaxTime)*time.Second)
+	defer cancel()
+	_, err := coll.Indexes().DropOne(ctx, indexName)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // GetAggregation runs prepared aggregation pipeline in mongodb

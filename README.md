@@ -50,15 +50,26 @@ cd ./data
 go mod tidy && build -o /usr/bin/run_prep_data run_prep_data.go
 ./run_data_prep
 ```  
-If you want to clean up connect to the mongodb through cli, first check out monogodb [manual](https://docs.mongodb.com/manual/mongo/).  
+Below I'll show how to talk with mongodb via console, to make quick checks on the dataset.  
+So first you better first check the monogodb [docs](https://docs.mongodb.com/manual/mongo/).  
 Then get inside the docker:  
 ```
 docker exec -ti mongo mongo
 ```  
-Then drop needed db or collections:  
+Select needed db:  
 ```
 show dbs
 use ann_bench
+```  
+You can create/drop indexes:  
+```
+db.train.createIndex({OrigId: 1})
+# index on array may take much time
+db.train.createIndex({featureVec: 1})
+db.train.dropIndex({featureVec: 1})
+```  
+You can always drop any db or collections:  
+```
 db.vectors_train.find().limit(2)
 ```  
 Clean the collection:  
@@ -71,7 +82,7 @@ Get mean and std vectors on random data sample:
 db.train.aggregate([
   {
     $sample: {
-      size: 10000
+      size: 100000
     }
   },
   {
@@ -176,3 +187,4 @@ Here are example visualizations:
     }
 ```  
  - if the mongo consumes too much ram while running inside the docker - just try to specify the WiredTiger mem cache  `-wiredTigerCacheSizeGB 2.5` to some lower value, like `(docker_mem_limit - 1) / 2`;  
+ - it's better to define indexes on as early as possible `OrigID` and `Hashes.hash#` fields, to make the aggregations and finds run more quickly;  

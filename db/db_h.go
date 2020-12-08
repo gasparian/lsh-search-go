@@ -1,7 +1,6 @@
 package db
 
 import (
-	"context"
 	"os"
 	"strconv"
 
@@ -67,6 +66,5 @@ type VectorRecord struct {
 
 // MongoClient holds client for connecting to the mongodb
 type MongoClient struct {
-	Ctx    context.Context
 	Client *mongo.Client
 }

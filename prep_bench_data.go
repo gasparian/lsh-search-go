@@ -63,4 +63,15 @@ func main() {
 		}
 		log.Println("Train data has been saved to mongo!")
 	}
+
+	log.Println("Creating index on OrigId field...")
+	err = mongodb.CreateIndexesByFields(vectorsTestCollection, []string{"OrigId"}, true)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = mongodb.CreateIndexesByFields(vectorsTrainCollection, []string{"OrigId"}, true)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Index has been created!")
 }
