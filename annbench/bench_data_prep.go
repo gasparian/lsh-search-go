@@ -1,4 +1,4 @@
-package db
+package annbench
 
 import (
 	"context"
@@ -9,10 +9,11 @@ import (
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"gonum.org/v1/hdf5"
+	"vector-search-go/db"
 )
 
 // GetVectorsFromHDF5 returns slice of feature vectors, from the hdf5 table
-func GetVectorsFromHDF5(table *hdf5.File, datasetName string) ([]FeatureVec, error) {
+func GetVectorsFromHDF5(table *hdf5.File, datasetName string) ([]db.FeatureVec, error) {
 	dataset, err := table.OpenDataset(datasetName)
 	if err != nil {
 		return nil, err
@@ -21,9 +22,9 @@ func GetVectorsFromHDF5(table *hdf5.File, datasetName string) ([]FeatureVec, err
 
 	fileSpace := dataset.Space()
 	numTicks := fileSpace.SimpleExtentNPoints()
-	numTicks /= (int)(unsafe.Sizeof(FeatureVec{})) / 4
+	numTicks /= (int)(unsafe.Sizeof(db.FeatureVec{})) / 4
 
-	ticks := make([]FeatureVec, numTicks)
+	ticks := make([]db.FeatureVec, numTicks)
 	err = dataset.Read(&ticks)
 	if err != nil {
 		return nil, err
@@ -32,7 +33,7 @@ func GetVectorsFromHDF5(table *hdf5.File, datasetName string) ([]FeatureVec, err
 }
 
 // GetNeighborsFromHDF5 returns slice of feature vectors, from the hdf5 table
-func GetNeighborsFromHDF5(table *hdf5.File, datasetName string) ([]NeighborsIds, error) {
+func GetNeighborsFromHDF5(table *hdf5.File, datasetName string) ([]db.NeighborsIds, error) {
 	dataset, err := table.OpenDataset(datasetName)
 	if err != nil {
 		return nil, err
@@ -41,9 +42,9 @@ func GetNeighborsFromHDF5(table *hdf5.File, datasetName string) ([]NeighborsIds,
 
 	fileSpace := dataset.Space()
 	numTicks := fileSpace.SimpleExtentNPoints()
-	numTicks /= (int)(unsafe.Sizeof(NeighborsIds{})) / 4
+	numTicks /= (int)(unsafe.Sizeof(db.NeighborsIds{})) / 4
 
-	ticks := make([]NeighborsIds, numTicks)
+	ticks := make([]db.NeighborsIds, numTicks)
 	err = dataset.Read(&ticks)
 	if err != nil {
 		return nil, err
@@ -52,14 +53,14 @@ func GetNeighborsFromHDF5(table *hdf5.File, datasetName string) ([]NeighborsIds,
 }
 
 // LoadDatasetMongoDb sends batches of provided data to the mongodb
-func LoadDatasetMongoDb(collection *mongo.Collection, data []FeatureVec, neighbors []NeighborsIds, batchSize int) error {
+func LoadDatasetMongoDb(collection *mongo.Collection, data []db.FeatureVec, neighbors []db.NeighborsIds, batchSize int) error {
 	var batch []interface{} = nil
 	dataLen := len(data)
 	neighborsLen := len(neighbors)
 	var batchIdx int = 0
-	var tmpRecord VectorRecord
+	var tmpRecord db.VectorRecord
 	for idx := range data {
-		tmpRecord = VectorRecord{
+		tmpRecord = db.VectorRecord{
 			OrigID:     idx,
 			FeatureVec: make([]float64, len(data[0])),
 		}

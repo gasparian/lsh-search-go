@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	annServer, err := app.NewANNServer()
 	if err != nil {
 		log.Fatal(err.Error())
@@ -15,6 +16,7 @@ func main() {
 	defer annServer.MongoClient.Disconnect()
 
 	http.HandleFunc("/", app.HealthCheck)
-	http.HandleFunc("/get", annServer.GetNeighborsHandler)
+	http.HandleFunc("/get-hash", annServer.GetNeighborsHandler)
+	http.HandleFunc("/build-index", annServer.BuildIndexerHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

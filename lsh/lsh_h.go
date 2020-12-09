@@ -28,3 +28,8 @@ type LSHIndex struct {
 	sync.Mutex
 	Entries []LSHIndexInstance
 }
+
+// LSHIndexEncode using for encoding/decoding the LSHIndex structure
+type LSHIndexEncode struct {
+	Entries *[]LSHIndexInstance
+}

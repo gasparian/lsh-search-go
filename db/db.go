@@ -150,33 +150,63 @@ func GetAggregatedStats(coll *mongo.Collection) (cm.Vector, cm.Vector, error) {
 	return convMean, convStd, nil
 }
 
-// UpdateCollection gets documents from the db,
-// update these documents with the new fields
-// TO DO
-func UpdateCollection() {
+// UpdateField updates the selected field of the doc.
+// Example:
+//     filter := bson.D{{"_id", id}}
+//     update := bson.D{{"$set", bson.D{{"email", "newemail@example.com"}}}}
+func UpdateField(coll *mongo.Collection, filter, update bson.D) error {
+	opts := options.Update().SetUpsert(true)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
+	defer cancel()
+	_, err := coll.UpdateOne(ctx, filter, update, opts)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-// SetField updates the selected field of the doc.
-// TO DO
-func SetField() {
-
+// SetData adds the new documents to the collection
+// docs := []interface{}{
+//     bson.D{{"name", "Alice"}},
+//     bson.D{{"name", "Bob"}},
+// }
+func SetData(coll *mongo.Collection, data []interface{}) error {
+	opts := options.InsertMany().SetOrdered(false)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
+	defer cancel()
+	_, err := coll.InsertMany(ctx, data, opts)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-// SetData adds the new document in the collection
-// TO DO
-func SetData() {
-
-}
-
-// GetData get documents from db by field and query
+// GetData get documents from db by field and query (aka `find`)
 // TO DO
 func GetData() {
 
 }
 
-// MakeHelperCollection checks if the helper collection exists
+// CreateCollection checks if the helper collection exists
 // in the db, and creates them if needed; helper collection stores
 // any data for synchronizing the search index state
-// TO DO
-func MakeHelperCollection() {
+func CreateCollection(dataBase *mongo.Database, collName string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
+	defer cancel()
+	err := dataBase.CreateCollection(ctx, collName, nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// DropCollection drops collection on the server
+func DropCollection(coll *mongo.Collection) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
+	defer cancel()
+	err := coll.Drop(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -9,15 +9,16 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	alg "vector-search-go/lsh"
 	"vector-search-go/db"
+	alg "vector-search-go/lsh"
 )
 
 var (
-	dbLocation         = os.Getenv("MONGO_ADDR")
-	dbName             = os.Getenv("DB_NAME")
-	dataCollectionName = os.Getenv("COLLECTION_NAME")
-	testCollectionName = os.Getenv("TEST_COLLECTION_NAME")
+	dbLocation           = os.Getenv("MONGO_ADDR")
+	dbName               = os.Getenv("DB_NAME")
+	dataCollectionName   = os.Getenv("COLLECTION_NAME")
+	testCollectionName   = os.Getenv("TEST_COLLECTION_NAME")
+	helperCollectionName = os.Getenv("HELPER_COLLECTION_NAME")
 )
 
 // HealthCheck just checks that server is up and running;
@@ -49,6 +50,9 @@ func NewANNServer() (ANNServer, error) {
 		MongoClient: *mongodb,
 	}
 
+	// TO DO:
+	// load indexer from the db
+
 	return searchHandler, nil
 }
 
@@ -56,22 +60,17 @@ func NewANNServer() (ANNServer, error) {
 // new computed hashes based on dataset stats;
 // Also we need to store somewhere the build status
 // to prevent any db requests during this process
-// TO DO
-func (annServer *ANNServer) BuildIndexerHandler() error {
-
-	/*
-		TO DO: add here retrieving of the LSHIndex object from the database
-		       or create new one if couldn't find it;
-		       also it's better to set the special key to know the status
-		       of build, to prevent other "workers" to do any work
-	*/
+func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 
 	database := annServer.MongoClient.GetDb(dbName)
 	coll := database.Collection(dataCollectionName)
 
 	convMean, convStd, err := db.GetAggregatedStats(coll)
 	if err != nil {
-		return err
+		log.Println("Building index: " + err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	log.Println(convMean.Values) // DEBUG
@@ -79,14 +78,66 @@ func (annServer *ANNServer) BuildIndexerHandler() error {
 
 	lshIndex, err := alg.NewLSHIndex(convMean, convStd)
 	if err != nil {
-		return err
+		log.Println("Building index: " + err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	annServer.Index = lshIndex
 
 	log.Println(annServer.Index.Entries[0]) // DEBUG
 
-	return nil
+	lshSerialized, err := lshIndex.Dump()
+	if err != nil {
+		log.Println("Building index: " + err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	db.CreateCollection(database, helperCollectionName)
+	helperColl := database.Collection(helperCollectionName)
+	err = db.UpdateField(
+		helperColl,
+		bson.D{
+			{"indexer", bson.D{
+				{"$exists", true},
+			}}},
+		bson.D{
+			{"$set", bson.D{
+				{"indexer", lshSerialized},
+				{"available", false}},
+			}})
+
+	if err != nil {
+		log.Println("Building index: " + err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// TO DO:
+	// - drop old collection with hashes (db.DropCollection)
+	// - create new collection with pointers to the docs and field for every newly generated hash (db.CreateCollection)
+	// - create indexes for the new fields (db.CreateIndexesByFields)
+
+	err = db.UpdateField(
+		helperColl,
+		bson.D{
+			{"indexer", bson.D{
+				{"$exists", true},
+			}}},
+		bson.D{
+			{"$set", bson.D{
+				{"indexer", lshSerialized},
+				{"available", true}},
+			}})
+
+	if err != nil {
+		log.Println("Building index: " + err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // UpdateDbHashes updates entries in the data collection with the new set of hashes
@@ -122,15 +173,15 @@ func (annServer *ANNServer) DbUnlockIndexer() error {
 	return nil
 }
 
-// PutHashHandler calculates and updates the document with hashes
+// PutHashesHandler calculates and updates the document with hashes
 // TO DO
-func (annServer *ANNServer) PutHashHandler(w http.ResponseWriter, r *http.Request) {
+func (annServer *ANNServer) PutHashesHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// PopHashHandler drops fields with hashes from the queried db entry
+// PopHashesHandler drops fields with hashes from the queried db entry
 // TO DO
-func (annServer *ANNServer) PopHashHandler(w http.ResponseWriter, r *http.Request) {
+func (annServer *ANNServer) PopHashesHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 

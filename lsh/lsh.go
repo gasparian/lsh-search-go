@@ -121,25 +121,31 @@ func (lsh *LSHIndexInstance) GetHash(inpVec *cm.Vector) uint64 {
 }
 
 // Dump writes to disk LSHIndex object as a byte-array
-func (lsh *LSHIndex) Dump(path string) ([]byte, error) {
+func (lsh *LSHIndex) Dump() ([]byte, error) {
+	lsh.Lock()
+	defer lsh.Unlock()
+
 	if len(lsh.Entries) == 0 {
 		return nil, errors.New("Search index must contain at least one object")
 	}
 	buf := &bytes.Buffer{}
 	enc := gob.NewEncoder(buf)
-	err := enc.Encode(*lsh)
+	encodable := LSHIndexEncode{
+		Entries: &lsh.Entries,
+	}
+	err := enc.Encode(encodable)
 	if err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
 }
 
-// Load loads LSHIndex struct into memory from byte-array file
+// Load loads LSHIndex struct from the byte-array file
 func (lsh *LSHIndex) Load(inp []byte) error {
 	buf := &bytes.Buffer{}
 	buf.Write(inp)
 	dec := gob.NewDecoder(buf)
-	err := dec.Decode(lsh)
+	err := dec.Decode(&lsh)
 	if err != nil {
 		return err
 	}

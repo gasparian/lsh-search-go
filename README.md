@@ -42,6 +42,8 @@ Then compile and run, passing args from config file:
 go build -o ./main ./main.go
 export $(grep -v '^#' config.env | xargs) && ./main
 ```  
+Otherwise - use the docker container.  
+
 ### Usage  
 
 In order to get stats of the test dataset (I've already placed the stats inside `config.toml`), after entering the running container, you must compile and run prepared script:  

@@ -5,9 +5,9 @@ import (
 	"os"
 	"strconv"
 
-	"vector-search-go/db"
-
 	"gonum.org/v1/hdf5"
+	annb "vector-search-go/annbench"
+	"vector-search-go/db"
 )
 
 var (
@@ -29,23 +29,23 @@ func main() {
 	vectorsTrainCollection := database.Collection(trainCollectionName)
 	vectorsTestCollection := database.Collection(testCollectionName)
 
-	f, err := hdf5.OpenFile("./db/deep-image-96-angular.hdf5", hdf5.F_ACC_RDWR)
+	f, err := hdf5.OpenFile("./annbench/deep-image-96-angular.hdf5", hdf5.F_ACC_RDWR)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer f.Close()
 
 	{
-		featuresTest, err := db.GetVectorsFromHDF5(f, "test")
+		featuresTest, err := annb.GetVectorsFromHDF5(f, "test")
 		if err != nil {
 			log.Fatal(err)
 		}
-		neighbors, err := db.GetNeighborsFromHDF5(f, "neighbors")
+		neighbors, err := annb.GetNeighborsFromHDF5(f, "neighbors")
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		err = db.LoadDatasetMongoDb(vectorsTestCollection, featuresTest, neighbors, batchSize)
+		err = annb.LoadDatasetMongoDb(vectorsTestCollection, featuresTest, neighbors, batchSize)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -53,11 +53,11 @@ func main() {
 	}
 
 	{
-		featuresTrain, err := db.GetVectorsFromHDF5(f, "train")
+		featuresTrain, err := annb.GetVectorsFromHDF5(f, "train")
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = db.LoadDatasetMongoDb(vectorsTrainCollection, featuresTrain, []db.NeighborsIds{}, batchSize)
+		err = annb.LoadDatasetMongoDb(vectorsTrainCollection, featuresTrain, []db.NeighborsIds{}, batchSize)
 		if err != nil {
 			log.Fatal(err)
 		}
