@@ -87,7 +87,7 @@ func (lsh *LSHIndexInstance) getRandomPlane() cm.Vector {
 // Build creates set of planes which will be used to calculate hash
 func (lsh *LSHIndexInstance) Build() error {
 	if lsh.Dims <= 0 {
-		return errors.New("Dimensions number must be a positive integer")
+		return errors.New("dimensions number must be a positive integer")
 	}
 
 	rand.Seed(time.Now().UnixNano())
@@ -103,7 +103,7 @@ func (lsh *LSHIndexInstance) Build() error {
 }
 
 // GetHash calculates LSH code
-func (lsh *LSHIndexInstance) GetHash(inpVec *cm.Vector) uint64 {
+func (lsh *LSHIndexInstance) GetHash(inpVec cm.Vector) uint64 {
 	var hash uint64
 	var vec cm.Vector
 	var plane *Plane
@@ -120,13 +120,22 @@ func (lsh *LSHIndexInstance) GetHash(inpVec *cm.Vector) uint64 {
 	return hash
 }
 
-// Dump writes to disk LSHIndex object as a byte-array
+// GetHashes returns map of calculated lsh values
+func (lsh *LSHIndex) GetHashes(inpVec cm.Vector) (map[int]uint64, error) {
+	var result map[int]uint64
+	for idx, lshInstance := range lsh.Entries {
+		result[idx] = lshInstance.GetHash(inpVec)
+	}
+	return result, nil
+}
+
+// Dump encodes LSHIndex object as a byte-array
 func (lsh *LSHIndex) Dump() ([]byte, error) {
 	lsh.Lock()
 	defer lsh.Unlock()
 
 	if len(lsh.Entries) == 0 {
-		return nil, errors.New("Search index must contain at least one object")
+		return nil, errors.New("search index must contain at least one object")
 	}
 	buf := &bytes.Buffer{}
 	enc := gob.NewEncoder(buf)

@@ -65,11 +65,11 @@ func main() {
 	}
 
 	log.Println("Creating index on OrigId field...")
-	err = mongodb.CreateIndexesByFields(vectorsTestCollection, []string{"OrigId"}, true)
+	err = db.CreateIndexesByFields(vectorsTestCollection, []string{"OrigId"}, true)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = mongodb.CreateIndexesByFields(vectorsTrainCollection, []string{"OrigId"}, true)
+	err = db.CreateIndexesByFields(vectorsTrainCollection, []string{"OrigId"}, true)
 	if err != nil {
 		log.Fatal(err)
 	}

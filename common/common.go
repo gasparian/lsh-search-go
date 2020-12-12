@@ -1,8 +1,21 @@
 package common
 
 import (
+	"crypto/rand"
+	"fmt"
 	"math"
 )
+
+// GetRandomID generates random alphanumeric string
+func GetRandomID() (string, error) {
+	b := make([]byte, 16)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	s := fmt.Sprintf("%x", b)
+	return s, nil
+}
 
 // NewVector creates new vector by given slice of floats
 func NewVector(inpVec []float64) Vector {

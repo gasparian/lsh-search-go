@@ -147,16 +147,16 @@ Here are example visualizations:
     - ~~add ability to store generated plane coefs on disk~~;  
     - add unit tests for public functions;  
 3. Make main app API:  
-    - (build) the app needs to get dataset stats from the db (using mongo's aggregations) and iterate over the documents to update the search index field. Should stop and block other running tasks;  
-    - (get) app returns the NNs' "ids" of the queried data point;  
-    - (put) app adds new document into the db, and calculates the hashes;  
+    - ~~(build) the app needs to get dataset stats from the db (using mongo's aggregations) and iterate over the documents to update the search index collection~~;  
+    - (get) returns the NNs' "ids" of the queried data point;  
+    - (put) calculates the hashes and adds the document into the index collection;  
     - (pop) clean the search index by the given point "name";  
     - ~~rewrite the functions to save and load search index to hold the slice of LSHIndex objects instead of a single one~~;  
-    - make master service (???), which will redirect requests to workers and admin the build process ([example](https://github.com/YuriyNasretdinov/distribkv/blob/master/web/web.go));  
-    - add ability to store the build sync. status and the LSH index object in special collection in the same mongodb (maybe using [GridFS](https://www.mongodb.com/blog/post/quick-start-golang--mongodb--a-quick-look-at-gridfs));  
+    - ~~add ability to store the build sync. status and the LSH index object in special collection in the same mongodb (maybe using [GridFS](https://www.mongodb.com/blog/post/quick-start-golang--mongodb--a-quick-look-at-gridfs))~~;  
     - add decorators on repeatable ops (on handler functions);  
     - add requests cancelation via context;  
     - add unit tests for API methods;  
+    - rename indexer --> hasher (??);  
 4. Add search quality testing using the test part of the benchmark dataset:  
     - write a script that sends the test data points to the seach index, and compares the answers with the ground truth;  
     - script must also write out the log with all needed mertrics (FPR, FNG, ROC, f1 and etc.);  

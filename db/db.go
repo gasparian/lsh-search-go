@@ -60,7 +60,7 @@ func (mongodb *MongoClient) GetDb(dbName string) *mongo.Database {
 
 // CreateIndexesByFields just creates the new unique ascending
 // indexes based on field name (type should be int)
-func (mongodb *MongoClient) CreateIndexesByFields(coll *mongo.Collection, fields []string, unique bool) error {
+func CreateIndexesByFields(coll *mongo.Collection, fields []string, unique bool) error {
 	models := make([]mongo.IndexModel, len(fields))
 	for i, field := range fields {
 		models[i] = mongo.IndexModel{
@@ -68,6 +68,7 @@ func (mongodb *MongoClient) CreateIndexesByFields(coll *mongo.Collection, fields
 				field: 1,
 			},
 			Options: options.MergeIndexOptions(
+				options.Index().SetBackground(true), // deprecated since mongodb 4.2
 				options.Index().SetUnique(unique),
 				options.Index().SetSparse(true),
 			),
@@ -114,7 +115,7 @@ func GetAggregation(coll *mongo.Collection, groupStage mongo.Pipeline) ([]bson.M
 func ConvertAggResult(inp interface{}) (cm.Vector, error) {
 	val, ok := inp.(primitive.A)
 	if !ok {
-		return cm.Vector{}, errors.New("Type conversion failed")
+		return cm.Vector{}, errors.New("type conversion failed")
 	}
 	conv := cm.Vector{
 		Values: make([]float64, len(val)),
@@ -123,7 +124,7 @@ func ConvertAggResult(inp interface{}) (cm.Vector, error) {
 	for i := range conv.Values {
 		v, ok := val[i].(float64)
 		if !ok {
-			return cm.Vector{}, errors.New("Type conversion failed")
+			return cm.Vector{}, errors.New("type conversion failed")
 		}
 		conv.Values[i] = v
 	}
@@ -181,15 +182,73 @@ func SetData(coll *mongo.Collection, data []interface{}) error {
 	return nil
 }
 
-// GetData get documents from db by field and query (aka `find`)
-// TO DO
-func GetData() {
+// GetCursor returns db cursor for specified collection and query
+// Example queries:
+//     bson.D{{"origId", bson.M{"$in": []int{1, 3}}}}
+// 	   bson.D{{"indexer", bson.D{{"$exists", true}}}}
+func GetCursor(coll *mongo.Collection, limit int64, query bson.D) (*mongo.Cursor, error) {
+	var opts *options.FindOptions = nil
+	if limit <= 0 {
+		opts = options.Find().SetLimit(limit)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
+	defer cancel()
+	cursor, err := coll.Find(ctx, query, opts)
+	if err != nil {
+		return nil, err
+	}
+	return cursor, nil
+}
 
+// GetDbRecords get documents from the "main" db collection by field and query (aka `find`)
+func GetDbRecords(coll *mongo.Collection, limit int64, query bson.D) ([]VectorRecord, error) {
+	cursor, err := GetCursor(coll, limit, query)
+	if err != nil {
+		return nil, err
+	}
+	var results []VectorRecord
+	err = cursor.All(context.Background(), &results)
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+// GetHelperRecord gets supplementary data from the specified collection
+func GetHelperRecord(coll *mongo.Collection) (HelperRecord, error) {
+	cursor, err := GetCursor(coll, 1,
+		bson.D{
+			{"indexer", bson.D{{"$exists", true}}},
+		},
+	)
+	if err != nil {
+		return HelperRecord{}, err
+	}
+
+	var results []HelperRecord
+	err = cursor.All(context.Background(), &results)
+	if err != nil || len(results) != 1 {
+		return HelperRecord{}, err
+	}
+	return results[0], nil
+}
+
+// GetHashesRecords gets supplementary data from the specified collection
+func GetHashesRecords(coll *mongo.Collection, limit int64, query bson.D) ([]HashesRecord, error) {
+	cursor, err := GetCursor(coll, limit, query)
+	if err != nil {
+		return nil, err
+	}
+	var results []HashesRecord
+	err = cursor.All(context.Background(), &results)
+	if err != nil {
+		return nil, err
+	}
+	return results, nil
 }
 
 // CreateCollection checks if the helper collection exists
-// in the db, and creates them if needed; helper collection stores
-// any data for synchronizing the search index state
+// in the db, and creates them if needed
 func CreateCollection(dataBase *mongo.Database, collName string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
 	defer cancel()
@@ -201,7 +260,8 @@ func CreateCollection(dataBase *mongo.Database, collName string) error {
 }
 
 // DropCollection drops collection on the server
-func DropCollection(coll *mongo.Collection) error {
+func DropCollection(database *mongo.Database, collectionName string) error {
+	coll := database.Collection(collectionName)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
 	defer cancel()
 	err := coll.Drop(ctx)

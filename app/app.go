@@ -3,12 +3,16 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	// "go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo"
+	cm "vector-search-go/common"
 	"vector-search-go/db"
 	alg "vector-search-go/lsh"
 )
@@ -19,6 +23,7 @@ var (
 	dataCollectionName   = os.Getenv("COLLECTION_NAME")
 	testCollectionName   = os.Getenv("TEST_COLLECTION_NAME")
 	helperCollectionName = os.Getenv("HELPER_COLLECTION_NAME")
+	batchSize, _         = strconv.Atoi(os.Getenv("BATCH_SIZE"))
 )
 
 // HealthCheck just checks that server is up and running;
@@ -49,17 +54,58 @@ func NewANNServer() (ANNServer, error) {
 	searchHandler := ANNServer{
 		MongoClient: *mongodb,
 	}
-
-	// TO DO:
-	// load indexer from the db
-
+	err = searchHandler.LoadIndexer()
+	if err != nil {
+		return ANNServer{}, err
+	}
 	return searchHandler, nil
+}
+
+// LoadIndexer load indexer from the db if it exists
+func (annServer *ANNServer) LoadIndexer() error {
+	database := annServer.MongoClient.GetDb(dbName)
+	helperColl := database.Collection(helperCollectionName)
+	result, err := db.GetHelperRecord(helperColl)
+	if err != nil {
+		return err
+	}
+	if len(result.Indexer) > 0 && result.Available {
+		annServer.Index.Load(result.Indexer)
+		return nil
+	}
+	return errors.New("Can't load indexer object")
+}
+
+// hashDbRecordsBatch accumulates db documents in a batch of desired length
+func (annServer *ANNServer) hashDbRecordsBatch(cursor *mongo.Cursor, batchSize int) ([]interface{}, error) {
+	batch := make([]interface{}, batchSize)
+	batchID := 0
+	for cursor.Next(context.Background()) {
+		var record db.VectorRecord
+		if err := cursor.Decode(&record); err != nil {
+			continue
+		}
+		hashes, err := annServer.Index.GetHashes(cm.Vector{
+			Values: record.FeatureVec,
+			Size:   len(record.FeatureVec),
+		})
+		if err != nil {
+			return nil, err
+		}
+		batch[batchID] = db.HashesRecord{
+			OrigDocumentID: record.ID,
+			Hashes:         hashes,
+		}
+		batchID++
+	}
+	return batch[:batchID], nil
 }
 
 // BuildIndexerHandler updates the existing db documents with the
 // new computed hashes based on dataset stats;
-// Also we need to store somewhere the build status
-// to prevent any db requests during this process
+// TO DO:
+//     make it in async way (create goroutine??)
+//     make some keys verification, so not every user can spam a build operation
 func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -73,8 +119,8 @@ func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	log.Println(convMean.Values) // DEBUG
-	log.Println(convStd.Values)  // DEBUG
+	log.Println(convMean.Values) // DEBUG - check for not being [0]
+	log.Println(convStd.Values)  // DEBUG - check for not being [0]
 
 	lshIndex, err := alg.NewLSHIndex(convMean, convStd)
 	if err != nil {
@@ -85,7 +131,7 @@ func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.R
 
 	annServer.Index = lshIndex
 
-	log.Println(annServer.Index.Entries[0]) // DEBUG
+	log.Println(annServer.Index.Entries[0]) // DEBUG - check for not being [0]
 
 	lshSerialized, err := lshIndex.Dump()
 	if err != nil {
@@ -96,6 +142,22 @@ func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.R
 
 	db.CreateCollection(database, helperCollectionName)
 	helperColl := database.Collection(helperCollectionName)
+
+	// Getting old hash collection name
+	oldHelperRecord, err := db.GetHelperRecord(helperColl)
+	if err != nil {
+		log.Println("Building index: " + err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// Generating and saving new hash collection name
+	newHashCollName, err := cm.GetRandomID()
+	if err != nil {
+		log.Println("Building index: " + err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	err = db.UpdateField(
 		helperColl,
 		bson.D{
@@ -105,8 +167,9 @@ func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.R
 		bson.D{
 			{"$set", bson.D{
 				{"indexer", lshSerialized},
-				{"available", false}},
-			}})
+				{"available", false},
+				{"hashCollName", newHashCollName},
+			}}})
 
 	if err != nil {
 		log.Println("Building index: " + err.Error())
@@ -114,10 +177,48 @@ func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// TO DO:
-	// - drop old collection with hashes (db.DropCollection)
-	// - create new collection with pointers to the docs and field for every newly generated hash (db.CreateCollection)
-	// - create indexes for the new fields (db.CreateIndexesByFields)
+	// create new collection for storing the newly generated hashes, while keeping the old one (db.CreateCollection)
+	err = db.CreateCollection(database, newHashCollName)
+	if err != nil {
+		log.Println("Building index: " + err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	// fill the new collection with pointers to documents (_id) and fields with hashes
+	newHashColl := database.Collection(newHashCollName)
+	cursor, err := db.GetCursor(coll, -1, bson.D{})
+	for cursor.Next(context.TODO()) {
+		hashesBatch, err := annServer.hashDbRecordsBatch(cursor, batchSize)
+		if err != nil {
+			log.Println("Building index: " + err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		err = db.SetData(newHashColl, hashesBatch)
+		if err != nil {
+			log.Println("Building index: " + err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+	// create indexes for the all new fields (db.CreateIndexesByFields)
+	hashesColl := database.Collection(newHashCollName)
+	err = db.CreateIndexesByFields(hashesColl, []string{}, false)
+	if err != nil {
+		log.Println("Building index: " + err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	// drop old collection with hashes (db.DropCollection)
+	if oldHelperRecord.HashCollName != "" {
+		err = db.DropCollection(database, oldHelperRecord.HashCollName)
+		if err != nil {
+			log.Println("Building index: " + err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
 
 	err = db.UpdateField(
 		helperColl,
@@ -127,7 +228,6 @@ func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.R
 			}}},
 		bson.D{
 			{"$set", bson.D{
-				{"indexer", lshSerialized},
 				{"available", true}},
 			}})
 
@@ -140,49 +240,18 @@ func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusOK)
 }
 
-// UpdateDbHashes updates entries in the data collection with the new set of hashes
+// PopHandler drops vector from the search index
 // TO DO
-func (annServer *ANNServer) UpdateDbHashes() {
-
+func (annServer *ANNServer) PopHandler(w http.ResponseWriter, e *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 }
 
-// DbLoadIndexer loads indexer object from db if it exists
+// PutHandler puts new vector to the search index (also updates the initial db??)
 // TO DO
-func (annServer *ANNServer) DbLoadIndexer() error {
-	return nil
-}
-
-// DbSaveIndexer uploads indexer object to the db
-// TO DO
-func (annServer *ANNServer) DbSaveIndexer() error {
-	return nil
-}
-
-// DbLockIndexer updates status in special document inside the db
-// so other service workers blocks any operation while search index is updated
-// TO DO
-func (annServer *ANNServer) DbLockIndexer() error {
-	return nil
-}
-
-// DbUnlockIndexer updates status in special document inside the db
-// so other service workers could start using created search index
-// and retrieve fresh indexer object
-// TO DO
-func (annServer *ANNServer) DbUnlockIndexer() error {
-	return nil
-}
-
-// PutHashesHandler calculates and updates the document with hashes
-// TO DO
-func (annServer *ANNServer) PutHashesHandler(w http.ResponseWriter, r *http.Request) {
-
-}
-
-// PopHashesHandler drops fields with hashes from the queried db entry
-// TO DO
-func (annServer *ANNServer) PopHashesHandler(w http.ResponseWriter, r *http.Request) {
-
+func (annServer *ANNServer) PutHandler(w http.ResponseWriter, e *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 }
 
 // GetNeighborsHandler makes query to the db and returns all
@@ -190,22 +259,16 @@ func (annServer *ANNServer) PopHashesHandler(w http.ResponseWriter, r *http.Requ
 // TO DO
 func (annServer *ANNServer) GetNeighborsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
+	// TO DO: check here that indexer object is available, and load if true (??)
+
 	// DEBUG CODE
 	database := annServer.MongoClient.GetDb(dbName)
 	coll := database.Collection(dataCollectionName)
 
-	opts := options.Find().SetLimit(2)
-	// should be searching for all permutes at hashes field
-	cursor, err := coll.Find(context.TODO(), bson.D{{"origId", bson.M{"$in": []int{1, 3}}}}, opts)
+	results, err := db.GetDbRecords(coll, 2, bson.D{{"origId", bson.M{"$in": []int{1, 3}}}})
 	if err != nil {
-		log.Println("Get method find: " + err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	var results []bson.M
-	if err = cursor.All(context.TODO(), &results); err != nil {
-		log.Println("Get method cursor: " + err.Error())
+		log.Println("Find: " + err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
