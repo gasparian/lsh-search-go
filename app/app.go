@@ -16,6 +16,7 @@ import (
 )
 
 var (
+	// TO DO: pack part of globals into structs
 	dbLocation           = os.Getenv("MONGO_ADDR")
 	dbName               = os.Getenv("DB_NAME")
 	dataCollectionName   = os.Getenv("COLLECTION_NAME")
