@@ -66,20 +66,27 @@ type VectorRecord struct {
 
 // HashesRecord stores the id of original document in other collection and hashes map
 type HashesRecord struct {
-	ID             primitive.ObjectID `bson:"_id,omitempty"`
-	OrigDocumentID primitive.ObjectID `bson:"origDocumentId,omitempty"`
-	Hashes         map[int]uint64     `bson:"hashes,omitempty"`
+	ID     primitive.ObjectID `bson:"_id,omitempty"`
+	Hashes map[int]uint64     `bson:"hashes,omitempty"`
 }
 
 // HelperRecord holds the indexer model and supplementary data
+// TO DO: split helper record on two documents, one those will be holding just the indexer object
 type HelperRecord struct {
 	ID           primitive.ObjectID `bson:"_id,omitempty"`
 	Indexer      []byte             `bson:"indexer,omitempty"`
-	Available    bool               `bson:"available,omitempty"`
+	IsBuildDone  bool               `bson:"isBuildDone,omitempty"`
 	HashCollName string             `bson:"hashCollName,omitempty"`
 }
 
 // MongoClient holds client for connecting to the mongodb
 type MongoClient struct {
 	Client *mongo.Client
+}
+
+// FindQuery needs to perform find operation with mongodb
+type FindQuery struct {
+	Limit int
+	Proj  bson.M
+	Query bson.D
 }

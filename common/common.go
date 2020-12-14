@@ -25,6 +25,18 @@ func NewVector(inpVec []float64) Vector {
 	}
 }
 
+// IsZero checks if the sum of the all values equals to zero
+func (vec *Vector) IsZero() bool {
+	var sum float64 = 0.0
+	for _, val := range vec.Values {
+		sum += val
+		if sum != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // Add two vectors of the same dimnsionality
 func (vec *Vector) Add(rvec Vector) Vector {
 	sum := NewVector(make([]float64, vec.Size))
@@ -52,7 +64,7 @@ func (vec *Vector) DotProd(inpVec Vector) float64 {
 	return dp
 }
 
-// L2 calculates l2-distance of two vectors
+// L2 calculates l2-distance between two vectors
 func (vec *Vector) L2(inpVec Vector) float64 {
 	var l2 float64
 	var diff float64
@@ -71,8 +83,8 @@ func (vec *Vector) L2Norm() float64 {
 	return vec.L2(zeroVec)
 }
 
-// CosineSim calculates cosine similarity of two given vectors
+// CosineSim calculates cosine similarity of the two given vectors
 func (vec *Vector) CosineSim(inpVec Vector) float64 {
 	cosine := vec.DotProd(inpVec) / (vec.L2Norm() * inpVec.L2Norm())
-	return cosine
+	return 1 - cosine
 }

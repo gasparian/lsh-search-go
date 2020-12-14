@@ -16,7 +16,9 @@ func main() {
 	defer annServer.MongoClient.Disconnect()
 
 	http.HandleFunc("/", app.HealthCheck)
-	http.HandleFunc("/get-hash", annServer.GetNeighborsHandler)
 	http.HandleFunc("/build-index", annServer.BuildIndexerHandler)
+	http.HandleFunc("/get-nn", annServer.GetNeighborsHandler)
+	http.HandleFunc("/pop-hash", annServer.PopHashRecordHandler)
+	http.HandleFunc("/put-hash", annServer.PutHashRecordHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

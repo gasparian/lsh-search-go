@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	globMaxNPlanes, _ = strconv.Atoi(os.Getenv("MAX_N_PLANES"))
-	globNPermutes, _  = strconv.Atoi(os.Getenv("N_PERMUTS"))
+	globMaxNPlanes, _    = strconv.Atoi(os.Getenv("MAX_N_PLANES"))
+	globNPermutes, _     = strconv.Atoi(os.Getenv("N_PERMUTS"))
+	isAngularDistance, _ = strconv.Atoi(os.Getenv("ANGULAR_METRIC"))
 )
 
 // GetPointPlaneDist calculates distance between origin and plane
@@ -54,7 +55,11 @@ func NewLSHIndexInstance(meanVec, stdVec cm.Vector, maxNPlanes int) (LSHIndexIns
 // NewLSHIndex creates slice of LSHIndexInstances to hold several permutations results
 func NewLSHIndex(convMean, convStd cm.Vector) (*LSHIndex, error) {
 	lshIndex := &LSHIndex{
-		Entries: make([]LSHIndexInstance, globNPermutes),
+		Entries:         make([]LSHIndexInstance, globNPermutes),
+		HashFieldsNames: make([]string, globNPermutes),
+	}
+	if isAngularDistance == 1 {
+		convStd = convStd.ConstMul(0.0)
 	}
 	var tmpLSHIndex LSHIndexInstance
 	var err error
@@ -64,6 +69,7 @@ func NewLSHIndex(convMean, convStd cm.Vector) (*LSHIndex, error) {
 			return nil, err
 		}
 		lshIndex.Entries[i] = tmpLSHIndex
+		lshIndex.HashFieldsNames[i] = strconv.Itoa(i)
 	}
 	return lshIndex, nil
 }
@@ -121,12 +127,20 @@ func (lsh *LSHIndexInstance) GetHash(inpVec cm.Vector) uint64 {
 }
 
 // GetHashes returns map of calculated lsh values
-func (lsh *LSHIndex) GetHashes(inpVec cm.Vector) (map[int]uint64, error) {
+func (lsh *LSHIndex) GetHashes(vec cm.Vector) (map[int]uint64, error) {
 	var result map[int]uint64
 	for idx, lshInstance := range lsh.Entries {
-		result[idx] = lshInstance.GetHash(inpVec)
+		result[idx] = lshInstance.GetHash(vec)
 	}
 	return result, nil
+}
+
+// GetDist returns measure of the specified distance metric
+func (lsh *LSHIndex) GetDist(lv, rv cm.Vector) float64 {
+	if isAngularDistance == 1 {
+		return lv.CosineSim(rv)
+	}
+	return lv.L2(rv)
 }
 
 // Dump encodes LSHIndex object as a byte-array

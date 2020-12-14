@@ -44,9 +44,12 @@ export $(grep -v '^#' config.env | xargs) && ./main
 ```  
 Otherwise - use the docker container.  
 
+### API Reference  
+*TO DO*  
+
 ### Usage  
 
-In order to get stats of the test dataset (I've already placed the stats inside `config.toml`), after entering the running container, you must compile and run prepared script:  
+In order to get stats of the bench dataset, after entering the running container, you must compile and run prepared script:  
 ```
 cd ./data
 go mod tidy && build -o /usr/bin/run_prep_data run_prep_data.go

@@ -166,12 +166,12 @@ func UpdateField(coll *mongo.Collection, filter, update bson.D) error {
 	return nil
 }
 
-// SetData adds the new documents to the collection
+// SetRecords adds the new documents to the collection
 // docs := []interface{}{
 //     bson.D{{"name", "Alice"}},
 //     bson.D{{"name", "Bob"}},
 // }
-func SetData(coll *mongo.Collection, data []interface{}) error {
+func SetRecords(coll *mongo.Collection, data []interface{}) error {
 	opts := options.InsertMany().SetOrdered(false)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
 	defer cancel()
@@ -182,18 +182,29 @@ func SetData(coll *mongo.Collection, data []interface{}) error {
 	return nil
 }
 
+// DeleteRecords deletes records from specified collection by query
+func DeleteRecords(coll *mongo.Collection, query bson.D) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
+	defer cancel()
+	_, err := coll.DeleteMany(ctx, query, nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // GetCursor returns db cursor for specified collection and query
 // Example queries:
 //     bson.D{{"origId", bson.M{"$in": []int{1, 3}}}}
 // 	   bson.D{{"indexer", bson.D{{"$exists", true}}}}
-func GetCursor(coll *mongo.Collection, limit int64, query bson.D) (*mongo.Cursor, error) {
-	var opts *options.FindOptions = nil
-	if limit <= 0 {
-		opts = options.Find().SetLimit(limit)
-	}
+func GetCursor(coll *mongo.Collection, query FindQuery) (*mongo.Cursor, error) {
+	opts := options.MergeFindOptions(
+		options.Find().SetLimit(int64(query.Limit)),
+		options.Find().SetProjection(query.Proj),
+	)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
 	defer cancel()
-	cursor, err := coll.Find(ctx, query, opts)
+	cursor, err := coll.Find(ctx, query.Query, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -201,8 +212,8 @@ func GetCursor(coll *mongo.Collection, limit int64, query bson.D) (*mongo.Cursor
 }
 
 // GetDbRecords get documents from the "main" db collection by field and query (aka `find`)
-func GetDbRecords(coll *mongo.Collection, limit int64, query bson.D) ([]VectorRecord, error) {
-	cursor, err := GetCursor(coll, limit, query)
+func GetDbRecords(coll *mongo.Collection, query FindQuery) ([]VectorRecord, error) {
+	cursor, err := GetCursor(coll, query)
 	if err != nil {
 		return nil, err
 	}
@@ -216,9 +227,13 @@ func GetDbRecords(coll *mongo.Collection, limit int64, query bson.D) ([]VectorRe
 
 // GetHelperRecord gets supplementary data from the specified collection
 func GetHelperRecord(coll *mongo.Collection) (HelperRecord, error) {
-	cursor, err := GetCursor(coll, 1,
-		bson.D{
-			{"indexer", bson.D{{"$exists", true}}},
+	cursor, err := GetCursor(
+		coll,
+		FindQuery{
+			Limit: 1,
+			Query: bson.D{
+				{"indexer", bson.D{{"$exists", true}}},
+			},
 		},
 	)
 	if err != nil {
@@ -233,9 +248,9 @@ func GetHelperRecord(coll *mongo.Collection) (HelperRecord, error) {
 	return results[0], nil
 }
 
-// GetHashesRecords gets supplementary data from the specified collection
-func GetHashesRecords(coll *mongo.Collection, limit int64, query bson.D) ([]HashesRecord, error) {
-	cursor, err := GetCursor(coll, limit, query)
+// GetHashesRecords gets records from the specified hashes collection
+func GetHashesRecords(coll *mongo.Collection, query FindQuery) ([]HashesRecord, error) {
+	cursor, err := GetCursor(coll, query)
 	if err != nil {
 		return nil, err
 	}

@@ -26,7 +26,8 @@ type LSHIndexInstance struct {
 // LSHIndex holds N_PERMUTS number of LSHIndexInstance instances
 type LSHIndex struct {
 	sync.Mutex
-	Entries []LSHIndexInstance
+	Entries         []LSHIndexInstance
+	HashFieldsNames []string
 }
 
 // LSHIndexEncode using for encoding/decoding the LSHIndex structure
