@@ -7,6 +7,7 @@ So the goal of this project is to build the simple and reliable vector search se
 We want to perform the search in logarithmic time on average, and we have two basic groups of algorithms to do this:  
  - [local sensetive hashing](https://en.wikipedia.org/wiki/Locality-sensitive_hashing);  
  - [graph-based approaches](https://en.wikipedia.org/wiki/Small-world_network) - local search over proximity graphs, smth like hierarchical navigatable small world graphs;  
+
 I've decided to go with the LSH since it's pretty convenient to serialize the indexer, store hashes and perform search over these hashes with some well-developed database. As for database - I've chosen mongodb. But some RDBMS should good option too (e.g. PostgreSQL).  
 It can be used in various semantic search applications.   
 
