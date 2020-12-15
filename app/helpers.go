@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -14,6 +15,31 @@ import (
 	cm "vector-search-go/common"
 	"vector-search-go/db"
 )
+
+// getHelpMessage forms a byte array contains message
+func getHelloMessage() []byte {
+	helloMessage := []byte(`{
+		"methods": {
+			"GET/POST": {
+				"/build-index": "starts building search index from scratch",
+				"/check-build": "returns current build status",
+				"/pop-hash": "removes the point from the search index",
+				"/put-hash": "adds the point to the search index"
+			},
+			"POST": {
+				"/get-nn": "returns db ids and distances of the nearest data points"
+			}
+	    }
+	}`)
+	// NOTE: ugly, but it's more convinient to update the text message by hand and then serialize to json
+	var raw map[string]interface{}
+	err := json.Unmarshal(helloMessage, &raw)
+	out, _ := json.Marshal(raw)
+	if err != nil {
+		return []byte("")
+	}
+	return out
+}
 
 // NewANNServer returns empty index object with initialized mongo client
 func NewANNServer() (ANNServer, error) {
@@ -38,15 +64,14 @@ func NewANNServer() (ANNServer, error) {
 func (annServer *ANNServer) LoadIndexer() error {
 	database := annServer.MongoClient.GetDb(dbName)
 	helperColl := database.Collection(helperCollectionName)
-	result, err := db.GetHelperRecord(helperColl)
+	indexerRecord, err := db.GetHelperRecord(helperColl, true)
 	if err != nil {
 		return err
 	}
-	if len(result.Indexer) > 0 && result.IsBuildDone {
-		annServer.Index.Load(result.Indexer)
-		return nil
+	if len(indexerRecord.Indexer) > 0 && indexerRecord.IsBuildDone {
+		annServer.Index.Load(indexerRecord.Indexer)
 	}
-	return errors.New("Can't load indexer object")
+	return nil
 }
 
 // hashDbRecordsBatch accumulates db documents in a batch of desired length and calculates hashes
@@ -83,7 +108,7 @@ func (annServer *ANNServer) popHashRecord(id string) error {
 		return err
 	}
 	database := annServer.MongoClient.GetDb(dbName)
-	helperRecord, err := db.GetHelperRecord(database.Collection(helperCollectionName))
+	helperRecord, err := db.GetHelperRecord(database.Collection(helperCollectionName), false)
 	if err != nil {
 		return err
 	}
@@ -102,7 +127,7 @@ func (annServer *ANNServer) putHashRecord(id string) error {
 		return err
 	}
 	database := annServer.MongoClient.GetDb(dbName)
-	helperRecord, err := db.GetHelperRecord(database.Collection(helperCollectionName))
+	helperRecord, err := db.GetHelperRecord(database.Collection(helperCollectionName), false)
 	if err != nil {
 		return err
 	}
@@ -138,7 +163,7 @@ func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, erro
 		if err != nil {
 			return nil, err
 		}
-		helperRecord, err := db.GetHelperRecord(database.Collection(helperCollectionName))
+		helperRecord, err := db.GetHelperRecord(database.Collection(helperCollectionName), false)
 		if err != nil {
 			return nil, err
 		}
@@ -156,7 +181,7 @@ func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, erro
 		}
 	} else if !inputVec.IsZero() {
 		hashes, err := annServer.Index.GetHashes(inputVec)
-		helperRecord, err := db.GetHelperRecord(database.Collection(helperCollectionName))
+		helperRecord, err := db.GetHelperRecord(database.Collection(helperCollectionName), false)
 		if err != nil {
 			return nil, err
 		}
@@ -168,7 +193,7 @@ func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, erro
 		hashesRecords, err = db.GetHashesRecords(
 			hashesColl,
 			db.FindQuery{
-				Limit: maxHashesNo,
+				Limit: maxHashesNumber,
 				Query: hashesQuery,
 				Proj:  bson.M{"_id": 1},
 			},

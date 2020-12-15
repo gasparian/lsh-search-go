@@ -17,6 +17,7 @@ func main() {
 
 	http.HandleFunc("/", app.HealthCheck)
 	http.HandleFunc("/build-index", annServer.BuildIndexerHandler)
+	http.HandleFunc("/check-build", annServer.CheckBuildHandler)
 	http.HandleFunc("/get-nn", annServer.GetNeighborsHandler)
 	http.HandleFunc("/pop-hash", annServer.PopHashRecordHandler)
 	http.HandleFunc("/put-hash", annServer.PutHashRecordHandler)

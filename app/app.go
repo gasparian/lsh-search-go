@@ -1,3 +1,47 @@
+/*
+TO DO: add requests cancelation using the context
+Example: test_ctx.go
+import (
+    "context"
+    "net/http"
+    "log"
+    "time"
+)
+
+func getDbHelper() <-chan bool {
+   ch := make(chan bool, 1)
+   go func() {
+       time.Sleep(2 * time.Second)
+       ch <- true
+   }()
+   return ch
+}
+
+func getDb(ctx context.Context) (bool) {
+    ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+    defer cancel()
+    select {
+    case <-getDbHelper():
+        log.Println("Done")
+        return true
+    case <-ctx.Done():
+        log.Println("Context canceled")
+    }
+    return false
+}
+
+func controller(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    getDb(ctx)
+    w.WriteHeader(http.StatusOK)
+}
+
+func main() {
+    http.HandleFunc("/", controller)
+    log.Fatal(http.ListenAndServe(":8080", nil))
+}
+*/
+
 package app
 
 import (
@@ -12,18 +56,18 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	cm "vector-search-go/common"
 	"vector-search-go/db"
-	alg "vector-search-go/lsh"
+	hasher "vector-search-go/lsh"
 )
 
 var (
-	// TO DO: pack part of globals into structs
+	// TO DO: move part of globals into structs
 	dbLocation           = os.Getenv("MONGO_ADDR")
 	dbName               = os.Getenv("DB_NAME")
 	dataCollectionName   = os.Getenv("COLLECTION_NAME")
 	testCollectionName   = os.Getenv("TEST_COLLECTION_NAME")
 	helperCollectionName = os.Getenv("HELPER_COLLECTION_NAME")
 	batchSize, _         = strconv.Atoi(os.Getenv("BATCH_SIZE"))
-	maxHashesNo          = int(10e5)
+	maxHashesNumber      = int(10e5)
 	maxNN, _             = strconv.Atoi(os.Getenv("MAX_NN"))
 	distanceThrsh, _     = strconv.ParseFloat(os.Getenv("DISTANCE_THRSH"), 32)
 )
@@ -32,24 +76,14 @@ var (
 // also gives back list of available methods
 func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	var raw map[string]interface{}
-	err := json.Unmarshal(HelloMessage, &raw)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err.Error())
-		return
-	}
 	w.WriteHeader(http.StatusOK)
-	out, _ := json.Marshal(raw)
-	w.Write(out)
+	w.Write(HelloMessage)
 }
 
 // BuildIndexerHandler updates the existing db documents with the
 // new computed hashes based on dataset stats;
-// TO DO:
-//     after the indexer object is ready - we must call every other worker to load fresh model
-//     make some keys verification, so not every user can spam a build operation
-//     make it in async way (in a goroutine)
+// TO DO: after the indexer object is ready - we must call every other worker to load fresh model
+// TO DO: make it in async way (in a goroutine)
 func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -58,9 +92,20 @@ func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.R
 	db.CreateCollection(database, helperCollectionName)
 	helperColl := database.Collection(helperCollectionName)
 
-	// TO DO: check if the previous build has been done
-	// Start build process
-	err := db.UpdateField(
+	// NOTE: check if the previous build has been done
+	helperRecord, err := db.GetHelperRecord(database.Collection(helperCollectionName), false)
+	if err != nil {
+		log.Println("Building index: seems like helper record does not exist yet")
+	}
+	if !helperRecord.IsBuildDone {
+		log.Println("Building index: aborting - previous build is not done yet")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Aborting - previous build is not done yet"))
+		return
+	}
+
+	// NOTE: Start build process
+	err = db.UpdateField(
 		helperColl,
 		bson.D{
 			{"indexer", bson.D{
@@ -87,7 +132,7 @@ func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.R
 	log.Println(convMean.Values) // DEBUG - check for not being [0]
 	log.Println(convStd.Values)  // DEBUG - check for not being [0]
 
-	lshIndex, err := alg.NewLSHIndex(convMean, convStd)
+	lshIndex, err := hasher.NewLSHIndex(convMean, convStd)
 	if err != nil {
 		log.Println("Building index: " + err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
@@ -105,47 +150,31 @@ func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Getting old hash collection name
-	oldHelperRecord, err := db.GetHelperRecord(helperColl)
+	// NOTE: Getting old hash collection name
+	oldHelperRecord, err := db.GetHelperRecord(helperColl, false)
 	if err != nil {
 		log.Println("Building index: " + err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	// Generating and saving new hash collection name
+	// NOTE: Generating and saving new hash collection name
 	newHashCollName, err := cm.GetRandomID()
 	if err != nil {
 		log.Println("Building index: " + err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	err = db.UpdateField(
-		helperColl,
-		bson.D{
-			{"indexer", bson.D{
-				{"$exists", true},
-			}}},
-		bson.D{
-			{"$set", bson.D{
-				{"indexer", lshSerialized},
-				{"hashCollName", newHashCollName},
-			}}})
 
-	if err != nil {
-		log.Println("Building index: " + err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	// create new collection for storing the newly generated hashes, while keeping the old one
+	// NOTE: create new collection for storing the newly generated hashes, while keeping the old one
 	err = db.CreateCollection(database, newHashCollName)
 	if err != nil {
 		log.Println("Building index: " + err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	// fill the new collection with pointers to documents (_id) and fields with hashes
+
+	// NOTE: fill the new collection with pointers to documents (_id) and fields with hashes
 	newHashColl := database.Collection(newHashCollName)
 	cursor, err := db.GetCursor(
 		coll,
@@ -168,7 +197,8 @@ func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.R
 			return
 		}
 	}
-	// create indexes for the all new fields
+
+	// NOTE: create indexes for the all new fields
 	hashesColl := database.Collection(newHashCollName)
 	err = db.CreateIndexesByFields(hashesColl, annServer.Index.HashFieldsNames, false)
 	if err != nil {
@@ -176,7 +206,7 @@ func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.R
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	// drop old collection with hashes
+	// NOTE: drop old collection with hashes
 	if oldHelperRecord.HashCollName != "" {
 		err = db.DropCollection(database, oldHelperRecord.HashCollName)
 		if err != nil {
@@ -186,6 +216,7 @@ func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.R
 		}
 	}
 
+	// NOTE: update helper with new indexer and status
 	err = db.UpdateField(
 		helperColl,
 		bson.D{
@@ -194,8 +225,10 @@ func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.R
 			}}},
 		bson.D{
 			{"$set", bson.D{
-				{"isBuildDone", true}},
-			}})
+				{"isBuildDone", true},
+				{"indexer", lshSerialized},
+				{"hashCollName", newHashCollName},
+			}}})
 
 	if err != nil {
 		log.Println("Building index: " + err.Error())
@@ -204,6 +237,25 @@ func (annServer *ANNServer) BuildIndexerHandler(w http.ResponseWriter, r *http.R
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+// CheckBuildHandler checks the build status in the db
+func (annServer *ANNServer) CheckBuildHandler(w http.ResponseWriter, r *http.Request) {
+	database := annServer.MongoClient.GetDb(dbName)
+	helperColl := database.Collection(helperCollectionName)
+	helperRecord, err := db.GetHelperRecord(helperColl, false)
+	if err != nil {
+		log.Println("Building index: " + err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Smth went wrong (may be the index doesn't exist)"))
+		return
+	}
+	var message string = "Building finished"
+	if !helperRecord.IsBuildDone {
+		message = "Building in process"
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(message))
 }
 
 // PopHashRecordHandler drops vector from the search index
@@ -217,12 +269,12 @@ func (annServer *ANNServer) PopHashRecordHandler(w http.ResponseWriter, r *http.
 		id, ok := params["id"]
 		if !ok || len(id) == 0 {
 			log.Println("Pop hash record: object id must be specified")
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		if id[0] == "" {
 			log.Println("Pop hash record: object id must be specified")
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		err := annServer.popHashRecord(id[0])
@@ -236,14 +288,14 @@ func (annServer *ANNServer) PopHashRecordHandler(w http.ResponseWriter, r *http.
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Println("Pop hash record: " + err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		var input RequestData
 		err = json.Unmarshal(body, &input)
 		if err != nil {
 			log.Println("Pop hash record: " + err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		err = annServer.popHashRecord(input.ID)
@@ -270,12 +322,12 @@ func (annServer *ANNServer) PutHashRecordHandler(w http.ResponseWriter, r *http.
 		id, ok := params["id"]
 		if !ok || len(id) == 0 {
 			log.Println("Pop hash record: object id must be specified")
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		if id[0] == "" {
 			log.Println("Pop hash record: object id must be specified")
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		err := annServer.putHashRecord(id[0])
@@ -289,14 +341,14 @@ func (annServer *ANNServer) PutHashRecordHandler(w http.ResponseWriter, r *http.
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Println("Pop hash record: " + err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		var input RequestData
 		err = json.Unmarshal(body, &input)
 		if err != nil {
 			log.Println("Pop hash record: " + err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		err = annServer.putHashRecord(input.ID)
@@ -320,14 +372,14 @@ func (annServer *ANNServer) GetNeighborsHandler(w http.ResponseWriter, r *http.R
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Println("Get NN: " + err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		var input RequestData
 		err = json.Unmarshal(body, &input)
 		if err != nil {
 			log.Println("Get NN: " + err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 

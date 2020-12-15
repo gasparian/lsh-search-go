@@ -226,7 +226,11 @@ func GetDbRecords(coll *mongo.Collection, query FindQuery) ([]VectorRecord, erro
 }
 
 // GetHelperRecord gets supplementary data from the specified collection
-func GetHelperRecord(coll *mongo.Collection) (HelperRecord, error) {
+func GetHelperRecord(coll *mongo.Collection, getIndexerObject bool) (HelperRecord, error) {
+	proj := bson.M{"indexer": 1, "isBuildDone": 1, "HashCollName": 1}
+	if !getIndexerObject {
+		proj = bson.M{"indexer": 0}
+	}
 	cursor, err := GetCursor(
 		coll,
 		FindQuery{
@@ -234,6 +238,7 @@ func GetHelperRecord(coll *mongo.Collection) (HelperRecord, error) {
 			Query: bson.D{
 				{"indexer", bson.D{{"$exists", true}}},
 			},
+			Proj: proj,
 		},
 	)
 	if err != nil {

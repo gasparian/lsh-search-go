@@ -60,8 +60,8 @@ type VectorRecord struct {
 	ID           primitive.ObjectID `bson:"_id,omitempty"`
 	OrigID       int                `bson:"origId"`
 	NeighborsIds []int32            `bson:"neighborsIds,omitempty"`
-	FeatureVec   []float64          `bson:"featureVec,omitempty"` // TO DO: worth to use cm.Vector type
-	Hashes       map[int32]uint64   `bson:"hashes,omitempty"`     // TO DO: the field should be deleted later
+	FeatureVec   []float64          `bson:"featureVec,omitempty"`
+	Hashes       map[int32]uint64   `bson:"hashes,omitempty"` // TO DO: the field should be deleted later
 }
 
 // HashesRecord stores the id of original document in other collection and hashes map
@@ -71,7 +71,6 @@ type HashesRecord struct {
 }
 
 // HelperRecord holds the indexer model and supplementary data
-// TO DO: split helper record on two documents, one those will be holding just the indexer object
 type HelperRecord struct {
 	ID           primitive.ObjectID `bson:"_id,omitempty"`
 	Indexer      []byte             `bson:"indexer,omitempty"`
