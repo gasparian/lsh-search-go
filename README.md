@@ -90,8 +90,7 @@ Here are example visualizations:
     - write a script that sends the test data points to the seach index, and compares the answers with the ground truth;  
     - script must also write out the log with all needed mertrics (FPR, FNG, ROC, f1 and etc.);  
     - add unit tests for metrics calculation funcs;  
-5. Add monitoring to the service:  
-    - add perf check on the remotely running service;  
+5. Add perf check on the remotely running service.  
 
 ### Notes:  
  - Below I'll show how to talk with mongodb via console, to make quick checks on the dataset.  
