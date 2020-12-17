@@ -5,8 +5,10 @@ import (
 	"errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"os"
 
 	"context"
+	"fmt"
 	"log"
 	"sort"
 	"strconv"
@@ -14,6 +16,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	cm "vector-search-go/common"
 	"vector-search-go/db"
+	hashing "vector-search-go/lsh"
 )
 
 // getHelpMessage forms a byte array contains message
@@ -41,20 +44,87 @@ func getHelloMessage() []byte {
 	return out
 }
 
-// NewANNServer returns empty index object with initialized mongo client
-func NewANNServer() (ANNServer, error) {
-	mongodb, err := db.GetDbClient(dbLocation)
+// GetNewLoggers creates an instance of all needed loggers
+func GetNewLoggers() Logger {
+	return Logger{
+		Warn:  log.New(os.Stderr, "[ warn  ]", log.LstdFlags|log.Lshortfile),
+		Info:  log.New(os.Stderr, "[ info  ]", log.LstdFlags|log.Lshortfile),
+		Build: log.New(os.Stderr, "[ build ]", log.LstdFlags|log.Lshortfile),
+		Err:   log.New(os.Stderr, "[ error ]", log.LstdFlags|log.Lshortfile),
+	}
+}
+
+// ParseEnv forms app config by parsing the environment variables
+func ParseEnv() (Config, error) {
+	intVars := map[string]int{
+		"BATCH_SIZE":       0,
+		"MAX_HASHES_QUERY": 0,
+		"MAX_NN":           0,
+		"ANGULAR_METRIC":   0,
+		"MAX_N_PLANES":     0,
+		"N_PERMUTS":        0,
+	}
+	for key := range intVars {
+		val, err := strconv.Atoi(os.Getenv(key))
+		if err != nil {
+			return Config{}, err
+		}
+		intVars[key] = val
+	}
+	distanceThrsh, err := strconv.ParseFloat(os.Getenv("DISTANCE_THRSH"), 32)
 	if err != nil {
-		log.Println("Creating db client: " + err.Error())
+		return Config{}, err
+	}
+	stringVars := map[string]string{
+		"MONGO_ADDR": "", "DB_NAME": "",
+		"COLLECTION_NAME": "", "HELPER_COLLECTION_NAME": "",
+	}
+	for key := range stringVars {
+		val := os.Getenv(key)
+		if val == "" {
+			return Config{}, fmt.Errorf("Env value can't be empty: %s", key)
+		}
+		stringVars[key] = val
+	}
+
+	config := Config{
+		App: AppConfig{
+			DbLocation:           stringVars["MONGO_ADDR"],
+			DbName:               stringVars["DB_NAME"],
+			DataCollectionName:   stringVars["COLLECTION_NAME"],
+			HelperCollectionName: stringVars["HELPER_COLLECTION_NAME"],
+			BatchSize:            intVars["BATCH_SIZE"],
+			MaxHashesNumber:      intVars["MAX_HASHES_QUERY"],
+			MaxNN:                intVars["MAX_NN"],
+			DistanceThrsh:        distanceThrsh,
+		},
+		Hasher: hashing.LSHConfig{
+			IsAngularDistance: intVars["ANGULAR_METRIC"],
+			MaxNPlanes:        intVars["MAX_N_PLANES"],
+			NPermutes:         intVars["N_PERMUTS"],
+		},
+	}
+
+	return config, nil
+}
+
+// NewANNServer returns empty index object with initialized mongo client
+func NewANNServer(logger Logger, config Config) (ANNServer, error) {
+	mongodb, err := db.GetDbClient(config.App.DbLocation)
+	if err != nil {
+		logger.Err.Println("Creating db client: " + err.Error())
 		return ANNServer{}, err
 	}
-	// defer mongodb.Disconnect() // should be placed on the upper level
 
 	searchHandler := ANNServer{
+		Config:      config.App,
 		MongoClient: *mongodb,
+		Logger:      logger,
+		Index:       hashing.NewLSHIndex(config.Hasher),
 	}
 	err = searchHandler.LoadIndexer()
 	if err != nil {
+		logger.Err.Println("Loading indexer object: " + err.Error())
 		return ANNServer{}, err
 	}
 	return searchHandler, nil
@@ -62,8 +132,8 @@ func NewANNServer() (ANNServer, error) {
 
 // LoadIndexer load indexer from the db if it exists
 func (annServer *ANNServer) LoadIndexer() error {
-	database := annServer.MongoClient.GetDb(dbName)
-	helperColl := database.Collection(helperCollectionName)
+	database := annServer.MongoClient.GetDb(annServer.Config.DbName)
+	helperColl := database.Collection(annServer.Config.HelperCollectionName)
 	indexerRecord, err := db.GetHelperRecord(helperColl, true)
 	if err != nil {
 		return err
@@ -83,12 +153,7 @@ func (annServer *ANNServer) hashDbRecordsBatch(cursor *mongo.Cursor, batchSize i
 		if err := cursor.Decode(&record); err != nil {
 			continue
 		}
-		hashes, err := annServer.Index.GetHashes(
-			cm.Vector{
-				Values: record.FeatureVec,
-				Size:   len(record.FeatureVec),
-			},
-		)
+		hashes, err := annServer.Index.GetHashes(cm.Vector(record.FeatureVec))
 		if err != nil {
 			return nil, err
 		}
@@ -107,8 +172,8 @@ func (annServer *ANNServer) popHashRecord(id string) error {
 	if err != nil {
 		return err
 	}
-	database := annServer.MongoClient.GetDb(dbName)
-	helperRecord, err := db.GetHelperRecord(database.Collection(helperCollectionName), false)
+	database := annServer.MongoClient.GetDb(annServer.Config.DbName)
+	helperRecord, err := db.GetHelperRecord(database.Collection(annServer.Config.HelperCollectionName), false)
 	if err != nil {
 		return err
 	}
@@ -126,14 +191,14 @@ func (annServer *ANNServer) putHashRecord(id string) error {
 	if err != nil {
 		return err
 	}
-	database := annServer.MongoClient.GetDb(dbName)
-	helperRecord, err := db.GetHelperRecord(database.Collection(helperCollectionName), false)
+	database := annServer.MongoClient.GetDb(annServer.Config.DbName)
+	helperRecord, err := db.GetHelperRecord(database.Collection(annServer.Config.HelperCollectionName), false)
 	if err != nil {
 		return err
 	}
 	hashesColl := database.Collection(helperRecord.HashCollName)
 	records, err := db.GetDbRecords(
-		database.Collection(dataCollectionName),
+		database.Collection(annServer.Config.DataCollectionName),
 		db.FindQuery{
 			Limit: 1,
 			Query: bson.D{{"_id", objectID}},
@@ -155,15 +220,15 @@ func (annServer *ANNServer) putHashRecord(id string) error {
 
 // getNeighbors returns filtered nearest neighbors sorted by distance in ascending order
 func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, error) {
-	inputVec := cm.NewVector(input.Vec)
+	inputVec := cm.Vector(input.Vec)
 	var hashesRecords []db.HashesRecord
-	database := annServer.MongoClient.GetDb(dbName)
+	database := annServer.MongoClient.GetDb(annServer.Config.DbName)
 	if input.ID != "" {
 		objectID, err := primitive.ObjectIDFromHex(input.ID)
 		if err != nil {
 			return nil, err
 		}
-		helperRecord, err := db.GetHelperRecord(database.Collection(helperCollectionName), false)
+		helperRecord, err := db.GetHelperRecord(database.Collection(annServer.Config.HelperCollectionName), false)
 		if err != nil {
 			return nil, err
 		}
@@ -181,7 +246,7 @@ func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, erro
 		}
 	} else if !inputVec.IsZero() {
 		hashes, err := annServer.Index.GetHashes(inputVec)
-		helperRecord, err := db.GetHelperRecord(database.Collection(helperCollectionName), false)
+		helperRecord, err := db.GetHelperRecord(database.Collection(annServer.Config.HelperCollectionName), false)
 		if err != nil {
 			return nil, err
 		}
@@ -193,7 +258,7 @@ func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, erro
 		hashesRecords, err = db.GetHashesRecords(
 			hashesColl,
 			db.FindQuery{
-				Limit: maxHashesNumber,
+				Limit: annServer.Config.MaxHashesNumber,
 				Query: hashesQuery,
 				Proj:  bson.M{"_id": 1},
 			},
@@ -212,7 +277,7 @@ func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, erro
 	hashesRecords = nil
 
 	vectorsCursor, err := db.GetCursor(
-		database.Collection(dataCollectionName),
+		database.Collection(annServer.Config.DataCollectionName),
 		db.FindQuery{
 			Query: bson.D{{"_id", bson.D{{"$in", vectorIDs}}}},
 			Proj:  bson.M{"_id": 1, "featureVec": 1},
@@ -222,16 +287,16 @@ func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, erro
 		return nil, err
 	}
 
-	neighbors := make([]ResponseRecord, maxNN)
+	neighbors := make([]ResponseRecord, annServer.Config.MaxNN)
 	var idx int = 0
 	var candidate db.VectorRecord
-	for vectorsCursor.Next(context.Background()) && idx <= maxNN {
+	for vectorsCursor.Next(context.Background()) && idx <= annServer.Config.MaxNN {
 		if err := vectorsCursor.Decode(&candidate); err != nil {
 			continue
 		}
 		hexID := candidate.ID.Hex()
-		dist := annServer.Index.GetDist(inputVec, cm.NewVector(candidate.FeatureVec))
-		if dist <= distanceThrsh {
+		dist := annServer.Index.GetDist(inputVec, cm.Vector(candidate.FeatureVec))
+		if dist <= annServer.Config.DistanceThrsh {
 			neighbors[idx] = ResponseRecord{
 				ID:   hexID,
 				Dist: dist,
@@ -242,5 +307,5 @@ func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, erro
 	sort.Slice(neighbors, func(i, j int) bool {
 		return neighbors[i].Dist < neighbors[j].Dist
 	})
-	return &ResponseData{NN: neighbors}, nil
+	return &ResponseData{Neighbors: neighbors}, nil
 }

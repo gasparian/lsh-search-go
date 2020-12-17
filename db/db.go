@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"errors"
-	"log"
 	"os"
 	"strconv"
 	"time"
@@ -117,16 +116,13 @@ func ConvertAggResult(inp interface{}) (cm.Vector, error) {
 	if !ok {
 		return cm.Vector{}, errors.New("type conversion failed")
 	}
-	conv := cm.Vector{
-		Values: make([]float64, len(val)),
-		Size:   len(val),
-	}
-	for i := range conv.Values {
+	conv := make(cm.Vector, len(val))
+	for i := range conv {
 		v, ok := val[i].(float64)
 		if !ok {
 			return cm.Vector{}, errors.New("type conversion failed")
 		}
-		conv.Values[i] = v
+		conv[i] = v
 	}
 	return conv, nil
 }
@@ -135,17 +131,14 @@ func ConvertAggResult(inp interface{}) (cm.Vector, error) {
 func GetAggregatedStats(coll *mongo.Collection) (cm.Vector, cm.Vector, error) {
 	results, err := GetAggregation(coll, GroupMeanStd)
 	if err != nil {
-		log.Println("Making db aggregation: " + err.Error())
 		return cm.Vector{}, cm.Vector{}, err
 	}
 	convMean, err := ConvertAggResult(results[0]["avg"])
 	if err != nil {
-		log.Println("Parsing aggregation result: " + err.Error())
 		return cm.Vector{}, cm.Vector{}, err
 	}
 	convStd, err := ConvertAggResult(results[0]["std"])
 	if err != nil {
-		log.Println("Parsing aggregation result: " + err.Error())
 		return cm.Vector{}, cm.Vector{}, err
 	}
 	return convMean, convStd, nil

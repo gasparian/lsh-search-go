@@ -6,6 +6,9 @@ import (
 	"math"
 )
 
+// Vector just binding to floats slice to add methods to it
+type Vector []float64
+
 // GetRandomID generates random alphanumeric string
 func GetRandomID() (string, error) {
 	b := make([]byte, 16)
@@ -17,18 +20,10 @@ func GetRandomID() (string, error) {
 	return s, nil
 }
 
-// NewVector creates new vector by given slice of floats
-func NewVector(inpVec []float64) Vector {
-	return Vector{
-		Values: inpVec,
-		Size:   len(inpVec),
-	}
-}
-
 // IsZero checks if the sum of the all values equals to zero
-func (vec *Vector) IsZero() bool {
+func (vec Vector) IsZero() bool {
 	var sum float64 = 0.0
-	for _, val := range vec.Values {
+	for _, val := range vec {
 		sum += val
 		if sum != 0 {
 			return false
@@ -38,48 +33,46 @@ func (vec *Vector) IsZero() bool {
 }
 
 // Add two vectors of the same dimnsionality
-func (vec *Vector) Add(rvec Vector) Vector {
-	sum := NewVector(make([]float64, vec.Size))
-	for i := range vec.Values {
-		sum.Values[i] = vec.Values[i] + rvec.Values[i]
+func (vec Vector) Add(rvec Vector) Vector {
+	sum := make(Vector, len(vec))
+	for i := range vec {
+		sum[i] = vec[i] + rvec[i]
 	}
 	return sum
 }
 
 // ConstMul multiplicates vector with provided constant float
-func (vec *Vector) ConstMul(constant float64) Vector {
-	newVec := NewVector(make([]float64, vec.Size))
-	for i := range vec.Values {
-		newVec.Values[i] = vec.Values[i] * constant
+func (vec Vector) ConstMul(constant float64) Vector {
+	newVec := make(Vector, len(vec))
+	for i := range vec {
+		newVec[i] = vec[i] * constant
 	}
 	return newVec
 }
 
 // DotProd calculates dot product between two vectors
-func (vec *Vector) DotProd(inpVec Vector) float64 {
+func (vec Vector) DotProd(inpVec Vector) float64 {
 	var dp float64 = 0.0
-	for i := range vec.Values {
-		dp += vec.Values[i] * inpVec.Values[i]
+	for i := range vec {
+		dp += vec[i] * inpVec[i]
 	}
 	return dp
 }
 
 // L2 calculates l2-distance between two vectors
-func (vec *Vector) L2(inpVec Vector) float64 {
+func (vec Vector) L2(inpVec Vector) float64 {
 	var l2 float64
 	var diff float64
-	for i := range vec.Values {
-		diff = vec.Values[i] - inpVec.Values[i]
+	for i := range vec {
+		diff = vec[i] - inpVec[i]
 		l2 += diff * diff
 	}
 	return math.Sqrt(l2)
 }
 
 // L2Norm calculates l2 norm of a vector
-func (vec *Vector) L2Norm() float64 {
-	zeroVec := Vector{
-		Values: make([]float64, vec.Size),
-	}
+func (vec Vector) L2Norm() float64 {
+	zeroVec := make(Vector, len(vec))
 	return vec.L2(zeroVec)
 }
 

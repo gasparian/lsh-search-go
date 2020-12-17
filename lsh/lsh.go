@@ -14,36 +14,27 @@ import (
 	cm "vector-search-go/common"
 )
 
-var (
-	globMaxNPlanes, _    = strconv.Atoi(os.Getenv("MAX_N_PLANES"))
-	globNPermutes, _     = strconv.Atoi(os.Getenv("N_PERMUTS"))
-	isAngularDistance, _ = strconv.Atoi(os.Getenv("ANGULAR_METRIC"))
-)
-
 // GetPointPlaneDist calculates distance between origin and plane
 func GetPointPlaneDist(planeCoefs cm.Vector) cm.Vector {
-	values := make([]float64, planeCoefs.Size-1)
-	dCoef := planeCoefs.Values[planeCoefs.Size-1]
+	values := make(cm.Vector, len(planeCoefs)-1)
+	dCoef := planeCoefs[len(planeCoefs)-1]
 	var denom float64 = 0.0
 	for i := range values {
-		denom += planeCoefs.Values[i] * planeCoefs.Values[i]
+		denom += planeCoefs[i] * planeCoefs[i]
 	}
 	for i := range values {
-		values[i] = planeCoefs.Values[i] * dCoef / denom
+		values[i] = planeCoefs[i] * dCoef / denom
 	}
-	return cm.Vector{
-		Values: values,
-		Size:   len(values),
-	}
+	return values
 }
 
 // NewLSHIndexInstance creates new instance of LSHIndex object
 func NewLSHIndexInstance(meanVec, stdVec cm.Vector, maxNPlanes int) (LSHIndexInstance, error) {
 	lshIndex := LSHIndexInstance{
-		Dims:       meanVec.Size,
-		Bias:       stdVec.L2Norm(),
-		MaxNPlanes: maxNPlanes,
-		MeanVec:    meanVec,
+		Dims:    len(meanVec),
+		Bias:    stdVec.L2Norm(),
+		MeanVec: meanVec,
+		NPlanes: maxNPlanes,
 	}
 	err := lshIndex.Build()
 	if err != nil {
@@ -53,40 +44,25 @@ func NewLSHIndexInstance(meanVec, stdVec cm.Vector, maxNPlanes int) (LSHIndexIns
 }
 
 // NewLSHIndex creates slice of LSHIndexInstances to hold several permutations results
-func NewLSHIndex(convMean, convStd cm.Vector) (*LSHIndex, error) {
+func NewLSHIndex(config LSHConfig) *LSHIndex {
 	lshIndex := &LSHIndex{
-		Entries:         make([]LSHIndexInstance, globNPermutes),
-		HashFieldsNames: make([]string, globNPermutes),
+		Config:          config,
+		Instances:       make([]LSHIndexInstance, config.NPermutes),
+		HashFieldsNames: make([]string, config.NPermutes),
 	}
-	if isAngularDistance == 1 {
-		convStd = convStd.ConstMul(0.0)
-	}
-	var tmpLSHIndex LSHIndexInstance
-	var err error
-	for i := 0; i < globNPermutes; i++ {
-		tmpLSHIndex, err = NewLSHIndexInstance(convMean, convStd, globMaxNPlanes)
-		if err != nil {
-			return nil, err
-		}
-		lshIndex.Entries[i] = tmpLSHIndex
-		lshIndex.HashFieldsNames[i] = strconv.Itoa(i)
-	}
-	return lshIndex, nil
+	return lshIndex
 }
 
 func (lsh *LSHIndexInstance) getRandomPlane() cm.Vector {
-	coefs := cm.Vector{
-		Values: make([]float64, lsh.Dims+1),
-		Size:   lsh.Dims + 1,
-	}
+	coefs := make(cm.Vector, lsh.Dims+1)
 	var l2 float64 = 0.0
 	for i := 0; i < lsh.Dims; i++ {
-		coefs.Values[i] = -1.0 + rand.Float64()*2
-		l2 += coefs.Values[i] * coefs.Values[i]
+		coefs[i] = -1.0 + rand.Float64()*2
+		l2 += coefs[i] * coefs[i]
 	}
 	l2 = math.Sqrt(l2)
 	bias := l2 * lsh.Bias
-	coefs.Values[coefs.Size-1] = -1.0*bias + rand.Float64()*bias*2
+	coefs[len(coefs)-1] = -1.0*bias + rand.Float64()*bias*2
 	return coefs
 }
 
@@ -98,7 +74,7 @@ func (lsh *LSHIndexInstance) Build() error {
 
 	rand.Seed(time.Now().UnixNano())
 	var coefs cm.Vector
-	for i := 0; i < lsh.nPlanes; i++ {
+	for i := 0; i < lsh.NPlanes; i++ {
 		coefs = lsh.getRandomPlane()
 		lsh.Planes = append(lsh.Planes, Plane{
 			Coefs:      coefs,
@@ -114,7 +90,7 @@ func (lsh *LSHIndexInstance) GetHash(inpVec cm.Vector) uint64 {
 	var vec cm.Vector
 	var plane *Plane
 	var dpSign bool
-	for i := 0; i < lsh.nPlanes; i++ {
+	for i := 0; i < lsh.NPlanes; i++ {
 		plane = &lsh.Planes[i]
 		vec = inpVec.Add(lsh.MeanVec.ConstMul(-1.0))
 		vec = vec.Add(plane.InnerPoint.ConstMul(-1.0))
@@ -126,35 +102,53 @@ func (lsh *LSHIndexInstance) GetHash(inpVec cm.Vector) uint64 {
 	return hash
 }
 
+// Generate method creates the lsh instances
+func (lshIndex *LSHIndex) Generate(convMean, convStd cm.Vector) error {
+	if lshIndex.Config.IsAngularDistance == 1 {
+		convStd = convStd.ConstMul(0.0)
+	}
+	var tmpLSHIndex LSHIndexInstance
+	var err error
+	for i := 0; i < lshIndex.Config.NPermutes; i++ {
+		tmpLSHIndex, err = NewLSHIndexInstance(convMean, convStd, lshIndex.Config.MaxNPlanes)
+		if err != nil {
+			return err
+		}
+		lshIndex.Instances[i] = tmpLSHIndex
+		lshIndex.HashFieldsNames[i] = strconv.Itoa(i)
+	}
+	return nil
+}
+
 // GetHashes returns map of calculated lsh values
-func (lsh *LSHIndex) GetHashes(vec cm.Vector) (map[int]uint64, error) {
+func (lshIndex *LSHIndex) GetHashes(vec cm.Vector) (map[int]uint64, error) {
 	var result map[int]uint64
-	for idx, lshInstance := range lsh.Entries {
+	for idx, lshInstance := range lshIndex.Instances {
 		result[idx] = lshInstance.GetHash(vec)
 	}
 	return result, nil
 }
 
 // GetDist returns measure of the specified distance metric
-func (lsh *LSHIndex) GetDist(lv, rv cm.Vector) float64 {
-	if isAngularDistance == 1 {
+func (lshIndex *LSHIndex) GetDist(lv, rv cm.Vector) float64 {
+	if lshIndex.Config.IsAngularDistance == 1 {
 		return lv.CosineSim(rv)
 	}
 	return lv.L2(rv)
 }
 
 // Dump encodes LSHIndex object as a byte-array
-func (lsh *LSHIndex) Dump() ([]byte, error) {
-	lsh.Lock()
-	defer lsh.Unlock()
+func (lshIndex *LSHIndex) Dump() ([]byte, error) {
+	lshIndex.Lock()
+	defer lshIndex.Unlock()
 
-	if len(lsh.Entries) == 0 {
+	if len(lshIndex.Instances) == 0 {
 		return nil, errors.New("search index must contain at least one object")
 	}
 	buf := &bytes.Buffer{}
 	enc := gob.NewEncoder(buf)
 	encodable := LSHIndexEncode{
-		Entries: &lsh.Entries,
+		Instances: &lshIndex.Instances,
 	}
 	err := enc.Encode(encodable)
 	if err != nil {
@@ -164,11 +158,11 @@ func (lsh *LSHIndex) Dump() ([]byte, error) {
 }
 
 // Load loads LSHIndex struct from the byte-array file
-func (lsh *LSHIndex) Load(inp []byte) error {
+func (lshIndex *LSHIndex) Load(inp []byte) error {
 	buf := &bytes.Buffer{}
 	buf.Write(inp)
 	dec := gob.NewDecoder(buf)
-	err := dec.Decode(&lsh)
+	err := dec.Decode(&lshIndex)
 	if err != nil {
 		return err
 	}

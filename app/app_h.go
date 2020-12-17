@@ -1,19 +1,43 @@
 package app
 
 import (
+	"log"
 	"vector-search-go/db"
-	hasher "vector-search-go/lsh"
+	hashing "vector-search-go/lsh"
 )
 
-var (
-	// HelloMessage just holds message which describes the public api
-	HelloMessage = getHelloMessage()
-)
+// AppConfig holds general constants
+type AppConfig struct {
+	DbLocation           string
+	DbName               string
+	DataCollectionName   string
+	HelperCollectionName string
+	BatchSize            int
+	MaxHashesNumber      int
+	MaxNN                int
+	DistanceThrsh        float64
+}
+
+// Config holds all needed variables to run the app
+type Config struct {
+	Hasher hashing.LSHConfig
+	App    AppConfig
+}
+
+// Logger holds several logger instances with different prefixes
+type Logger struct {
+	Warn  *log.Logger
+	Info  *log.Logger
+	Build *log.Logger
+	Err   *log.Logger
+}
 
 // ANNServer holds Indexer itself and the mongo Client
 type ANNServer struct {
-	Index       *hasher.LSHIndex
+	Index       *hashing.LSHIndex
 	MongoClient db.MongoClient
+	Logger      Logger
+	Config      AppConfig
 }
 
 // RequestData used for unpacking the request payload for Pop/Put vectors
@@ -30,5 +54,5 @@ type ResponseRecord struct {
 
 // ResponseData holds the resulting objectIDs of nearest neighbors found
 type ResponseData struct {
-	NN []ResponseRecord `json:"neighbors"`
+	Neighbors []ResponseRecord `json:"neighbors"`
 }

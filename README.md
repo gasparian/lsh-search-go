@@ -81,11 +81,9 @@ Here are example visualizations:
     - ~~(pop) clean the search index by the given point "name"~~;  
     - ~~rewrite the functions to save and load search index to hold the slice of LSHIndex objects instead of a single one~~;  
     - ~~add ability to store the build sync. status and the LSH index object in special collection in the same mongodb~~;  
-    - add requests cancelation via context;  
-    - add decorators on repeatable ops (on handler functions);  
-    - rename indexer --> hasher (??);  
-    - add unit tests for API methods;  
+    - ~~add proper logging~~;  
     - start several service workers and keep them under the nginx (keep the addresses inside the config);  
+    - add unit tests for API methods;  
 4. Add search quality testing using the test part of the benchmark dataset:  
     - write a script that sends the test data points to the seach index, and compares the answers with the ground truth;  
     - script must also write out the log with all needed mertrics (FPR, FNG, ROC, f1 and etc.);  

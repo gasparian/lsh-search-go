@@ -1,17 +1,19 @@
 package main
 
 import (
-	"log"
-
 	"net/http"
 	"vector-search-go/app"
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	annServer, err := app.NewANNServer()
+	logger := app.GetNewLoggers()
+	config, err := app.ParseEnv()
 	if err != nil {
-		log.Fatal(err.Error())
+		logger.Err.Fatal(err.Error())
+	}
+	annServer, err := app.NewANNServer(logger, config)
+	if err != nil {
+		logger.Err.Fatal(err.Error())
 	}
 	defer annServer.MongoClient.Disconnect()
 
@@ -21,5 +23,5 @@ func main() {
 	http.HandleFunc("/get-nn", annServer.GetNeighborsHandler)
 	http.HandleFunc("/pop-hash", annServer.PopHashRecordHandler)
 	http.HandleFunc("/put-hash", annServer.PutHashRecordHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	logger.Err.Fatal(http.ListenAndServe(":8080", nil))
 }
