@@ -7,7 +7,6 @@ import (
 	"time"
 	"unsafe"
 
-	"go.mongodb.org/mongo-driver/mongo"
 	"gonum.org/v1/hdf5"
 	"vector-search-go/db"
 )
@@ -52,8 +51,8 @@ func GetNeighborsFromHDF5(table *hdf5.File, datasetName string) ([]db.NeighborsI
 	return ticks, nil
 }
 
-// LoadDatasetMongoDb sends batches of provided data to the mongodb
-func LoadDatasetMongoDb(collection *mongo.Collection, data []db.FeatureVec, neighbors []db.NeighborsIds, batchSize int) error {
+// UploadDatasetMongoDb sends batches of provided data to the mongodb
+func UploadDatasetMongoDb(collection db.MongoCollection, data []db.FeatureVec, neighbors []db.NeighborsIds, batchSize int) error {
 	var batch []interface{} = nil
 	dataLen := len(data)
 	neighborsLen := len(neighbors)
@@ -76,7 +75,7 @@ func LoadDatasetMongoDb(collection *mongo.Collection, data []db.FeatureVec, neig
 		batch = append(batch, tmpRecord)
 
 		if batchIdx == batchSize-1 || idx == dataLen-1 {
-			_, err := collection.InsertMany(context.TODO(), batch)
+			_, err := collection.InsertMany(context.Background(), batch)
 			if err != nil {
 				return err
 			}

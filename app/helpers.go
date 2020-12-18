@@ -44,8 +44,8 @@ func getHelloMessage() []byte {
 	return out
 }
 
-// GetNewLoggers creates an instance of all needed loggers
-func GetNewLoggers() Logger {
+// GetNewLogger creates an instance of all needed loggers
+func GetNewLogger() Logger {
 	return Logger{
 		Warn: log.New(os.Stderr, "[ warn  ]", log.LstdFlags|log.Lshortfile),
 		Info: log.New(os.Stderr, "[ info  ]", log.LstdFlags|log.Lshortfile),
@@ -169,7 +169,6 @@ func (annServer *ANNServer) hashDbRecordsBatch(cursor *mongo.Cursor, batchSize i
 
 // BuildIndex gets data stats from the db and creates the new Hasher (or hasher) object
 // and submitting status to the helper collection
-// TO DO: refactor
 func (annServer *ANNServer) BuildIndex() error {
 
 	// NOTE: check if the previous build has been done

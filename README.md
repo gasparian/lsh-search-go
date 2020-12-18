@@ -30,7 +30,7 @@ sudo apt-get install libhdf5-serial-dev
 go mod init vector-search-go
 go mod tidy
 ```  
-Then compile and run, passing args from config file:  
+Then compile and run, passing args from config file (targets are: `main.go` or `bench_data_main.go`):  
 ```
 go build -o ./main ./main.go
 export $(grep -v '^#' config.env | xargs) && ./main
@@ -82,7 +82,7 @@ Here are example visualizations:
     - ~~add ability to store the build sync. status and the LSH index object in special collection in the same mongodb~~;  
     - ~~add proper logging~~;  
     - ~~rafactor mongo client~~;  
-    - update work with mongo client in bench prep code;  
+    - ~~update work with mongo client in bench prep code~~;  
     - add hasher update on pop/put/get (use timestamp or smth);  
     - add decorator for measuring the time;  
     - make docker image even lighter - deploy only binaries using [docker scratch](https://github.com/phrozen/geohash/blob/master/server/Dockerfile);  

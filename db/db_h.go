@@ -61,7 +61,6 @@ type VectorRecord struct {
 	OrigID       int                `bson:"origId"`
 	NeighborsIds []int32            `bson:"neighborsIds,omitempty"`
 	FeatureVec   []float64          `bson:"featureVec,omitempty"`
-	Hashes       map[int32]uint64   `bson:"hashes,omitempty"` // TO DO: the field should be deleted later
 }
 
 // HashesRecord stores the id of original document in other collection and hashes map

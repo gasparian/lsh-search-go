@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	logger := app.GetNewLoggers()
+	logger := app.GetNewLogger()
 	config, err := app.ParseEnv()
 	if err != nil {
 		logger.Err.Fatal(err.Error())

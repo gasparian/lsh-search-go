@@ -19,15 +19,18 @@ var (
 )
 
 func main() {
-	mongodb, err := db.GetDbClient(dbLocation)
+	config := db.Config{
+		DbLocation: dbLocation,
+		DbName:     dbName,
+	}
+	mongodb, err := db.GetDbClient(config)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer mongodb.Disconnect()
 
-	database := mongodb.GetDb(dbName)
-	vectorsTrainCollection := database.Collection(trainCollectionName)
-	vectorsTestCollection := database.Collection(testCollectionName)
+	vectorsTrainCollection := mongodb.GetCollection(trainCollectionName)
+	vectorsTestCollection := mongodb.GetCollection(testCollectionName)
 
 	f, err := hdf5.OpenFile("./annbench/deep-image-96-angular.hdf5", hdf5.F_ACC_RDWR)
 	if err != nil {
@@ -45,7 +48,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		err = annb.LoadDatasetMongoDb(vectorsTestCollection, featuresTest, neighbors, batchSize)
+		err = annb.UploadDatasetMongoDb(vectorsTestCollection, featuresTest, neighbors, batchSize)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -57,7 +60,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = annb.LoadDatasetMongoDb(vectorsTrainCollection, featuresTrain, []db.NeighborsIds{}, batchSize)
+		err = annb.UploadDatasetMongoDb(vectorsTrainCollection, featuresTrain, []db.NeighborsIds{}, batchSize)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -65,11 +68,11 @@ func main() {
 	}
 
 	log.Println("Creating index on OrigId field...")
-	err = db.CreateIndexesByFields(vectorsTestCollection, []string{"OrigId"}, true)
+	err = vectorsTestCollection.CreateIndexesByFields([]string{"OrigId"}, true)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = db.CreateIndexesByFields(vectorsTrainCollection, []string{"OrigId"}, true)
+	err = vectorsTrainCollection.CreateIndexesByFields([]string{"OrigId"}, true)
 	if err != nil {
 		log.Fatal(err)
 	}
