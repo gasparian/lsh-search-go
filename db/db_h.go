@@ -70,18 +70,40 @@ type HashesRecord struct {
 	Hashes map[int]uint64     `bson:"hashes,omitempty"`
 }
 
-// HelperRecord holds the indexer model and supplementary data
+// HelperRecord holds the Hasher model and supplementary data
 type HelperRecord struct {
 	ID           primitive.ObjectID `bson:"_id,omitempty"`
-	Indexer      []byte             `bson:"indexer,omitempty"`
+	Hasher       []byte             `bson:"hasher,omitempty"`
 	IsBuildDone  bool               `bson:"isBuildDone,omitempty"`
+	BuildError   string             `bson:"buildError,omitempty"`
 	HashCollName string             `bson:"hashCollName,omitempty"`
 }
 
-// MongoClient holds client for connecting to the mongodb
-type MongoClient struct {
-	Client *mongo.Client
+// Config holds db address and entities names
+type Config struct {
+	DbLocation           string
+	DbName               string
+	DataCollectionName   string
+	HelperCollectionName string
 }
+
+// MongoCollection is just an alias to original mongo Collection,
+// to be able to add custom methods there
+type MongoCollection struct {
+	*mongo.Collection
+}
+
+// MongoDatastore holds mongo client and the database object
+type MongoDatastore struct {
+	config  Config
+	db      *mongo.Database
+	Session *mongo.Client
+}
+
+// MongoClient holds client for connecting to the mongodb DELETE IT AFTER REFACTORING
+// type MongoClient struct {
+// 	Client *mongo.Client
+// }
 
 // FindQuery needs to perform find operation with mongodb
 type FindQuery struct {

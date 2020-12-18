@@ -15,10 +15,10 @@ func main() {
 	if err != nil {
 		logger.Err.Fatal(err.Error())
 	}
-	defer annServer.MongoClient.Disconnect()
+	defer annServer.Mongo.Disconnect()
 
 	http.HandleFunc("/", app.HealthCheck)
-	http.HandleFunc("/build-index", annServer.BuildIndexerHandler)
+	http.HandleFunc("/build-index", annServer.BuildHasherHandler)
 	http.HandleFunc("/check-build", annServer.CheckBuildHandler)
 	http.HandleFunc("/get-nn", annServer.GetNeighborsHandler)
 	http.HandleFunc("/pop-hash", annServer.PopHashRecordHandler)

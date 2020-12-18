@@ -3,13 +3,12 @@
 ### Proposal  
 
 One of the both most common and interesting topics in machine learning is a problem of search in high-dimensional vector spaces.  
-So the goal of this project is to build the simple and reliable vector search service.  
+So the goal of this project is to build the simple vector search service.  
 We want to perform the search in logarithmic time on average, and we have two basic groups of algorithms to do this:  
  - [local sensetive hashing](https://en.wikipedia.org/wiki/Locality-sensitive_hashing);  
  - [graph-based approaches](https://en.wikipedia.org/wiki/Small-world_network) - local search over proximity graphs, smth like hierarchical navigatable small world graphs;  
 
-I've decided to go with the LSH since it's pretty convenient to serialize the indexer, store hashes and perform search over these hashes with some well-developed database. As for database - I've chosen mongodb. But some RDBMS should good option too (e.g. PostgreSQL).  
-It can be used in various semantic search applications.   
+I've decided to go with the LSH since it's pretty convenient to serialize the Hasher, store hashes and perform search over these hashes with some already existed and well-developed database. Generally speaking, we just need to implement the hashing algorithm and communication with the db. As for database - I've chosen mongodb to use the same db for storing the benchmark dataset and hashes. Basically, it can be any type of database: document, RDBMS or key-value.  
 
 ### Building and running  
 
@@ -79,16 +78,21 @@ Here are example visualizations:
     - ~~(get) returns the NNs' "ids" of the queried data point~~;  
     - ~~(put) calculates the hashes and adds the document into the index collection~~;  
     - ~~(pop) clean the search index by the given point "name"~~;  
-    - ~~rewrite the functions to save and load search index to hold the slice of LSHIndex objects instead of a single one~~;  
+    - ~~rewrite the functions to save and load search index to hold the slice of Hasher objects instead of a single one~~;  
     - ~~add ability to store the build sync. status and the LSH index object in special collection in the same mongodb~~;  
     - ~~add proper logging~~;  
-    - start several service workers and keep them under the nginx (keep the addresses inside the config);  
+    - ~~rafactor mongo client~~;  
+    - update work with mongo client in bench prep code;  
+    - add hasher update on pop/put/get (use timestamp or smth);  
+    - add decorator for measuring the time;  
+    - make docker image even lighter - deploy only binaries using [docker scratch](https://github.com/phrozen/geohash/blob/master/server/Dockerfile);  
     - add unit tests for API methods;  
 4. Add search quality testing using the test part of the benchmark dataset:  
     - write a script that sends the test data points to the seach index, and compares the answers with the ground truth;  
     - script must also write out the log with all needed mertrics (FPR, FNG, ROC, f1 and etc.);  
+    - determine optimal min. distance on validation set;  
     - add unit tests for metrics calculation funcs;  
-5. Add perf check on the remotely running service.  
+5. Make comprehensive reference in app.  
 
 ### Notes:  
  - Below I'll show how to talk with mongodb via console, to make quick checks on the dataset.  

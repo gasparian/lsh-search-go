@@ -22,8 +22,8 @@ var (
 )
 
 // GetDbClient creates client for talking to the mongodb
-func GetDbClient(dbLocation string) (*MongoClient, error) {
-	client, err := mongo.NewClient(options.Client().ApplyURI(dbLocation))
+func GetDbClient(config Config) (*MongoDatastore, error) {
+	client, err := mongo.NewClient(options.Client().ApplyURI(config.DbLocation))
 	if err != nil {
 		return nil, err
 	}
@@ -39,27 +39,102 @@ func GetDbClient(dbLocation string) (*MongoClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	mongodb := &MongoClient{
-		Client: client,
+	database := client.Database(config.DbName)
+	mongodb := &MongoDatastore{
+		config:  config,
+		db:      database,
+		Session: client,
 	}
 	return mongodb, nil
 }
 
-// Disconnect client from the context
-func (mongodb *MongoClient) Disconnect() {
+// CreateCollection checks if the helper collection exists
+// in the db, and creates them if needed
+func (mongodb *MongoDatastore) CreateCollection(collName string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
 	defer cancel()
-	mongodb.Client.Disconnect(ctx)
+	err := mongodb.db.CreateCollection(ctx, collName, nil)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-// GetDb returns database object
-func (mongodb *MongoClient) GetDb(dbName string) *mongo.Database {
-	return mongodb.Client.Database(dbName)
+// DropCollection drops collection on the server
+func (mongodb *MongoDatastore) DropCollection(collectionName string) error {
+	coll := mongodb.db.Collection(collectionName)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
+	defer cancel()
+	err := coll.Drop(ctx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetCollection just wraps the default mongo collection into custom one
+func (mongodb *MongoDatastore) GetCollection(collName string) MongoCollection {
+	return MongoCollection{mongodb.db.Collection(collName)}
+}
+
+// Disconnect client from the context
+func (mongodb *MongoDatastore) Disconnect() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
+	defer cancel()
+	mongodb.Session.Disconnect(ctx)
+}
+
+// UpdateBuildStatus updates helper record with the new biuld status and error
+func (mongodb *MongoDatastore) UpdateBuildStatus(isDone bool, errorMessage string) error {
+	helperColl := mongodb.GetCollection(mongodb.config.HelperCollectionName)
+	err := helperColl.UpdateField(
+		bson.D{
+			{"Hasher", bson.D{
+				{"$exists", true},
+			}}},
+		bson.D{
+			{"$set", bson.D{
+				{"isBuildDone", isDone},
+				{"buildError", errorMessage},
+			}}})
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetHelperRecord gets supplementary data from the specified collection
+func (mongodb *MongoDatastore) GetHelperRecord(getHasherObject bool) (HelperRecord, error) {
+	proj := bson.M{"Hasher": 1, "isBuildDone": 1, "HashCollName": 1}
+	if !getHasherObject {
+		proj = bson.M{"Hasher": 0}
+	}
+	helperColl := mongodb.GetCollection(mongodb.config.HelperCollectionName)
+	cursor, err := helperColl.GetCursor(
+		FindQuery{
+			Limit: 1,
+			Query: bson.D{
+				{"Hasher", bson.D{{"$exists", true}}},
+			},
+			Proj: proj,
+		},
+	)
+	if err != nil {
+		return HelperRecord{}, err
+	}
+
+	var results []HelperRecord
+	err = cursor.All(context.Background(), &results)
+	if err != nil || len(results) != 1 {
+		return HelperRecord{}, err
+	}
+	return results[0], nil
 }
 
 // CreateIndexesByFields just creates the new unique ascending
 // indexes based on field name (type should be int)
-func CreateIndexesByFields(coll *mongo.Collection, fields []string, unique bool) error {
+func (coll MongoCollection) CreateIndexesByFields(fields []string, unique bool) error {
 	models := make([]mongo.IndexModel, len(fields))
 	for i, field := range fields {
 		models[i] = mongo.IndexModel{
@@ -85,7 +160,7 @@ func CreateIndexesByFields(coll *mongo.Collection, fields []string, unique bool)
 
 // DropIndexByField sends command to drop the selected index;
 // Input format should be in the following format: ""Some Field_1""
-func DropIndexByField(coll *mongo.Collection, indexName string) error {
+func (coll MongoCollection) DropIndexByField(indexName string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(createIndexMaxTime)*time.Second)
 	defer cancel()
 	_, err := coll.Indexes().DropOne(ctx, indexName)
@@ -96,7 +171,7 @@ func DropIndexByField(coll *mongo.Collection, indexName string) error {
 }
 
 // GetAggregation runs prepared aggregation pipeline in mongodb
-func GetAggregation(coll *mongo.Collection, groupStage mongo.Pipeline) ([]bson.M, error) {
+func (coll MongoCollection) GetAggregation(groupStage mongo.Pipeline) ([]bson.M, error) {
 	opts := options.Aggregate().SetMaxTime(time.Duration(dbtimeOut) * time.Second)
 	cursor, err := coll.Aggregate(context.TODO(), groupStage, opts)
 	if err != nil {
@@ -128,8 +203,8 @@ func ConvertAggResult(inp interface{}) (cm.Vector, error) {
 }
 
 // GetAggregatedStats returns vectors with Mongo aggregation results (mean and std vectors)
-func GetAggregatedStats(coll *mongo.Collection) (cm.Vector, cm.Vector, error) {
-	results, err := GetAggregation(coll, GroupMeanStd)
+func (coll MongoCollection) GetAggregatedStats() (cm.Vector, cm.Vector, error) {
+	results, err := coll.GetAggregation(GroupMeanStd)
 	if err != nil {
 		return cm.Vector{}, cm.Vector{}, err
 	}
@@ -148,7 +223,7 @@ func GetAggregatedStats(coll *mongo.Collection) (cm.Vector, cm.Vector, error) {
 // Example:
 //     filter := bson.D{{"_id", id}}
 //     update := bson.D{{"$set", bson.D{{"email", "newemail@example.com"}}}}
-func UpdateField(coll *mongo.Collection, filter, update bson.D) error {
+func (coll MongoCollection) UpdateField(filter, update bson.D) error {
 	opts := options.Update().SetUpsert(true)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
 	defer cancel()
@@ -164,7 +239,7 @@ func UpdateField(coll *mongo.Collection, filter, update bson.D) error {
 //     bson.D{{"name", "Alice"}},
 //     bson.D{{"name", "Bob"}},
 // }
-func SetRecords(coll *mongo.Collection, data []interface{}) error {
+func (coll MongoCollection) SetRecords(data []interface{}) error {
 	opts := options.InsertMany().SetOrdered(false)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
 	defer cancel()
@@ -176,7 +251,7 @@ func SetRecords(coll *mongo.Collection, data []interface{}) error {
 }
 
 // DeleteRecords deletes records from specified collection by query
-func DeleteRecords(coll *mongo.Collection, query bson.D) error {
+func (coll MongoCollection) DeleteRecords(query bson.D) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
 	defer cancel()
 	_, err := coll.DeleteMany(ctx, query, nil)
@@ -189,8 +264,8 @@ func DeleteRecords(coll *mongo.Collection, query bson.D) error {
 // GetCursor returns db cursor for specified collection and query
 // Example queries:
 //     bson.D{{"origId", bson.M{"$in": []int{1, 3}}}}
-// 	   bson.D{{"indexer", bson.D{{"$exists", true}}}}
-func GetCursor(coll *mongo.Collection, query FindQuery) (*mongo.Cursor, error) {
+// 	   bson.D{{"Hasher", bson.D{{"$exists", true}}}}
+func (coll MongoCollection) GetCursor(query FindQuery) (*mongo.Cursor, error) {
 	opts := options.MergeFindOptions(
 		options.Find().SetLimit(int64(query.Limit)),
 		options.Find().SetProjection(query.Proj),
@@ -205,8 +280,8 @@ func GetCursor(coll *mongo.Collection, query FindQuery) (*mongo.Cursor, error) {
 }
 
 // GetDbRecords get documents from the "main" db collection by field and query (aka `find`)
-func GetDbRecords(coll *mongo.Collection, query FindQuery) ([]VectorRecord, error) {
-	cursor, err := GetCursor(coll, query)
+func (coll MongoCollection) GetDbRecords(query FindQuery) ([]VectorRecord, error) {
+	cursor, err := coll.GetCursor(query)
 	if err != nil {
 		return nil, err
 	}
@@ -218,37 +293,9 @@ func GetDbRecords(coll *mongo.Collection, query FindQuery) ([]VectorRecord, erro
 	return results, nil
 }
 
-// GetHelperRecord gets supplementary data from the specified collection
-func GetHelperRecord(coll *mongo.Collection, getIndexerObject bool) (HelperRecord, error) {
-	proj := bson.M{"indexer": 1, "isBuildDone": 1, "HashCollName": 1}
-	if !getIndexerObject {
-		proj = bson.M{"indexer": 0}
-	}
-	cursor, err := GetCursor(
-		coll,
-		FindQuery{
-			Limit: 1,
-			Query: bson.D{
-				{"indexer", bson.D{{"$exists", true}}},
-			},
-			Proj: proj,
-		},
-	)
-	if err != nil {
-		return HelperRecord{}, err
-	}
-
-	var results []HelperRecord
-	err = cursor.All(context.Background(), &results)
-	if err != nil || len(results) != 1 {
-		return HelperRecord{}, err
-	}
-	return results[0], nil
-}
-
 // GetHashesRecords gets records from the specified hashes collection
-func GetHashesRecords(coll *mongo.Collection, query FindQuery) ([]HashesRecord, error) {
-	cursor, err := GetCursor(coll, query)
+func (coll MongoCollection) GetHashesRecords(query FindQuery) ([]HashesRecord, error) {
+	cursor, err := coll.GetCursor(query)
 	if err != nil {
 		return nil, err
 	}
@@ -258,28 +305,4 @@ func GetHashesRecords(coll *mongo.Collection, query FindQuery) ([]HashesRecord, 
 		return nil, err
 	}
 	return results, nil
-}
-
-// CreateCollection checks if the helper collection exists
-// in the db, and creates them if needed
-func CreateCollection(dataBase *mongo.Database, collName string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
-	defer cancel()
-	err := dataBase.CreateCollection(ctx, collName, nil)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// DropCollection drops collection on the server
-func DropCollection(database *mongo.Database, collectionName string) error {
-	coll := database.Collection(collectionName)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
-	defer cancel()
-	err := coll.Drop(ctx)
-	if err != nil {
-		return err
-	}
-	return nil
 }

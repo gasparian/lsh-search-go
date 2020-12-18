@@ -12,8 +12,8 @@ type Plane struct {
 	InnerPoint cm.Vector
 }
 
-// LSHIndexInstance holds data for local sensetive hashing algorithm
-type LSHIndexInstance struct {
+// HasherInstance holds data for local sensetive hashing algorithm
+type HasherInstance struct {
 	Dims    int
 	Bias    float64
 	MeanVec cm.Vector
@@ -22,22 +22,22 @@ type LSHIndexInstance struct {
 	NPlanes int
 }
 
-// LSHConfig holds all needed constants for creating the LSHIndex instance
-type LSHConfig struct {
+// Config holds all needed constants for creating the Hasher instance
+type Config struct {
 	IsAngularDistance int
 	MaxNPlanes        int
 	NPermutes         int
 }
 
-// LSHIndex holds N_PERMUTS number of LSHIndexInstance instances
-type LSHIndex struct {
+// Hasher holds N_PERMUTS number of HasherInstance instances
+type Hasher struct {
 	sync.Mutex
-	Config          LSHConfig
-	Instances       []LSHIndexInstance
+	Config          Config
+	Instances       []HasherInstance
 	HashFieldsNames []string
 }
 
-// LSHIndexEncode using for encoding/decoding the LSHIndex structure
-type LSHIndexEncode struct {
-	Instances *[]LSHIndexInstance
+// HasherEncode using for encoding/decoding the Hasher structure
+type HasherEncode struct {
+	Instances *[]HasherInstance
 }

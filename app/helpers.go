@@ -47,15 +47,14 @@ func getHelloMessage() []byte {
 // GetNewLoggers creates an instance of all needed loggers
 func GetNewLoggers() Logger {
 	return Logger{
-		Warn:  log.New(os.Stderr, "[ warn  ]", log.LstdFlags|log.Lshortfile),
-		Info:  log.New(os.Stderr, "[ info  ]", log.LstdFlags|log.Lshortfile),
-		Build: log.New(os.Stderr, "[ build ]", log.LstdFlags|log.Lshortfile),
-		Err:   log.New(os.Stderr, "[ error ]", log.LstdFlags|log.Lshortfile),
+		Warn: log.New(os.Stderr, "[ warn  ]", log.LstdFlags|log.Lshortfile),
+		Info: log.New(os.Stderr, "[ info  ]", log.LstdFlags|log.Lshortfile),
+		Err:  log.New(os.Stderr, "[ error ]", log.LstdFlags|log.Lshortfile),
 	}
 }
 
 // ParseEnv forms app config by parsing the environment variables
-func ParseEnv() (Config, error) {
+func ParseEnv() (*ServiceConfig, error) {
 	intVars := map[string]int{
 		"BATCH_SIZE":       0,
 		"MAX_HASHES_QUERY": 0,
@@ -67,13 +66,13 @@ func ParseEnv() (Config, error) {
 	for key := range intVars {
 		val, err := strconv.Atoi(os.Getenv(key))
 		if err != nil {
-			return Config{}, err
+			return nil, err
 		}
 		intVars[key] = val
 	}
 	distanceThrsh, err := strconv.ParseFloat(os.Getenv("DISTANCE_THRSH"), 32)
 	if err != nil {
-		return Config{}, err
+		return nil, err
 	}
 	stringVars := map[string]string{
 		"MONGO_ADDR": "", "DB_NAME": "",
@@ -81,24 +80,26 @@ func ParseEnv() (Config, error) {
 	}
 	for key := range stringVars {
 		val := os.Getenv(key)
-		if val == "" {
-			return Config{}, fmt.Errorf("Env value can't be empty: %s", key)
+		if len(val) == 0 {
+			return nil, fmt.Errorf("Env value can't be empty: %s", key)
 		}
 		stringVars[key] = val
 	}
 
-	config := Config{
-		App: AppConfig{
+	config := &ServiceConfig{
+		Db: db.Config{
 			DbLocation:           stringVars["MONGO_ADDR"],
 			DbName:               stringVars["DB_NAME"],
 			DataCollectionName:   stringVars["COLLECTION_NAME"],
 			HelperCollectionName: stringVars["HELPER_COLLECTION_NAME"],
-			BatchSize:            intVars["BATCH_SIZE"],
-			MaxHashesNumber:      intVars["MAX_HASHES_QUERY"],
-			MaxNN:                intVars["MAX_NN"],
-			DistanceThrsh:        distanceThrsh,
 		},
-		Hasher: hashing.LSHConfig{
+		App: Config{
+			BatchSize:       intVars["BATCH_SIZE"],
+			MaxHashesNumber: intVars["MAX_HASHES_QUERY"],
+			MaxNN:           intVars["MAX_NN"],
+			DistanceThrsh:   distanceThrsh,
+		},
+		Hasher: hashing.Config{
 			IsAngularDistance: intVars["ANGULAR_METRIC"],
 			MaxNPlanes:        intVars["MAX_N_PLANES"],
 			NPermutes:         intVars["N_PERMUTS"],
@@ -109,37 +110,37 @@ func ParseEnv() (Config, error) {
 }
 
 // NewANNServer returns empty index object with initialized mongo client
-func NewANNServer(logger Logger, config Config) (ANNServer, error) {
-	mongodb, err := db.GetDbClient(config.App.DbLocation)
+func NewANNServer(logger Logger, config *ServiceConfig) (ANNServer, error) {
+	mongodb, err := db.GetDbClient(config.Db)
 	if err != nil {
 		logger.Err.Println("Creating db client: " + err.Error())
 		return ANNServer{}, err
 	}
 
-	searchHandler := ANNServer{
-		Config:      config.App,
-		MongoClient: *mongodb,
-		Logger:      logger,
-		Index:       hashing.NewLSHIndex(config.Hasher),
+	annServer := ANNServer{
+		Config: *config,
+		Mongo:  *mongodb,
+		Logger: logger,
+		Hasher: hashing.NewLSHIndex(config.Hasher),
 	}
-	err = searchHandler.LoadIndexer()
+	err = annServer.LoadHasher()
 	if err != nil {
-		logger.Err.Println("Loading indexer object: " + err.Error())
+		logger.Err.Println("Loading Hasher object: " + err.Error())
 		return ANNServer{}, err
 	}
-	return searchHandler, nil
+	annServer.Mongo.CreateCollection(config.Db.HelperCollectionName)
+	annServer.Mongo.CreateCollection(config.Db.DataCollectionName)
+	return annServer, nil
 }
 
-// LoadIndexer load indexer from the db if it exists
-func (annServer *ANNServer) LoadIndexer() error {
-	database := annServer.MongoClient.GetDb(annServer.Config.DbName)
-	helperColl := database.Collection(annServer.Config.HelperCollectionName)
-	indexerRecord, err := db.GetHelperRecord(helperColl, true)
+// LoadHasher load Hasher from the db if it exists
+func (annServer *ANNServer) LoadHasher() error {
+	HasherRecord, err := annServer.Mongo.GetHelperRecord(true)
 	if err != nil {
 		return err
 	}
-	if len(indexerRecord.Indexer) > 0 && indexerRecord.IsBuildDone {
-		annServer.Index.Load(indexerRecord.Indexer)
+	if len(HasherRecord.Hasher) > 0 && HasherRecord.IsBuildDone {
+		annServer.Hasher.Load(HasherRecord.Hasher)
 	}
 	return nil
 }
@@ -153,7 +154,7 @@ func (annServer *ANNServer) hashDbRecordsBatch(cursor *mongo.Cursor, batchSize i
 		if err := cursor.Decode(&record); err != nil {
 			continue
 		}
-		hashes, err := annServer.Index.GetHashes(cm.Vector(record.FeatureVec))
+		hashes, err := annServer.Hasher.GetHashes(cm.Vector(record.FeatureVec))
 		if err != nil {
 			return nil, err
 		}
@@ -166,19 +167,127 @@ func (annServer *ANNServer) hashDbRecordsBatch(cursor *mongo.Cursor, batchSize i
 	return batch[:batchID], nil
 }
 
+// BuildIndex gets data stats from the db and creates the new Hasher (or hasher) object
+// and submitting status to the helper collection
+// TO DO: refactor
+func (annServer *ANNServer) BuildIndex() error {
+
+	// NOTE: check if the previous build has been done
+	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
+	if err != nil {
+		annServer.Logger.Warn.Println("Building index: seems like helper record does not exist yet")
+	}
+	if !helperRecord.IsBuildDone || len(helperRecord.BuildError) != 0 {
+		return errors.New("Building index: aborting - previous build is not done yet")
+	}
+
+	err = annServer.Mongo.UpdateBuildStatus(false, "")
+	if err != nil {
+		return err
+	}
+
+	dataColl := annServer.Mongo.GetCollection(annServer.Config.Db.DataCollectionName)
+	convMean, convStd, err := dataColl.GetAggregatedStats()
+	if err != nil {
+		return err
+	}
+
+	annServer.Logger.Info.Println(convMean) // DEBUG - check for not being [0]
+	annServer.Logger.Info.Println(convStd)  // DEBUG - check for not being [0]
+
+	err = annServer.Hasher.Generate(convMean, convStd)
+	if err != nil {
+		return err
+	}
+	annServer.Logger.Info.Println(annServer.Hasher.Instances[0]) // DEBUG - check for not being [0]
+
+	lshSerialized, err := annServer.Hasher.Dump()
+	if err != nil {
+		return err
+	}
+
+	// NOTE: Getting old hash collection name
+	oldHelperRecord, err := annServer.Mongo.GetHelperRecord(false)
+	if err != nil {
+		return err
+	}
+
+	// NOTE: Generating and saving new hash collection, keeping the old one
+	newHashCollName, err := cm.GetRandomID()
+	if err != nil {
+		return err
+	}
+	err = annServer.Mongo.CreateCollection(newHashCollName)
+	if err != nil {
+		return err
+	}
+
+	// NOTE: fill the new collection with pointers to documents (_id) and fields with hashes
+	newHashColl := annServer.Mongo.GetCollection(newHashCollName)
+	cursor, err := dataColl.GetCursor(
+		db.FindQuery{
+			Limit: 0,
+			Query: bson.D{},
+		},
+	)
+	for cursor.Next(context.Background()) {
+		hashesBatch, err := annServer.hashDbRecordsBatch(cursor, annServer.Config.App.BatchSize)
+		if err != nil {
+			return err
+		}
+		err = newHashColl.SetRecords(hashesBatch)
+		if err != nil {
+			return err
+		}
+	}
+
+	// NOTE: create indexes for the all new fields
+	hashesColl := annServer.Mongo.GetCollection(newHashCollName)
+	err = hashesColl.CreateIndexesByFields(annServer.Hasher.HashFieldsNames, false)
+	if err != nil {
+		return err
+	}
+	// NOTE: drop old collection with hashes
+	if len(oldHelperRecord.HashCollName) != 0 {
+		err = annServer.Mongo.DropCollection(oldHelperRecord.HashCollName)
+		if err != nil {
+			return err
+		}
+	}
+
+	// NOTE: update helper with the new Hasher object and info
+	helperColl := annServer.Mongo.GetCollection(annServer.Config.Db.HelperCollectionName)
+	err = helperColl.UpdateField(
+		bson.D{
+			{"hasher", bson.D{
+				{"$exists", true},
+			}}},
+		bson.D{
+			{"$set", bson.D{
+				{"isBuildDone", true},
+				{"buildError", ""},
+				{"hasher", lshSerialized},
+				{"hashCollName", newHashCollName},
+			}}})
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // popHashRecord drops record from collection by objectID (string Hex)
 func (annServer *ANNServer) popHashRecord(id string) error {
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return err
 	}
-	database := annServer.MongoClient.GetDb(annServer.Config.DbName)
-	helperRecord, err := db.GetHelperRecord(database.Collection(annServer.Config.HelperCollectionName), false)
+	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
 	if err != nil {
 		return err
 	}
-	hashesColl := database.Collection(helperRecord.HashCollName)
-	err = db.DeleteRecords(hashesColl, bson.D{{"_id", objectID}})
+	hashesColl := annServer.Mongo.GetCollection(helperRecord.HashCollName)
+	err = hashesColl.DeleteRecords(bson.D{{"_id", objectID}})
 	if err != nil {
 		return err
 	}
@@ -191,14 +300,13 @@ func (annServer *ANNServer) putHashRecord(id string) error {
 	if err != nil {
 		return err
 	}
-	database := annServer.MongoClient.GetDb(annServer.Config.DbName)
-	helperRecord, err := db.GetHelperRecord(database.Collection(annServer.Config.HelperCollectionName), false)
+	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
 	if err != nil {
 		return err
 	}
-	hashesColl := database.Collection(helperRecord.HashCollName)
-	records, err := db.GetDbRecords(
-		database.Collection(annServer.Config.DataCollectionName),
+	hashesColl := annServer.Mongo.GetCollection(helperRecord.HashCollName)
+	dataColl := annServer.Mongo.GetCollection(annServer.Config.Db.DataCollectionName)
+	records, err := dataColl.GetDbRecords(
 		db.FindQuery{
 			Limit: 1,
 			Query: bson.D{{"_id", objectID}},
@@ -211,7 +319,7 @@ func (annServer *ANNServer) putHashRecord(id string) error {
 	for i := range records {
 		recordInterfaces[i] = records[i]
 	}
-	err = db.SetRecords(hashesColl, recordInterfaces)
+	err = hashesColl.SetRecords(recordInterfaces)
 	if err != nil {
 		return err
 	}
@@ -222,19 +330,17 @@ func (annServer *ANNServer) putHashRecord(id string) error {
 func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, error) {
 	inputVec := cm.Vector(input.Vec)
 	var hashesRecords []db.HashesRecord
-	database := annServer.MongoClient.GetDb(annServer.Config.DbName)
 	if input.ID != "" {
 		objectID, err := primitive.ObjectIDFromHex(input.ID)
 		if err != nil {
 			return nil, err
 		}
-		helperRecord, err := db.GetHelperRecord(database.Collection(annServer.Config.HelperCollectionName), false)
+		helperRecord, err := annServer.Mongo.GetHelperRecord(false)
 		if err != nil {
 			return nil, err
 		}
-		hashesColl := database.Collection(helperRecord.HashCollName)
-		hashesRecords, err = db.GetHashesRecords(
-			hashesColl,
+		hashesColl := annServer.Mongo.GetCollection(helperRecord.HashCollName)
+		hashesRecords, err = hashesColl.GetHashesRecords(
 			db.FindQuery{
 				Limit: 1,
 				Query: bson.D{{"_id", objectID}},
@@ -245,20 +351,19 @@ func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, erro
 			return nil, err
 		}
 	} else if !inputVec.IsZero() {
-		hashes, err := annServer.Index.GetHashes(inputVec)
-		helperRecord, err := db.GetHelperRecord(database.Collection(annServer.Config.HelperCollectionName), false)
+		hashes, err := annServer.Hasher.GetHashes(inputVec)
+		helperRecord, err := annServer.Mongo.GetHelperRecord(false)
 		if err != nil {
 			return nil, err
 		}
-		hashesColl := database.Collection(helperRecord.HashCollName)
+		hashesColl := annServer.Mongo.GetCollection(helperRecord.HashCollName)
 		hashesQuery := bson.D{}
 		for k, v := range hashes {
 			hashesQuery = append(hashesQuery, bson.E{strconv.Itoa(k), v})
 		}
-		hashesRecords, err = db.GetHashesRecords(
-			hashesColl,
+		hashesRecords, err = hashesColl.GetHashesRecords(
 			db.FindQuery{
-				Limit: annServer.Config.MaxHashesNumber,
+				Limit: annServer.Config.App.MaxHashesNumber,
 				Query: hashesQuery,
 				Proj:  bson.M{"_id": 1},
 			},
@@ -276,8 +381,8 @@ func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, erro
 	}
 	hashesRecords = nil
 
-	vectorsCursor, err := db.GetCursor(
-		database.Collection(annServer.Config.DataCollectionName),
+	dataColl := annServer.Mongo.GetCollection(annServer.Config.Db.DataCollectionName)
+	vectorsCursor, err := dataColl.GetCursor(
 		db.FindQuery{
 			Query: bson.D{{"_id", bson.D{{"$in", vectorIDs}}}},
 			Proj:  bson.M{"_id": 1, "featureVec": 1},
@@ -287,16 +392,16 @@ func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, erro
 		return nil, err
 	}
 
-	neighbors := make([]ResponseRecord, annServer.Config.MaxNN)
+	neighbors := make([]ResponseRecord, annServer.Config.App.MaxNN)
 	var idx int = 0
 	var candidate db.VectorRecord
-	for vectorsCursor.Next(context.Background()) && idx <= annServer.Config.MaxNN {
+	for vectorsCursor.Next(context.Background()) && idx <= annServer.Config.App.MaxNN {
 		if err := vectorsCursor.Decode(&candidate); err != nil {
 			continue
 		}
 		hexID := candidate.ID.Hex()
-		dist := annServer.Index.GetDist(inputVec, cm.Vector(candidate.FeatureVec))
-		if dist <= annServer.Config.DistanceThrsh {
+		dist := annServer.Hasher.GetDist(inputVec, cm.Vector(candidate.FeatureVec))
+		if dist <= annServer.Config.App.DistanceThrsh {
 			neighbors[idx] = ResponseRecord{
 				ID:   hexID,
 				Dist: dist,

@@ -6,38 +6,34 @@ import (
 	hashing "vector-search-go/lsh"
 )
 
-// AppConfig holds general constants
-type AppConfig struct {
-	DbLocation           string
-	DbName               string
-	DataCollectionName   string
-	HelperCollectionName string
-	BatchSize            int
-	MaxHashesNumber      int
-	MaxNN                int
-	DistanceThrsh        float64
+// Config holds general constants
+type Config struct {
+	BatchSize       int
+	MaxHashesNumber int
+	MaxNN           int
+	DistanceThrsh   float64
 }
 
 // Config holds all needed variables to run the app
-type Config struct {
-	Hasher hashing.LSHConfig
-	App    AppConfig
+type ServiceConfig struct {
+	Hasher hashing.Config
+	Db     db.Config
+	App    Config
 }
 
 // Logger holds several logger instances with different prefixes
 type Logger struct {
-	Warn  *log.Logger
-	Info  *log.Logger
-	Build *log.Logger
-	Err   *log.Logger
+	Warn *log.Logger
+	Info *log.Logger
+	Err  *log.Logger
 }
 
-// ANNServer holds Indexer itself and the mongo Client
+// ANNServer holds Hasher itself and the mongo Client
 type ANNServer struct {
-	Index       *hashing.LSHIndex
-	MongoClient db.MongoClient
-	Logger      Logger
-	Config      AppConfig
+	Hasher *hashing.Hasher
+	Mongo  db.MongoDatastore
+	Logger Logger
+	Config ServiceConfig
 }
 
 // RequestData used for unpacking the request payload for Pop/Put vectors
