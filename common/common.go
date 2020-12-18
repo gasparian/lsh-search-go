@@ -55,7 +55,7 @@ func Timer(logger *Logger) Decorator {
 			start := time.Now()
 			h.ServeHTTP(w, r)
 			elapsed := time.Since(start)
-			logger.Info.Printf("elapsed time %v (%v)\n", elapsed, r.URL)
+			logger.Info.Printf("elapsed time: %v (%v)\n", elapsed, r.URL)
 		})
 	}
 }
