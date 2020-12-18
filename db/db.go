@@ -50,22 +50,23 @@ func GetDbClient(config Config) (*MongoDatastore, error) {
 
 // CreateCollection checks if the helper collection exists
 // in the db, and creates them if needed
-func (mongodb *MongoDatastore) CreateCollection(collName string) error {
+func (mongodb *MongoDatastore) CreateCollection(collName string) (MongoCollection, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
 	defer cancel()
 	err := mongodb.db.CreateCollection(ctx, collName, nil)
 	if err != nil {
-		return err
+		return MongoCollection{}, err
 	}
-	return nil
+	coll := mongodb.GetCollection(collName)
+	return coll, nil
 }
 
 // DropCollection drops collection on the server
 func (mongodb *MongoDatastore) DropCollection(collectionName string) error {
 	coll := mongodb.db.Collection(collectionName)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
-	defer cancel()
-	err := coll.Drop(ctx)
+	// ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
+	// defer cancel()
+	err := coll.Drop(context.Background())
 	if err != nil {
 		return err
 	}

@@ -83,6 +83,7 @@ Here are example visualizations:
     - ~~add proper logging~~;  
     - ~~rafactor mongo client~~;  
     - ~~update work with mongo client in bench prep code~~;  
+    - distnace metric?;  
     - add hasher update on pop/put/get (use timestamp or smth);  
     - add decorator for measuring the time;  
     - make docker image even lighter - deploy only binaries using [docker scratch](https://github.com/phrozen/geohash/blob/master/server/Dockerfile);  
@@ -113,16 +114,15 @@ Here are example visualizations:
    db.train.createIndex({featureVec: 1})
    db.train.dropIndex({featureVec: 1})
    ```  
-   You can always drop any db or collections:  
+   Empty find query will return all records, bounded by the limit value:  
    ```
-   db.vectors_train.find().limit(2)
+   db.train.find().limit(2)
    ```  
    Clean the collection:  
    ```
-   db.vectors_train.remove({})
+   db.train.remove({})
    ```  
-   
-   Get mean and std vectors on random data sample:  
+   Make aggregations, like getting mean and std vectors on the random data sample:  
    ```
    db.train.aggregate([
      {

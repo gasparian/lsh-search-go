@@ -3,10 +3,11 @@ package main
 import (
 	"net/http"
 	"vector-search-go/app"
+	cm "vector-search-go/common"
 )
 
 func main() {
-	logger := app.GetNewLogger()
+	logger := cm.GetNewLogger()
 	config, err := app.ParseEnv()
 	if err != nil {
 		logger.Err.Fatal(err.Error())

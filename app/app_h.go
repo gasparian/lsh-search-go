@@ -1,7 +1,7 @@
 package app
 
 import (
-	"log"
+	cm "vector-search-go/common"
 	"vector-search-go/db"
 	hashing "vector-search-go/lsh"
 )
@@ -21,18 +21,11 @@ type ServiceConfig struct {
 	App    Config
 }
 
-// Logger holds several logger instances with different prefixes
-type Logger struct {
-	Warn *log.Logger
-	Info *log.Logger
-	Err  *log.Logger
-}
-
 // ANNServer holds Hasher itself and the mongo Client
 type ANNServer struct {
 	Hasher *hashing.Hasher
 	Mongo  db.MongoDatastore
-	Logger Logger
+	Logger cm.Logger
 	Config ServiceConfig
 }
 

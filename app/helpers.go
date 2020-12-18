@@ -9,7 +9,6 @@ import (
 
 	"context"
 	"fmt"
-	"log"
 	"sort"
 	"strconv"
 
@@ -42,15 +41,6 @@ func getHelloMessage() []byte {
 		return []byte("")
 	}
 	return out
-}
-
-// GetNewLogger creates an instance of all needed loggers
-func GetNewLogger() Logger {
-	return Logger{
-		Warn: log.New(os.Stderr, "[ warn  ]", log.LstdFlags|log.Lshortfile),
-		Info: log.New(os.Stderr, "[ info  ]", log.LstdFlags|log.Lshortfile),
-		Err:  log.New(os.Stderr, "[ error ]", log.LstdFlags|log.Lshortfile),
-	}
 }
 
 // ParseEnv forms app config by parsing the environment variables
@@ -110,7 +100,7 @@ func ParseEnv() (*ServiceConfig, error) {
 }
 
 // NewANNServer returns empty index object with initialized mongo client
-func NewANNServer(logger Logger, config *ServiceConfig) (ANNServer, error) {
+func NewANNServer(logger cm.Logger, config *ServiceConfig) (ANNServer, error) {
 	mongodb, err := db.GetDbClient(config.Db)
 	if err != nil {
 		logger.Err.Println("Creating db client: " + err.Error())
@@ -128,8 +118,16 @@ func NewANNServer(logger Logger, config *ServiceConfig) (ANNServer, error) {
 		logger.Err.Println("Loading Hasher object: " + err.Error())
 		return ANNServer{}, err
 	}
-	annServer.Mongo.CreateCollection(config.Db.HelperCollectionName)
-	annServer.Mongo.CreateCollection(config.Db.DataCollectionName)
+	_, err = annServer.Mongo.CreateCollection(config.Db.HelperCollectionName)
+	if err != nil {
+		logger.Err.Println("Creating helper collection: " + err.Error())
+		return ANNServer{}, err
+	}
+	_, err = annServer.Mongo.CreateCollection(config.Db.DataCollectionName)
+	if err != nil {
+		logger.Err.Println("Creating data collection: " + err.Error())
+		return ANNServer{}, err
+	}
 	return annServer, nil
 }
 
@@ -216,13 +214,12 @@ func (annServer *ANNServer) BuildIndex() error {
 	if err != nil {
 		return err
 	}
-	err = annServer.Mongo.CreateCollection(newHashCollName)
+	newHashColl, err := annServer.Mongo.CreateCollection(newHashCollName)
 	if err != nil {
 		return err
 	}
 
 	// NOTE: fill the new collection with pointers to documents (_id) and fields with hashes
-	newHashColl := annServer.Mongo.GetCollection(newHashCollName)
 	cursor, err := dataColl.GetCursor(
 		db.FindQuery{
 			Limit: 0,
