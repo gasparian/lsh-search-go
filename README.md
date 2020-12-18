@@ -83,9 +83,8 @@ Here are example visualizations:
     - ~~add proper logging~~;  
     - ~~rafactor mongo client~~;  
     - ~~update work with mongo client in bench prep code~~;  
-    - distnace metric?;  
+    - ~~add decorator to handlers to measure the response time~~;  
     - add hasher update on pop/put/get (use timestamp or smth);  
-    - add decorator for measuring the time;  
     - make docker image even lighter - deploy only binaries using [docker scratch](https://github.com/phrozen/geohash/blob/master/server/Dockerfile);  
     - add unit tests for API methods;  
 4. Add search quality testing using the test part of the benchmark dataset:  
@@ -117,6 +116,10 @@ Here are example visualizations:
    Empty find query will return all records, bounded by the limit value:  
    ```
    db.train.find().limit(2)
+   ```  
+   Also extra-useful thing is query analysis:  
+   ```
+   db.train.find("origId": 1).limit(2).explain("executionStats)
    ```  
    Clean the collection:  
    ```

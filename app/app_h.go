@@ -14,7 +14,7 @@ type Config struct {
 	DistanceThrsh   float64
 }
 
-// Config holds all needed variables to run the app
+// ServiceConfig holds all needed variables to run the app
 type ServiceConfig struct {
 	Hasher hashing.Config
 	Db     db.Config
@@ -25,7 +25,7 @@ type ServiceConfig struct {
 type ANNServer struct {
 	Hasher *hashing.Hasher
 	Mongo  db.MongoDatastore
-	Logger cm.Logger
+	Logger *cm.Logger
 	Config ServiceConfig
 }
 

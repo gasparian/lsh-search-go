@@ -82,12 +82,16 @@ func main() {
 		logger.Info.Println("Train data has been saved to mongo!")
 	}
 
+	// DEBUG Index
+	// vectorsTestCollection := mongodb.GetCollection(testCollectionName)
+	// vectorsTrainCollection := mongodb.GetCollection(trainCollectionName)
+
 	logger.Info.Println("Creating index on OrigId field...")
-	err = vectorsTestCollection.CreateIndexesByFields([]string{"OrigId"}, true)
+	err = vectorsTestCollection.CreateIndexesByFields([]string{"origId"}, true)
 	if err != nil {
 		logger.Err.Fatal(err)
 	}
-	err = vectorsTrainCollection.CreateIndexesByFields([]string{"OrigId"}, true)
+	err = vectorsTrainCollection.CreateIndexesByFields([]string{"origId"}, true)
 	if err != nil {
 		logger.Err.Fatal(err)
 	}

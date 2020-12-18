@@ -18,11 +18,13 @@ func main() {
 	}
 	defer annServer.Mongo.Disconnect()
 
-	http.HandleFunc("/", app.HealthCheck)
-	http.HandleFunc("/build-index", annServer.BuildHasherHandler)
-	http.HandleFunc("/check-build", annServer.CheckBuildHandler)
-	http.HandleFunc("/get-nn", annServer.GetNeighborsHandler)
-	http.HandleFunc("/pop-hash", annServer.PopHashRecordHandler)
-	http.HandleFunc("/put-hash", annServer.PutHashRecordHandler)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", app.HealthCheck)
+	mux.HandleFunc("/build-index", annServer.BuildHasherHandler)
+	mux.HandleFunc("/check-build", annServer.CheckBuildHandler)
+	mux.HandleFunc("/get-nn", annServer.GetNeighborsHandler)
+	mux.HandleFunc("/pop-hash", annServer.PopHashRecordHandler)
+	mux.HandleFunc("/put-hash", annServer.PutHashRecordHandler)
+	http.Handle("/", cm.Decorate(mux, cm.Timer(logger)))
 	logger.Err.Fatal(http.ListenAndServe(":8080", nil))
 }

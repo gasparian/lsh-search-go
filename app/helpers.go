@@ -100,7 +100,7 @@ func ParseEnv() (*ServiceConfig, error) {
 }
 
 // NewANNServer returns empty index object with initialized mongo client
-func NewANNServer(logger cm.Logger, config *ServiceConfig) (ANNServer, error) {
+func NewANNServer(logger *cm.Logger, config *ServiceConfig) (ANNServer, error) {
 	mongodb, err := db.GetDbClient(config.Db)
 	if err != nil {
 		logger.Err.Println("Creating db client: " + err.Error())
@@ -118,15 +118,11 @@ func NewANNServer(logger cm.Logger, config *ServiceConfig) (ANNServer, error) {
 		logger.Err.Println("Loading Hasher object: " + err.Error())
 		return ANNServer{}, err
 	}
+	// TO DO: check for collection and create if doesn't exist
+	annServer.Mongo.DropCollection(config.Db.HelperCollectionName)
 	_, err = annServer.Mongo.CreateCollection(config.Db.HelperCollectionName)
 	if err != nil {
-		logger.Err.Println("Creating helper collection: " + err.Error())
-		return ANNServer{}, err
-	}
-	_, err = annServer.Mongo.CreateCollection(config.Db.DataCollectionName)
-	if err != nil {
-		logger.Err.Println("Creating data collection: " + err.Error())
-		return ANNServer{}, err
+		logger.Warn.Println("Creating helper collection: " + err.Error())
 	}
 	return annServer, nil
 }
