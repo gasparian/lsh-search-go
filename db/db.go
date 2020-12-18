@@ -48,6 +48,22 @@ func GetDbClient(config Config) (*MongoDatastore, error) {
 	return mongodb, nil
 }
 
+// CheckCollection just check if the requested collection already exists in the database
+func (mongodb *MongoDatastore) CheckCollection(collName string) (bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
+	defer cancel()
+	names, err := mongodb.db.ListCollectionNames(ctx, bson.D{{}})
+	if err != nil {
+		return false, err
+	}
+	for _, name := range names {
+		if name == collName {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // CreateCollection checks if the helper collection exists
 // in the db, and creates them if needed
 func (mongodb *MongoDatastore) CreateCollection(collName string) (MongoCollection, error) {

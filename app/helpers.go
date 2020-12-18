@@ -118,11 +118,17 @@ func NewANNServer(logger *cm.Logger, config *ServiceConfig) (ANNServer, error) {
 		logger.Err.Println("Loading Hasher object: " + err.Error())
 		return ANNServer{}, err
 	}
-	// TO DO: check for collection and create if doesn't exist
-	annServer.Mongo.DropCollection(config.Db.HelperCollectionName)
-	_, err = annServer.Mongo.CreateCollection(config.Db.HelperCollectionName)
+	helperExists, err := annServer.Mongo.CheckCollection(config.Db.HelperCollectionName)
 	if err != nil {
-		logger.Warn.Println("Creating helper collection: " + err.Error())
+		logger.Err.Println("Checking helper collection: " + err.Error())
+		return ANNServer{}, err
+	}
+	if !helperExists {
+		_, err = annServer.Mongo.CreateCollection(config.Db.HelperCollectionName)
+		if err != nil {
+			logger.Err.Println("Creating helper collection: " + err.Error())
+			return ANNServer{}, err
+		}
 	}
 	return annServer, nil
 }

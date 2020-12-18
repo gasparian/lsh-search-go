@@ -84,7 +84,7 @@ Here are example visualizations:
     - ~~rafactor mongo client~~;  
     - ~~update work with mongo client in bench prep code~~;  
     - ~~add decorator to handlers to measure the response time~~;  
-    - add hasher update on pop/put/get (use timestamp or smth);  
+    - add hasher update on pop/put/get (store timestamp of the last change and compare the local one with the actual);  
     - make docker image even lighter - deploy only binaries using [docker scratch](https://github.com/phrozen/geohash/blob/master/server/Dockerfile);  
     - add unit tests for API methods;  
 4. Add search quality testing using the test part of the benchmark dataset:  
