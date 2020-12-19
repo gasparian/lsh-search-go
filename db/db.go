@@ -298,7 +298,7 @@ func (coll MongoCollection) GetCursor(query FindQuery) (*mongo.Cursor, error) {
 	return cursor, nil
 }
 
-// GetDbRecords get documents from the "main" db collection by field and query (aka `find`)
+// GetDbRecords get documents from the db collection by field and query (aka `find`)
 func (coll MongoCollection) GetDbRecords(query FindQuery) ([]VectorRecord, error) {
 	cursor, err := coll.GetCursor(query)
 	if err != nil {

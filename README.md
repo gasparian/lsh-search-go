@@ -30,7 +30,7 @@ sudo apt-get install libhdf5-serial-dev
 go mod init vector-search-go
 go mod tidy
 ```  
-Then compile and run, passing args from config file (targets are: `main.go` or `bench_data_prep_main.go`):  
+Then compile and run, passing args from config file (targets are: `main.go` or `bench_data_prep_main.go` or `annbench_main.go`):  
 ```
 go build -o ./main ./main.go
 export $(grep -v '^#' config.env | xargs) && ./main
@@ -86,6 +86,7 @@ Here are example visualizations:
     - ~~add decorator to handlers to measure the response time~~;  
     - ~~add hasher update on pop/put/get (store timestamp of the last change and compare the local one with the actual)~~;  
     - ~~make docker image even lighter - deploy only binaries using [docker scratch](https://github.com/phrozen/geohash/blob/master/server/Dockerfile)~~;  
+    - rename vector-search-go --> ??;  
     - add unit tests for API methods;  
 4. Add search quality testing using the test part of the benchmark dataset:  
     - write code for recall calculation, depending on threshold value;  
