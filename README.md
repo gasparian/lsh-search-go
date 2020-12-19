@@ -88,9 +88,7 @@ Here are example visualizations:
     - ~~make docker image even lighter - deploy only binaries using [docker scratch](https://github.com/phrozen/geohash/blob/master/server/Dockerfile)~~;  
     - add unit tests for API methods;  
 4. Add search quality testing using the test part of the benchmark dataset:  
-    - write a script that sends the test data points to the seach index, and compares the answers with the ground truth;  
-    - script must also write out the log with all needed mertrics (FPR, FNG, ROC, f1 and etc.);  
-    - determine optimal min. distance on validation set;  
+    - write code for recall calculation, depending on threshold value;  
     - add unit tests for metrics calculation funcs;  
 5. Make readme section on "how it works".  
 
