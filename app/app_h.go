@@ -23,10 +23,11 @@ type ServiceConfig struct {
 
 // ANNServer holds Hasher itself and the mongo Client
 type ANNServer struct {
-	Hasher *hashing.Hasher
-	Mongo  db.MongoDatastore
-	Logger *cm.Logger
-	Config ServiceConfig
+	Hasher        *hashing.Hasher
+	Mongo         db.MongoDatastore
+	Logger        *cm.Logger
+	Config        ServiceConfig
+	LastBuildTime int64
 }
 
 // RequestData used for unpacking the request payload for Pop/Put vectors

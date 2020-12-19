@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"os"
+	"time"
 
 	"context"
 	"fmt"
@@ -167,10 +168,29 @@ func (annServer *ANNServer) hashDbRecordsBatch(cursor *mongo.Cursor, batchSize i
 	return batch[:batchID], nil
 }
 
+// TryUpdateLocalHasher checks if there is a fresher build in db, and if it is - updates the local hasher
+func (annServer *ANNServer) TryUpdateLocalHasher() error {
+	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
+	if err != nil {
+		return err
+	}
+	dt := helperRecord.LastBuildTime - annServer.LastBuildTime
+	isBuildValid := helperRecord.IsBuildDone && len(helperRecord.BuildError) == 0
+	if isBuildValid && dt > 0 {
+		err = annServer.LoadHasher()
+		if err != nil {
+			return err
+		}
+	} else if !isBuildValid {
+		return errors.New("build is in progress or not valid, please do not use the index right now")
+	}
+	return nil
+}
+
 // BuildIndex gets data stats from the db and creates the new Hasher (or hasher) object
 // and submitting status to the helper collection
 func (annServer *ANNServer) BuildIndex() error {
-
+	start := time.Now().UnixNano()
 	// NOTE: check if the previous build has been done
 	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
 	if err != nil {
@@ -180,7 +200,11 @@ func (annServer *ANNServer) BuildIndex() error {
 		return errors.New("Building index: aborting - previous build is not done yet")
 	}
 
-	err = annServer.Mongo.UpdateBuildStatus(false, "")
+	err = annServer.Mongo.UpdateBuildStatus(
+		db.HelperRecord{
+			IsBuildDone: false,
+		},
+	)
 	if err != nil {
 		return err
 	}
@@ -255,6 +279,8 @@ func (annServer *ANNServer) BuildIndex() error {
 
 	// NOTE: update helper with the new Hasher object and info
 	helperColl := annServer.Mongo.GetCollection(annServer.Config.Db.HelperCollectionName)
+	end := time.Now().UnixNano()
+	annServer.LastBuildTime = end
 	err = helperColl.UpdateField(
 		bson.D{
 			{"hasher", bson.D{
@@ -266,6 +292,8 @@ func (annServer *ANNServer) BuildIndex() error {
 				{"buildError", ""},
 				{"hasher", lshSerialized},
 				{"hashCollName", newHashCollName},
+				{"lastBuildTime", end},
+				{"buildElapsedTime", end - start},
 			}}})
 
 	if err != nil {
@@ -276,6 +304,10 @@ func (annServer *ANNServer) BuildIndex() error {
 
 // popHashRecord drops record from collection by objectID (string Hex)
 func (annServer *ANNServer) popHashRecord(id string) error {
+	err := annServer.TryUpdateLocalHasher()
+	if err != nil {
+		return err
+	}
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return err
@@ -294,6 +326,10 @@ func (annServer *ANNServer) popHashRecord(id string) error {
 
 // putHashRecord drops record from collection by objectID (string Hex)
 func (annServer *ANNServer) putHashRecord(id string) error {
+	err := annServer.TryUpdateLocalHasher()
+	if err != nil {
+		return err
+	}
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return err
@@ -326,6 +362,10 @@ func (annServer *ANNServer) putHashRecord(id string) error {
 
 // getNeighbors returns filtered nearest neighbors sorted by distance in ascending order
 func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, error) {
+	err := annServer.TryUpdateLocalHasher()
+	if err != nil {
+		return nil, err
+	}
 	inputVec := cm.Vector(input.Vec)
 	var hashesRecords []db.HashesRecord
 	if input.ID != "" {

@@ -71,11 +71,13 @@ type HashesRecord struct {
 
 // HelperRecord holds the Hasher model and supplementary data
 type HelperRecord struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty"`
-	Hasher       []byte             `bson:"hasher,omitempty"`
-	IsBuildDone  bool               `bson:"isBuildDone,omitempty"`
-	BuildError   string             `bson:"buildError,omitempty"`
-	HashCollName string             `bson:"hashCollName,omitempty"`
+	ID               primitive.ObjectID `bson:"_id,omitempty"`
+	Hasher           []byte             `bson:"hasher,omitempty"`
+	IsBuildDone      bool               `bson:"isBuildDone,omitempty"`
+	BuildError       string             `bson:"buildError,omitempty"`
+	HashCollName     string             `bson:"hashCollName,omitempty"`
+	LastBuildTime    int64              `bson:"lastBuildTime,omitempty"`
+	BuildElapsedTime int64              `bson:"buildElapsedTime,omitempty"`
 }
 
 // Config holds db address and entities names
@@ -98,11 +100,6 @@ type MongoDatastore struct {
 	db      *mongo.Database
 	Session *mongo.Client
 }
-
-// MongoClient holds client for connecting to the mongodb DELETE IT AFTER REFACTORING
-// type MongoClient struct {
-// 	Client *mongo.Client
-// }
 
 // FindQuery needs to perform find operation with mongodb
 type FindQuery struct {

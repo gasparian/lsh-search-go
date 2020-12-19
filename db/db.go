@@ -102,7 +102,7 @@ func (mongodb *MongoDatastore) Disconnect() {
 }
 
 // UpdateBuildStatus updates helper record with the new biuld status and error
-func (mongodb *MongoDatastore) UpdateBuildStatus(isDone bool, errorMessage string) error {
+func (mongodb *MongoDatastore) UpdateBuildStatus(status HelperRecord) error {
 	helperColl := mongodb.GetCollection(mongodb.config.HelperCollectionName)
 	err := helperColl.UpdateField(
 		bson.D{
@@ -111,8 +111,10 @@ func (mongodb *MongoDatastore) UpdateBuildStatus(isDone bool, errorMessage strin
 			}}},
 		bson.D{
 			{"$set", bson.D{
-				{"isBuildDone", isDone},
-				{"buildError", errorMessage},
+				{"isBuildDone", status.IsBuildDone},
+				{"buildError", status.BuildError},
+				{"lastBuildTime", status.LastBuildTime},
+				{"buildElapsedTime", status.BuildElapsedTime},
 			}}})
 
 	if err != nil {
@@ -123,7 +125,7 @@ func (mongodb *MongoDatastore) UpdateBuildStatus(isDone bool, errorMessage strin
 
 // GetHelperRecord gets supplementary data from the specified collection
 func (mongodb *MongoDatastore) GetHelperRecord(getHasherObject bool) (HelperRecord, error) {
-	proj := bson.M{"Hasher": 1, "isBuildDone": 1, "HashCollName": 1}
+	proj := bson.M{}
 	if !getHasherObject {
 		proj = bson.M{"Hasher": 0}
 	}

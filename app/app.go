@@ -2,8 +2,11 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
+	"vector-search-go/db"
 )
 
 var (
@@ -25,7 +28,13 @@ func (annServer *ANNServer) BuildHasherHandler(w http.ResponseWriter, r *http.Re
 	go func() {
 		err := annServer.BuildIndex()
 		if err != nil {
-			annServer.Mongo.UpdateBuildStatus(false, err.Error())
+			annServer.Mongo.UpdateBuildStatus(
+				db.HelperRecord{
+					IsBuildDone:   false,
+					BuildError:    err.Error(),
+					LastBuildTime: time.Now().UnixNano(),
+				},
+			)
 		}
 	}()
 	w.WriteHeader(http.StatusOK)
@@ -33,18 +42,22 @@ func (annServer *ANNServer) BuildHasherHandler(w http.ResponseWriter, r *http.Re
 
 // CheckBuildHandler checks the build status in the db
 func (annServer *ANNServer) CheckBuildHandler(w http.ResponseWriter, r *http.Request) {
+	var message string = "Build status unknown"
 	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
 	if err != nil {
 		annServer.Logger.Err.Println("Checking build status: " + err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Smth went wrong (may be the index doesn't exist)"))
-		return
+		message = "Smth went wrong (may be the helper doesn't exist)"
+	} else {
+		if !helperRecord.IsBuildDone && len(helperRecord.BuildError) == 0 {
+			message = "Build in process"
+		} else if helperRecord.IsBuildDone && len(helperRecord.BuildError) == 0 {
+			message = "Build done"
+		} else if len(helperRecord.BuildError) > 0 {
+			message = fmt.Sprintf("Build error: %s", helperRecord.BuildError)
+		}
+		w.WriteHeader(http.StatusOK)
 	}
-	var message string = "Building finished"
-	if !helperRecord.IsBuildDone {
-		message = "Building in process"
-	}
-	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(message))
 }
 
