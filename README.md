@@ -20,7 +20,7 @@ The list of objects inside the hdf5:
  - `distances` - 100 distances (angular) to the nearest points;  
 
 Everything runs inside a docker. Just launch it with:  
- - `./launch.sh` if you want to launch the main app;  
+ - `./build_docker.sh && ./run_docker.sh` if you want to launch the main app;  
  - `cd ./db && ./launch.sh` if you want to launch the database (mongodb);  
 Don't forget to add the actual db socket in the config.  
 
@@ -30,7 +30,7 @@ sudo apt-get install libhdf5-serial-dev
 go mod init vector-search-go
 go mod tidy
 ```  
-Then compile and run, passing args from config file (targets are: `main.go` or `bench_data_main.go`):  
+Then compile and run, passing args from config file (targets are: `main.go` or `bench_data_prep_main.go`):  
 ```
 go build -o ./main ./main.go
 export $(grep -v '^#' config.env | xargs) && ./main
@@ -85,14 +85,14 @@ Here are example visualizations:
     - ~~update work with mongo client in bench prep code~~;  
     - ~~add decorator to handlers to measure the response time~~;  
     - ~~add hasher update on pop/put/get (store timestamp of the last change and compare the local one with the actual)~~;  
-    - make docker image even lighter - deploy only binaries using [docker scratch](https://github.com/phrozen/geohash/blob/master/server/Dockerfile);  
+    - ~~make docker image even lighter - deploy only binaries using [docker scratch](https://github.com/phrozen/geohash/blob/master/server/Dockerfile)~~;  
     - add unit tests for API methods;  
 4. Add search quality testing using the test part of the benchmark dataset:  
     - write a script that sends the test data points to the seach index, and compares the answers with the ground truth;  
     - script must also write out the log with all needed mertrics (FPR, FNG, ROC, f1 and etc.);  
     - determine optimal min. distance on validation set;  
     - add unit tests for metrics calculation funcs;  
-5. Make comprehensive reference in app.  
+5. Make readme section on "how it works".  
 
 ### Notes:  
  - Below I'll show how to talk with mongodb via console, to make quick checks on the dataset.  

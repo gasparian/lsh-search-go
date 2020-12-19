@@ -8,9 +8,6 @@
 *.mod
 *.sum
 *.index
-/imgs
 /db/mongo/*
-/db/tiny-imagenet-200
 /db/*.swp
-/db/*.hdf5
-/db/*.txt
+/annbench/*.hdf5

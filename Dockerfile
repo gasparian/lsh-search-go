@@ -1,4 +1,4 @@
-FROM golang:1.15-alpine
+FROM golang:1.15-alpine as builder
 RUN mkdir /tmp/setup
 WORKDIR /tmp/setup
 RUN apk add build-base && \
@@ -17,9 +17,15 @@ COPY . .
 RUN go mod init && \
     go mod tidy
 
-RUN go build -o /usr/bin/app ./main.go && \
-    go build -o /usr/bin/prep_bench_data ./prep_bench_data.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -ldflags="-w -s" -o /usr/bin/app ./main.go
 
+# NOTE: There is a problem compiling with hdf5 for using in scratch image, 
+#       so better make it on your local machine with dynamic linking
+# RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -ldflags="-w -s" -o /usr/bin/bench_data_prep_main ./bench_data_prep_main.go
+
+# -----------------------------------------------------------------------------
+
+FROM scratch
+COPY --from=builder /usr/bin/app /app
+ENTRYPOINT [ "/app" ]
 EXPOSE 8080
-CMD [ "app" ]
-# ENTRYPOINT [ "sh" ]

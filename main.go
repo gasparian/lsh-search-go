@@ -26,5 +26,7 @@ func main() {
 	mux.HandleFunc("/pop-hash", annServer.PopHashRecordHandler)
 	mux.HandleFunc("/put-hash", annServer.PutHashRecordHandler)
 	http.Handle("/", cm.Decorate(mux, cm.Timer(logger)))
-	logger.Err.Fatal(http.ListenAndServe(":8080", nil))
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		logger.Err.Fatalf("Error running the server: %v", err)
+	}
 }

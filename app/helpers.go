@@ -182,7 +182,7 @@ func (annServer *ANNServer) TryUpdateLocalHasher() error {
 			return err
 		}
 	} else if !isBuildValid {
-		return errors.New("build is in progress or not valid, please do not use the index right now")
+		return errors.New("build is in progress or not valid. Please, do not use the index right now")
 	}
 	return nil
 }
