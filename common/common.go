@@ -9,13 +9,6 @@ import (
 	"time"
 )
 
-// Logger holds several logger instances with different prefixes
-type Logger struct {
-	Warn *log.Logger
-	Info *log.Logger
-	Err  *log.Logger
-}
-
 // GetNewLogger creates an instance of all needed loggers
 func GetNewLogger() *Logger {
 	return &Logger{

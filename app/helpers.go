@@ -361,56 +361,53 @@ func (annServer *ANNServer) putHashRecord(id string) error {
 }
 
 // getNeighbors returns filtered nearest neighbors sorted by distance in ascending order
-func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, error) {
+func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData, error) {
 	err := annServer.TryUpdateLocalHasher()
 	if err != nil {
 		return nil, err
 	}
-	inputVec := cm.Vector(input.Vec)
+	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
+	if err != nil {
+		return nil, err
+	}
+	hashesColl := annServer.Mongo.GetCollection(helperRecord.HashCollName)
 	var hashesRecords []db.HashesRecord
-	if input.ID != "" {
+	if len(input.ID) > 0 {
 		objectID, err := primitive.ObjectIDFromHex(input.ID)
 		if err != nil {
 			return nil, err
 		}
-		helperRecord, err := annServer.Mongo.GetHelperRecord(false)
-		if err != nil {
-			return nil, err
-		}
-		hashesColl := annServer.Mongo.GetCollection(helperRecord.HashCollName)
-		hashesRecords, err = hashesColl.GetHashesRecords(
+		dbRecords, err := hashesColl.GetDbRecords(
 			db.FindQuery{
 				Limit: 1,
 				Query: bson.D{{"_id", objectID}},
-				Proj:  bson.M{"_id": 1},
+				Proj:  bson.M{"featureVec": 1},
 			},
 		)
 		if err != nil {
 			return nil, err
 		}
-	} else if !inputVec.IsZero() {
-		hashes, err := annServer.Hasher.GetHashes(inputVec)
-		helperRecord, err := annServer.Mongo.GetHelperRecord(false)
-		if err != nil {
-			return nil, err
+		if len(dbRecords) != 1 {
+			return nil, errors.New("id must be presented in the database")
 		}
-		hashesColl := annServer.Mongo.GetCollection(helperRecord.HashCollName)
-		hashesQuery := bson.D{}
-		for k, v := range hashes {
-			hashesQuery = append(hashesQuery, bson.E{strconv.Itoa(k), v})
-		}
-		hashesRecords, err = hashesColl.GetHashesRecords(
-			db.FindQuery{
-				Limit: annServer.Config.App.MaxHashesNumber,
-				Query: hashesQuery,
-				Proj:  bson.M{"_id": 1},
-			},
-		)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, errors.New("Get NN: object ID or vector must be provided")
+		input.Vec = dbRecords[0].FeatureVec
+	}
+
+	inputVec := cm.Vector(input.Vec)
+	hashes, err := annServer.Hasher.GetHashes(inputVec)
+	hashesQuery := bson.D{}
+	for k, v := range hashes {
+		hashesQuery = append(hashesQuery, bson.E{strconv.Itoa(k), v})
+	}
+	hashesRecords, err = hashesColl.GetHashesRecords(
+		db.FindQuery{
+			Limit: annServer.Config.App.MaxHashesNumber,
+			Query: hashesQuery,
+			Proj:  bson.M{"_id": 1},
+		},
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	vectorIDs := bson.A{}
@@ -430,25 +427,27 @@ func (annServer *ANNServer) getNeighbors(input RequestData) (*ResponseData, erro
 		return nil, err
 	}
 
-	neighbors := make([]ResponseRecord, annServer.Config.App.MaxNN)
+	var neighbors []cm.ResponseRecord
 	var idx int = 0
 	var candidate db.VectorRecord
-	for vectorsCursor.Next(context.Background()) && idx <= annServer.Config.App.MaxNN {
+	// TO DO: add batch processing in separate goroutines
+	for vectorsCursor.Next(context.Background()) {
 		if err := vectorsCursor.Decode(&candidate); err != nil {
 			continue
 		}
 		hexID := candidate.ID.Hex()
 		dist := annServer.Hasher.GetDist(inputVec, cm.Vector(candidate.FeatureVec))
 		if dist <= annServer.Config.App.DistanceThrsh {
-			neighbors[idx] = ResponseRecord{
-				ID:   hexID,
-				Dist: dist,
-			}
+			neighbors = append(neighbors, cm.ResponseRecord{
+				ID:     hexID,
+				OrigID: candidate.OrigID,
+				Dist:   dist,
+			})
 			idx++
 		}
 	}
 	sort.Slice(neighbors, func(i, j int) bool {
 		return neighbors[i].Dist < neighbors[j].Dist
 	})
-	return &ResponseData{Neighbors: neighbors}, nil
+	return &cm.ResponseData{Neighbors: neighbors[:annServer.Config.App.MaxNN]}, nil
 }

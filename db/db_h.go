@@ -58,7 +58,7 @@ type DistanceVec [100]float32
 // VectorRecord used to store the vectors to search in the mongodb
 type VectorRecord struct {
 	ID           primitive.ObjectID `bson:"_id,omitempty"`
-	OrigID       int                `bson:"origId"`
+	OrigID       int32              `bson:"origId"`
 	NeighborsIds []int32            `bson:"neighborsIds,omitempty"`
 	FeatureVec   []float64          `bson:"featureVec,omitempty"`
 }

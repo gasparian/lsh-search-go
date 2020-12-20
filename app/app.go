@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+	cm "vector-search-go/common"
 	"vector-search-go/db"
 )
 
@@ -42,6 +43,7 @@ func (annServer *ANNServer) BuildHasherHandler(w http.ResponseWriter, r *http.Re
 
 // CheckBuildHandler checks the build status in the db
 func (annServer *ANNServer) CheckBuildHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	var message string = "Build status unknown"
 	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
 	if err != nil {
@@ -58,7 +60,9 @@ func (annServer *ANNServer) CheckBuildHandler(w http.ResponseWriter, r *http.Req
 		}
 		w.WriteHeader(http.StatusOK)
 	}
-	w.Write([]byte(message))
+	resp := cm.ResponseData{Message: message}
+	jsonResp, _ := json.Marshal(resp)
+	w.Write(jsonResp)
 }
 
 // PopHashRecordHandler drops vector from the search index
@@ -94,7 +98,7 @@ func (annServer *ANNServer) PopHashRecordHandler(w http.ResponseWriter, r *http.
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		var input RequestData
+		var input cm.RequestData
 		err = json.Unmarshal(body, &input)
 		if err != nil {
 			annServer.Logger.Err.Println("Pop hash record: " + err.Error())
@@ -114,7 +118,7 @@ func (annServer *ANNServer) PopHashRecordHandler(w http.ResponseWriter, r *http.
 	}
 }
 
-// PutHashRecordHandler puts new vector to the search index (also updates the initial db??)
+// PutHashRecordHandler puts new vector to the search index
 // curl -v -X POST -H "Content-Type: application/json" -d '{"id": "sdf87sdfsdf9s8dfb", "vec": []}' http://localhost:8080/put
 func (annServer *ANNServer) PutHashRecordHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -147,7 +151,7 @@ func (annServer *ANNServer) PutHashRecordHandler(w http.ResponseWriter, r *http.
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		var input RequestData
+		var input cm.RequestData
 		err = json.Unmarshal(body, &input)
 		if err != nil {
 			annServer.Logger.Err.Println("Put hash record: " + err.Error())
@@ -178,7 +182,7 @@ func (annServer *ANNServer) GetNeighborsHandler(w http.ResponseWriter, r *http.R
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		var input RequestData
+		var input cm.RequestData
 		err = json.Unmarshal(body, &input)
 		if err != nil {
 			annServer.Logger.Err.Println("Get NN: " + err.Error())

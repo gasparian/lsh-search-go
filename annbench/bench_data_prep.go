@@ -60,7 +60,7 @@ func UploadDatasetMongoDb(collection db.MongoCollection, data []db.FeatureVec, n
 	var tmpRecord db.VectorRecord
 	for idx := range data {
 		tmpRecord = db.VectorRecord{
-			OrigID:     idx,
+			OrigID:     int32(idx),
 			FeatureVec: make([]float64, len(data[0])),
 		}
 		for valIdx := range data[idx] {

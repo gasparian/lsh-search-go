@@ -86,12 +86,17 @@ Here are example visualizations:
     - ~~add decorator to handlers to measure the response time~~;  
     - ~~add hasher update on pop/put/get (store timestamp of the last change and compare the local one with the actual)~~;  
     - ~~make docker image even lighter - deploy only binaries using [docker scratch](https://github.com/phrozen/geohash/blob/master/server/Dockerfile)~~;  
-    - rename vector-search-go --> ??;  
+    - calculate distances in separate goroutines?;  
     - add unit tests for API methods;  
 4. Add search quality testing using the test part of the benchmark dataset:  
+    - ~~implement client~~;  
     - write code for recall calculation, depending on threshold value;  
     - add unit tests for metrics calculation funcs;  
-5. Make readme section on "how it works".  
+5. Make minor changes:  
+    - rename vector-search-go --> ??;  
+    - rename lsh folder --> ann, to be able to add more ANN algorithms;  
+6. Make readme section on "how it works".  
+7. Add graph-based ANN algorithm (HNSW) ?  
 
 ### Notes:  
  - Below I'll show how to talk with mongodb via console, to make quick checks on the dataset.  
