@@ -96,7 +96,7 @@ Here are example visualizations:
     - rename vector-search-go --> ??;  
     - rename lsh folder --> ann, to be able to add more ANN algorithms;  
 6. Make readme section on "how it works".  
-7. Add graph-based ANN algorithm (HNSW) ?  
+7. Add graph-based ANN algorithm (HNSW) after benchmarks and tests (2021?).  
 
 ### Notes:  
  - Below I'll show how to talk with mongodb via console, to make quick checks on the dataset.  
