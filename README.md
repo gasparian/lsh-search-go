@@ -8,7 +8,7 @@ We want to perform the search in logarithmic time on average, and we have two ba
  - [local sensetive hashing](https://en.wikipedia.org/wiki/Locality-sensitive_hashing);  
  - [graph-based approaches](https://en.wikipedia.org/wiki/Small-world_network) - local search over proximity graphs, smth like hierarchical navigatable small world graphs;  
 
-I've decided to go with the LSH since it's pretty convenient to serialize the Hasher, store hashes and perform search over these hashes with some already existed and well-developed database. Generally speaking, we just need to implement the hashing algorithm and communication with the db. As for database - I've chosen mongodb to use the same db for storing the benchmark dataset and hashes. Basically, it can be any type of database: document, RDBMS or key-value.  
+I've decided to go first with the LSH since it's pretty convenient to serialize the Hasher, store hashes and perform search over these hashes with some already existed and well-developed relational/document/key-value database. Generally speaking, we just need to implement the hashing algorithm and communication with the db. As for database - I've chosen mongodb to store both the benchmark dataset and hashes. Basically, it can be any database that you are familiar with.  
 
 ### Building and running  
 
@@ -50,7 +50,7 @@ go mod tidy && build -o /usr/bin/run_prep_data run_prep_data.go
 ### API Reference  
 *TO DO*  
 
-### Local sensitive hashing  reference   
+### Local sensitive hashing reference   
 
 LSH algorithm implies generation of random plane equation coefs. So, depending on the similarity metric, often we just need to define "bias" coef "d" as zero (for "angular" metric) or non-zero.  
 Also, we need to limit coefs range, based on data points deviation.
@@ -96,7 +96,6 @@ Here are example visualizations:
     - rename vector-search-go --> ??;  
     - rename lsh folder --> ann, to be able to add more ANN algorithms;  
 6. Make readme section on "how it works".  
-7. Add graph-based ANN algorithm (HNSW) after benchmarks and tests (2021?).  
 
 ### Notes:  
  - Below I'll show how to talk with mongodb via console, to make quick checks on the dataset.  
