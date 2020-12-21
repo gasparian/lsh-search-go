@@ -102,7 +102,7 @@ func ParseEnv() (*ServiceConfig, error) {
 
 // NewANNServer returns empty index object with initialized mongo client
 func NewANNServer(logger *cm.Logger, config *ServiceConfig) (ANNServer, error) {
-	mongodb, err := db.GetDbClient(config.Db)
+	mongodb, err := db.New(config.Db)
 	if err != nil {
 		logger.Err.Println("Creating db client: " + err.Error())
 		return ANNServer{}, err
@@ -430,7 +430,6 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 	var neighbors []cm.ResponseRecord
 	var idx int = 0
 	var candidate db.VectorRecord
-	// TO DO: add batch processing in separate goroutines
 	for vectorsCursor.Next(context.Background()) {
 		if err := vectorsCursor.Decode(&candidate); err != nil {
 			continue

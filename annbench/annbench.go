@@ -1,13 +1,12 @@
 package annbench
 
 import (
-	"context"
-	"os"
-	// cm "lsh-search-engine/common"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	cl "lsh-search-engine/client"
+	cm "lsh-search-engine/common"
 	"lsh-search-engine/db"
+	"os"
+	"sort"
 )
 
 var (
@@ -18,7 +17,8 @@ var (
 // and a client for performing requests to the running ann service
 type BenchClient struct {
 	Client cl.ANNClient
-	Db     db.MongoDatastore
+	Db     *db.MongoDatastore
+	Logger *cm.Logger
 }
 
 // Recall returns ratio of relevant predictions over the all true relevant items
@@ -34,38 +34,41 @@ func Recall(prediction, groundTruth []int32) float64 {
 }
 
 // ValidateThrsh takes the distance threshold and returns recall value
-// TO DO: add annClient here
-func ValidateThrsh(cursor *mongo.Cursor, thrsh float64) (float64, error) {
-	var queryVector db.VectorRecord
-	for cursor.Next(context.Background()) {
-		if err := cursor.Decode(&queryVector); err != nil {
+func (benchClient *BenchClient) ValidateThrsh(results []db.VectorRecord, thrsh float64) (float64, error) {
+	var averageRecall float64 = 0.0
+	var prediction []int32
+	for _, result := range results {
+		sort.Slice(result.NeighborsIds, func(i, j int) bool {
+			return result.NeighborsIds[i] < result.NeighborsIds[j]
+		})
+		respData, err := benchClient.Client.GetNeighbors(result.FeatureVec)
+		if err != nil {
 			return 0.0, err
 		}
-		// otherwise - call getNeighbors
+		prediction = nil
+		for _, neighbor := range respData.Neighbors {
+			prediction = append(prediction, neighbor.OrigID)
+		}
+		averageRecall += Recall(prediction, result.NeighborsIds)
 	}
-	return 0.0, nil
+	return averageRecall / float64(len(results)), nil
 }
 
 // Validate takes the array of distance thresholds and returns array of recall values
-func Validate(config db.Config, thrshs []float64) ([]float64, error) {
-	result := make([]float64, len(thrshs))
-	mongodb, err := db.GetDbClient(config)
+func (benchClient *BenchClient) Validate(thrshs []float64) ([]float64, error) {
+	metrics := make([]float64, len(thrshs))
+	testColl := benchClient.Db.GetCollection(testCollectionName)
+	results, err := testColl.GetDbRecords(db.FindQuery{Proj: bson.M{"featureVec": 1}})
 	if err != nil {
 		return nil, err
 	}
-	defer mongodb.Disconnect()
-	testColl := mongodb.GetCollection(testCollectionName)
-	// TO DO: add go routines in a loop
 	for _, thrsh := range thrshs {
-		cursor, err := testColl.GetCursor(db.FindQuery{Proj: bson.M{"featureVec": 1}})
+		recall, err := benchClient.ValidateThrsh(results, thrsh)
 		if err != nil {
 			return nil, err
 		}
-		recall, err := ValidateThrsh(cursor, thrsh)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, recall)
+		metrics = append(metrics, recall)
+		benchClient.Logger.Info.Printf("Thrsh: %v; Recall: %v", thrsh, recall)
 	}
-	return result, nil
+	return metrics, nil
 }

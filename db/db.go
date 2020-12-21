@@ -21,8 +21,8 @@ var (
 	createIndexMaxTime, _ = strconv.Atoi(os.Getenv("CREATE_INDEX_MAX_TIME"))
 )
 
-// GetDbClient creates client for talking to the mongodb
-func GetDbClient(config Config) (*MongoDatastore, error) {
+// New creates client for talking to the mongodb
+func New(config Config) (*MongoDatastore, error) {
 	client, err := mongo.NewClient(options.Client().ApplyURI(config.DbLocation))
 	if err != nil {
 		return nil, err

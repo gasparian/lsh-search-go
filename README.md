@@ -36,7 +36,7 @@ go build -o ./main ./main.go
 export $(grep -v '^#' config.env | xargs) && ./main
 ```  
 
-In order to run benchmarks, first download the benchmark dataset:  
+In order to run [benchmarks](https://github.com/erikbern/ann-benchmarks), first download the benchmark dataset:  
 ```
 wget http://ann-benchmarks.com/deep-image-96-angular.hdf5 -P ./data
 ```   
@@ -86,24 +86,23 @@ Here are example visualizations:
     - ~~add decorator to handlers to measure the response time~~;  
     - ~~add hasher update on pop/put/get (store timestamp of the last change and compare the local one with the actual)~~;  
     - ~~make docker image even lighter - deploy only binaries using [docker scratch](https://github.com/phrozen/geohash/blob/master/server/Dockerfile)~~;  
-    - calculate distances in separate goroutines?;  
-    - drop cursors where they're not needed;  
+    - replace vector with the gonum's blas based [implementation](https://godoc.org/gonum.org/v1/gonum/mat#VecDense);  
     - add unit tests for API methods;  
 4. Add search quality testing using the test part of the benchmark dataset:  
     - ~~implement client~~;  
-    - write code for recall calculation, depending on threshold value;  
+    - ~~write code for recall calculation, depending on threshold value~~;  
     - add time analisys and logging during the benchmark;  
     - add unit tests for metrics calculation funcs;  
 5. Decouple db with "original" data and lsh:  
+    - drop cursors where they're not needed;  
     - store vectors alongside with hashes;  
-    - add ability to provide a vector in the put query;  
-    - generate unique hash for every vector to be able to search 
+    - add ability to provide an array of vectors in the put and pop queries;  
     - add shell script for populating hashes from the client and decouple the lsh from db as much as possible;  
 6. Make readme section on "how it works".  
 
 ### Notes:  
  - Below I'll show how to talk with mongodb via console, to make quick checks on the dataset.  
-   So first you better first check the monogodb [docs](https://docs.mongodb.com/manual/mongo/).  
+   So first you better check the monogodb [docs](https://docs.mongodb.com/manual/mongo/).  
    Then get inside the docker:  
    ```
    docker exec -ti mongo mongo
@@ -175,7 +174,7 @@ Here are example visualizations:
      }
    ])
    ```  
- - The go client is a connection pool already so it is thread safe: https://github.com/mongodb/mongo-go-driver/blob/master/mongo/client.go#L42  
+ - The mongodb go client is a connection pool already so it is thread safe: https://github.com/mongodb/mongo-go-driver/blob/master/mongo/client.go#L42  
  Quote from the code:  
 ```
  // Client is a handle representing a pool of connections to a MongoDB deployment. It is safe for concurrent use by
@@ -198,4 +197,4 @@ Here are example visualizations:
     }
 ```  
  - if the mongo consumes too much ram while running inside the docker - just try to specify the WiredTiger mem cache  `-wiredTigerCacheSizeGB 2.5` to some lower value, like `(docker_mem_limit - 1) / 2`;  
- - it's better to define indexes on as early as possible `OrigID` and `Hashes.hash#` fields, to make the aggregations and finds run more quickly;  
+ - don't forget to define indexes. In my case its `OrigID` and `Hashes.hash#` fields;  

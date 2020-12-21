@@ -25,7 +25,7 @@ func main() {
 		DbName:     dbName,
 	}
 	logger.Info.Println("Db communication setup")
-	mongodb, err := db.GetDbClient(config)
+	mongodb, err := db.New(config)
 	if err != nil {
 		logger.Err.Fatal(err)
 	}
