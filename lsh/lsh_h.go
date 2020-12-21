@@ -3,7 +3,7 @@ package lsh
 import (
 	"sync"
 
-	cm "vector-search-go/common"
+	cm "lsh-search-engine/common"
 )
 
 // Plane struct holds data needed to work with plane

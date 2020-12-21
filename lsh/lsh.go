@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	cm "vector-search-go/common"
+	cm "lsh-search-engine/common"
 )
 
 // GetPointPlaneDist calculates distance between origin and plane

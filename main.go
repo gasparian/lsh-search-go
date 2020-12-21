@@ -2,8 +2,8 @@ package main
 
 import (
 	"net/http"
-	"vector-search-go/app"
-	cm "vector-search-go/common"
+	"lsh-search-engine/app"
+	cm "lsh-search-engine/common"
 )
 
 func main() {

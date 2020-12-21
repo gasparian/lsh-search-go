@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	cm "vector-search-go/common"
+	cm "lsh-search-engine/common"
 )
 
 // New creates new instance of ANNClient

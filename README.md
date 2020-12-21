@@ -1,4 +1,4 @@
-# vector-search-go
+# lsh-search-engine
 
 ### Proposal  
 
@@ -27,7 +27,7 @@ Don't forget to add the actual db socket in the config.
 Also, for more convenient development, you can run the app locally. First, install deps:  
 ```
 sudo apt-get install libhdf5-serial-dev
-go mod init vector-search-go
+go mod init lsh-search-engine
 go mod tidy
 ```  
 Then compile and run, passing args from config file (targets are: `main.go` or `bench_data_prep_main.go` or `annbench_main.go`):  
@@ -55,7 +55,7 @@ go mod tidy && build -o /usr/bin/run_prep_data run_prep_data.go
 LSH algorithm implies generation of random plane equation coefs. So, depending on the similarity metric, often we just need to define "bias" coef "d" as zero (for "angular" metric) or non-zero.  
 Also, we need to limit coefs range, based on data points deviation.
 Here are example visualizations:  
-<img src="https://github.com/gasparian/vector-search-go/blob/master/pics/non-biased.png" height=300 >  <img src="https://github.com/gasparian/vector-search-go/blob/master/pics/biased.png" height=300 >  
+<img src="https://github.com/gasparian/lsh-search-engine/blob/master/pics/non-biased.png" height=300 >  <img src="https://github.com/gasparian/lsh-search-engine/blob/master/pics/biased.png" height=300 >  
 
 *TO DO: Complexity*
 
@@ -87,14 +87,18 @@ Here are example visualizations:
     - ~~add hasher update on pop/put/get (store timestamp of the last change and compare the local one with the actual)~~;  
     - ~~make docker image even lighter - deploy only binaries using [docker scratch](https://github.com/phrozen/geohash/blob/master/server/Dockerfile)~~;  
     - calculate distances in separate goroutines?;  
+    - drop cursors where they're not needed;  
     - add unit tests for API methods;  
 4. Add search quality testing using the test part of the benchmark dataset:  
     - ~~implement client~~;  
     - write code for recall calculation, depending on threshold value;  
+    - add time analisys and logging during the benchmark;  
     - add unit tests for metrics calculation funcs;  
-5. Make minor changes:  
-    - rename vector-search-go --> ??;  
-    - rename lsh folder --> ann, to be able to add more ANN algorithms;  
+5. Decouple db with "original" data and lsh:  
+    - store vectors alongside with hashes;  
+    - add ability to provide a vector in the put query;  
+    - generate unique hash for every vector to be able to search 
+    - add shell script for populating hashes from the client and decouple the lsh from db as much as possible;  
 6. Make readme section on "how it works".  
 
 ### Notes:  

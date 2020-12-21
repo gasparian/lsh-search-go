@@ -4,5 +4,5 @@ docker run --rm -it \
            --cpus 4 \
            -m 4096m \
            --env-file config.env \
-           vector-search-go:latest
-           # -v $PWD/annbench:/go/src/vector-search-go/annbench \
+           lsh-search-engine:latest
+           # -v $PWD/annbench:/go/src/lsh-search-engine/annbench \

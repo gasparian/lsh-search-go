@@ -1,2 +1,2 @@
 #!/bin/sh
-docker build -t vector-search-go:latest .
+docker build -t lsh-search-engine:latest .

@@ -14,9 +14,9 @@ import (
 	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
-	cm "vector-search-go/common"
-	"vector-search-go/db"
-	hashing "vector-search-go/lsh"
+	cm "lsh-search-engine/common"
+	"lsh-search-engine/db"
+	hashing "lsh-search-engine/lsh"
 )
 
 // getHelpMessage forms a byte array contains message

@@ -4,9 +4,9 @@ import (
 	"os"
 	"strconv"
 
-	annb "vector-search-go/annbench"
-	cm "vector-search-go/common"
-	"vector-search-go/db"
+	annb "lsh-search-engine/annbench"
+	cm "lsh-search-engine/common"
+	"lsh-search-engine/db"
 )
 
 var (

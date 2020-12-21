@@ -3,11 +3,11 @@ package annbench
 import (
 	"context"
 	"os"
-	// cm "vector-search-go/common"
+	// cm "lsh-search-engine/common"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	cl "vector-search-go/client"
-	"vector-search-go/db"
+	cl "lsh-search-engine/client"
+	"lsh-search-engine/db"
 )
 
 var (
