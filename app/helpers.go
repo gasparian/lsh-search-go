@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	// "go.mongodb.org/mongo-driver/mongo"
 	"os"
 	"time"
 
@@ -81,7 +81,6 @@ func ParseEnv() (*ServiceConfig, error) {
 		Db: db.Config{
 			DbLocation:           stringVars["MONGO_ADDR"],
 			DbName:               stringVars["DB_NAME"],
-			DataCollectionName:   stringVars["COLLECTION_NAME"],
 			HelperCollectionName: stringVars["HELPER_COLLECTION_NAME"],
 		},
 		App: Config{
@@ -146,26 +145,25 @@ func (annServer *ANNServer) LoadHasher() error {
 	return nil
 }
 
-// hashDbRecordsBatch accumulates db documents in a batch of desired length and calculates hashes
-func (annServer *ANNServer) hashDbRecordsBatch(cursor *mongo.Cursor, batchSize int) ([]interface{}, error) {
-	batch := make([]interface{}, batchSize)
-	batchID := 0
-	for cursor.Next(context.Background()) {
-		var record db.VectorRecord
-		if err := cursor.Decode(&record); err != nil {
-			continue
-		}
-		hashes, err := annServer.Hasher.GetHashes(cm.Vector(record.FeatureVec))
+// hashBatch accumulates db documents in a batch of desired length and calculates hashes
+func (annServer *ANNServer) hashBatch(vecs []cm.RequestData) ([]interface{}, error) {
+	batch := make([]interface{}, len(vecs))
+	for idx, vec := range vecs {
+		objectID, err := primitive.ObjectIDFromHex(vec.ID)
 		if err != nil {
 			return nil, err
 		}
-		batch[batchID] = db.HashesRecord{
-			ID:     record.ID,
-			Hashes: hashes,
+		hashes, err := annServer.Hasher.GetHashes(cm.Vector(vec.Vec))
+		if err != nil {
+			return nil, err
 		}
-		batchID++
+		batch[idx] = db.HashesRecord{
+			ID:         objectID,
+			FeatureVec: vec.Vec,
+			Hashes:     hashes,
+		}
 	}
-	return batch[:batchID], nil
+	return batch, nil
 }
 
 // TryUpdateLocalHasher checks if there is a fresher build in db, and if it is - updates the local hasher
@@ -189,7 +187,7 @@ func (annServer *ANNServer) TryUpdateLocalHasher() error {
 
 // BuildIndex gets data stats from the db and creates the new Hasher (or hasher) object
 // and submitting status to the helper collection
-func (annServer *ANNServer) BuildIndex() error {
+func (annServer *ANNServer) BuildIndex(input DatasetStats) error {
 	start := time.Now().UnixNano()
 	// NOTE: check if the previous build has been done
 	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
@@ -209,16 +207,7 @@ func (annServer *ANNServer) BuildIndex() error {
 		return err
 	}
 
-	dataColl := annServer.Mongo.GetCollection(annServer.Config.Db.DataCollectionName)
-	convMean, convStd, err := dataColl.GetAggregatedStats()
-	if err != nil {
-		return err
-	}
-
-	annServer.Logger.Info.Println(convMean) // DEBUG - check for not being [0]
-	annServer.Logger.Info.Println(convStd)  // DEBUG - check for not being [0]
-
-	err = annServer.Hasher.Generate(convMean, convStd)
+	err = annServer.Hasher.Generate(cm.Vector(input.Mean), cm.Vector(input.Std))
 	if err != nil {
 		return err
 	}
@@ -243,24 +232,6 @@ func (annServer *ANNServer) BuildIndex() error {
 	newHashColl, err := annServer.Mongo.CreateCollection(newHashCollName)
 	if err != nil {
 		return err
-	}
-
-	// NOTE: fill the new collection with pointers to documents (_id) and fields with hashes
-	cursor, err := dataColl.GetCursor(
-		db.FindQuery{
-			Limit: 0,
-			Query: bson.D{},
-		},
-	)
-	for cursor.Next(context.Background()) {
-		hashesBatch, err := annServer.hashDbRecordsBatch(cursor, annServer.Config.App.BatchSize)
-		if err != nil {
-			return err
-		}
-		err = newHashColl.SetRecords(hashesBatch)
-		if err != nil {
-			return err
-		}
 	}
 
 	// NOTE: create indexes for the all new fields
@@ -325,12 +296,8 @@ func (annServer *ANNServer) popHashRecord(id string) error {
 }
 
 // putHashRecord drops record from collection by objectID (string Hex)
-func (annServer *ANNServer) putHashRecord(id string) error {
+func (annServer *ANNServer) putHashRecord(vecs []cm.RequestData) error {
 	err := annServer.TryUpdateLocalHasher()
-	if err != nil {
-		return err
-	}
-	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return err
 	}
@@ -339,21 +306,16 @@ func (annServer *ANNServer) putHashRecord(id string) error {
 		return err
 	}
 	hashesColl := annServer.Mongo.GetCollection(helperRecord.HashCollName)
-	dataColl := annServer.Mongo.GetCollection(annServer.Config.Db.DataCollectionName)
-	records, err := dataColl.GetDbRecords(
-		db.FindQuery{
-			Limit: 1,
-			Query: bson.D{{"_id", objectID}},
-		},
-	)
+	records, err := annServer.hashBatch(vecs)
 	if err != nil {
 		return err
 	}
-	recordInterfaces := make([]interface{}, len(records))
-	for i := range records {
-		recordInterfaces[i] = records[i]
-	}
-	err = hashesColl.SetRecords(recordInterfaces)
+	// recordInterfaces := make([]interface{}, len(records))
+	// for i := range records {
+	// 	recordInterfaces[i] = records[i]
+	// }
+	// err = hashesColl.SetRecords(recordInterfaces)
+	err = hashesColl.SetRecords(records)
 	if err != nil {
 		return err
 	}

@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
-	"time"
 	cm "lsh-search-service/common"
 	"lsh-search-service/db"
+	"net/http"
+	"time"
 )
 
 var (
@@ -25,20 +25,44 @@ func HealthCheck(w http.ResponseWriter, r *http.Request) {
 // BuildHasherHandler updates the existing db documents with the
 // new computed hashes based on dataset stats;
 func (annServer *ANNServer) BuildHasherHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	go func() {
-		err := annServer.BuildIndex()
+	switch r.Method {
+	case "POST":
+		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			annServer.Mongo.UpdateBuildStatus(
-				db.HelperRecord{
-					IsBuildDone:   false,
-					BuildError:    err.Error(),
-					LastBuildTime: time.Now().UnixNano(),
-				},
-			)
+			annServer.Logger.Err.Println("Build hasher: " + err.Error())
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
-	}()
-	w.WriteHeader(http.StatusOK)
+		var input DatasetStats
+		err = json.Unmarshal(body, &input)
+		if err != nil {
+			annServer.Logger.Err.Println("Build hasher: " + err.Error())
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if err != nil {
+			annServer.Logger.Err.Println("Build hasher: " + err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+
+		go func() {
+			err := annServer.BuildIndex(input)
+			if err != nil {
+				annServer.Mongo.UpdateBuildStatus(
+					db.HelperRecord{
+						IsBuildDone:   false,
+						BuildError:    err.Error(),
+						LastBuildTime: time.Now().UnixNano(),
+					},
+				)
+			}
+		}()
+	default:
+		w.WriteHeader(http.StatusNotImplemented)
+		w.Write([]byte(http.StatusText(http.StatusNotImplemented)))
+	}
 }
 
 // CheckBuildHandler checks the build status in the db
@@ -123,27 +147,6 @@ func (annServer *ANNServer) PopHashRecordHandler(w http.ResponseWriter, r *http.
 func (annServer *ANNServer) PutHashRecordHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
-	case "GET":
-		params := r.URL.Query()
-		// NOTE: id generated from mongodb ObjectID with Hex() method
-		id, ok := params["id"]
-		if !ok || len(id) == 0 {
-			annServer.Logger.Err.Println("Put hash record: object id must be specified")
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if len(id[0]) == 0 {
-			annServer.Logger.Err.Println("Put hash record: object id must be specified")
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		err := annServer.putHashRecord(id[0])
-		if err != nil {
-			annServer.Logger.Err.Println("Put hash record: " + err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
 	case "POST":
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -151,14 +154,14 @@ func (annServer *ANNServer) PutHashRecordHandler(w http.ResponseWriter, r *http.
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		var input cm.RequestData
+		var input map[string][]cm.RequestData
 		err = json.Unmarshal(body, &input)
-		if err != nil {
+		if err != nil || len(input) == 0 {
 			annServer.Logger.Err.Println("Put hash record: " + err.Error())
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		err = annServer.putHashRecord(input.ID)
+		err = annServer.putHashRecord(input["vecs"])
 		if err != nil {
 			annServer.Logger.Err.Println("Put hash record: " + err.Error())
 			w.WriteHeader(http.StatusInternalServerError)

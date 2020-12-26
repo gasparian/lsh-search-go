@@ -75,3 +75,69 @@ func (benchClient *BenchClient) Validate(thrshs []float64) ([]float64, error) {
 	}
 	return metrics, nil
 }
+
+// BuildIndex creates hasher object on server
+// TO DO:
+func (benchClient *BenchClient) BuildIndex() error {
+
+	dataColl := annServer.Mongo.GetCollection(annServer.Config.Db.DataCollectionName)
+	convMean, convStd, err := dataColl.GetAggregatedStats()
+	if err != nil {
+		return err
+	}
+
+	annServer.Logger.Info.Println(convMean) // DEBUG - check for not being [0]
+	annServer.Logger.Info.Println(convStd)  // DEBUG - check for not being [0]
+
+	// NOTE: fill the new collection with pointers to documents (_id) and fields with hashes
+	cursor, err := dataColl.GetCursor(
+		db.FindQuery{
+			Limit: 0,
+			Query: bson.D{},
+		},
+	)
+	for cursor.Next(context.Background()) {
+		hashesBatch, err := annServer.hashDbRecordsBatch(cursor, annServer.Config.App.BatchSize)
+		if err != nil {
+			return err
+		}
+		err = newHashColl.SetRecords(hashesBatch)
+		if err != nil {
+			return err
+		}
+	}
+
+	dataColl := annServer.Mongo.GetCollection(annServer.Config.Db.DataCollectionName)
+	records, err := dataColl.GetDbRecords(
+		db.FindQuery{
+			Limit: 1,
+			Query: bson.D{{"_id", objectID}},
+		},
+	)
+	if err != nil {
+		return err
+	}
+}
+
+// hashDbRecordsBatch accumulates db documents in a batch of desired length and calculates hashes
+// TO DO: refactor to use on index building (look up ^)
+func (annServer *ANNServer) hashDbRecordsBatch(cursor *mongo.Cursor, batchSize int) ([]interface{}, error) {
+	batch := make([]interface{}, batchSize)
+	batchID := 0
+	for cursor.Next(context.Background()) {
+		var record db.VectorRecord
+		if err := cursor.Decode(&record); err != nil {
+			continue
+		}
+		hashes, err := annServer.Hasher.GetHashes(cm.Vector(record.FeatureVec))
+		if err != nil {
+			return nil, err
+		}
+		batch[batchID] = db.HashesRecord{
+			ID:     record.ID,
+			Hashes: hashes,
+		}
+		batchID++
+	}
+	return batch[:batchID], nil
+}

@@ -93,11 +93,12 @@ Here are example visualizations:
     - ~~write code for recall calculation, depending on threshold value~~;  
     - ~~add logging during for the benchmark~~;  
     - add unit tests for metrics calculation funcs;  
-5. Decouple db with "original" data and lsh:  
-    - drop cursors where they're not needed;  
-    - store vectors alongside with hashes;  
-    - add ability to provide an array of vectors in the put and pop queries;  
-    - add shell script for populating hashes from the client and decouple the lsh from db as much as possible;  
+5. Decouple db with the "original" data and lsh:  
+    - ~~drop data collection usage from the application level~~;  
+    - ~~store vectors alongside with hashes in the index collection~~;  
+    - ~~send dataset stats in the `build-index` request body~~;  
+    - ~~add ability to provide an *array* of vectors in the `put` query~~;  
+    - write a script for populating the search index (inside `annbench` module);  
 6. Make readme section on "how it works" (See readme to-do's).  
 
 ### Notes:  

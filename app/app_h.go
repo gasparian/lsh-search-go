@@ -29,3 +29,9 @@ type ANNServer struct {
 	Config        ServiceConfig
 	LastBuildTime int64
 }
+
+// DatasetStats holds basic feature vector stats like mean and standart deviation
+type DatasetStats struct {
+	Mean []float64
+	Std  []float64
+}
