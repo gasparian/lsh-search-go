@@ -1,9 +1,9 @@
 package app
 
 import (
-	cm "lsh-search-engine/common"
-	"lsh-search-engine/db"
-	hashing "lsh-search-engine/lsh"
+	cm "lsh-search-service/common"
+	"lsh-search-service/db"
+	hashing "lsh-search-service/lsh"
 )
 
 // Config holds general constants

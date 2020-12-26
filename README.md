@@ -1,4 +1,4 @@
-# lsh-search-engine
+# lsh-search-service
 
 ### Proposal  
 
@@ -27,7 +27,7 @@ Don't forget to add the actual db socket in the config.
 Also, for more convenient development, you can run the app locally. First, install deps:  
 ```
 sudo apt-get install libhdf5-serial-dev
-go mod init lsh-search-engine
+go mod init lsh-search-service
 go mod tidy
 ```  
 Then compile and run, passing args from config file (targets are: `main.go` or `bench_data_prep_main.go` or `annbench_main.go`):  
@@ -55,7 +55,7 @@ go mod tidy && build -o /usr/bin/run_prep_data run_prep_data.go
 LSH algorithm implies generation of random plane equation coefs. So, depending on the similarity metric, often we just need to define "bias" coef "d" as zero (for "angular" metric) or non-zero.  
 Also, we need to limit coefs range, based on data points deviation.
 Here are example visualizations:  
-<img src="https://github.com/gasparian/lsh-search-engine/blob/master/pics/non-biased.png" height=300 >  <img src="https://github.com/gasparian/lsh-search-engine/blob/master/pics/biased.png" height=300 >  
+<img src="https://github.com/gasparian/lsh-search-service/blob/master/pics/non-biased.png" height=300 >  <img src="https://github.com/gasparian/lsh-search-service/blob/master/pics/biased.png" height=300 >  
 
 *TO DO: Complexity*
 
@@ -91,14 +91,14 @@ Here are example visualizations:
 4. Add search quality testing using the test part of the benchmark dataset:  
     - ~~implement client~~;  
     - ~~write code for recall calculation, depending on threshold value~~;  
-    - add time analisys and logging during the benchmark;  
+    - ~~add logging during for the benchmark~~;  
     - add unit tests for metrics calculation funcs;  
 5. Decouple db with "original" data and lsh:  
     - drop cursors where they're not needed;  
     - store vectors alongside with hashes;  
     - add ability to provide an array of vectors in the put and pop queries;  
     - add shell script for populating hashes from the client and decouple the lsh from db as much as possible;  
-6. Make readme section on "how it works".  
+6. Make readme section on "how it works" (See readme to-do's).  
 
 ### Notes:  
  - Below I'll show how to talk with mongodb via console, to make quick checks on the dataset.  

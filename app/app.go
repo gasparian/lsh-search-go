@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
-	cm "lsh-search-engine/common"
-	"lsh-search-engine/db"
+	cm "lsh-search-service/common"
+	"lsh-search-service/db"
 )
 
 var (

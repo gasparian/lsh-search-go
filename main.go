@@ -2,8 +2,8 @@ package main
 
 import (
 	"net/http"
-	"lsh-search-engine/app"
-	cm "lsh-search-engine/common"
+	"lsh-search-service/app"
+	cm "lsh-search-service/common"
 )
 
 func main() {

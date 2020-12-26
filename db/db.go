@@ -13,7 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 
-	cm "lsh-search-engine/common"
+	cm "lsh-search-service/common"
 )
 
 var (

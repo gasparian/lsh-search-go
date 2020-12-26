@@ -2,11 +2,12 @@ package annbench
 
 import (
 	"go.mongodb.org/mongo-driver/bson"
-	cl "lsh-search-engine/client"
-	cm "lsh-search-engine/common"
-	"lsh-search-engine/db"
+	cl "lsh-search-service/client"
+	cm "lsh-search-service/common"
+	"lsh-search-service/db"
 	"os"
 	"sort"
+	"time"
 )
 
 var (
@@ -63,12 +64,14 @@ func (benchClient *BenchClient) Validate(thrshs []float64) ([]float64, error) {
 		return nil, err
 	}
 	for _, thrsh := range thrshs {
+		start := time.Now()
 		recall, err := benchClient.ValidateThrsh(results, thrsh)
 		if err != nil {
 			return nil, err
 		}
 		metrics = append(metrics, recall)
-		benchClient.Logger.Info.Printf("Thrsh: %v; Recall: %v", thrsh, recall)
+		elapsed := time.Since(start)
+		benchClient.Logger.Info.Printf("Elapsed time: %v; Thrsh: %v; Recall: %v", elapsed, thrsh, recall)
 	}
 	return metrics, nil
 }

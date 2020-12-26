@@ -8,7 +8,7 @@ import (
 	"unsafe"
 
 	"gonum.org/v1/hdf5"
-	"lsh-search-engine/db"
+	"lsh-search-service/db"
 )
 
 // GetVectorsFromHDF5 returns slice of feature vectors, from the hdf5 table

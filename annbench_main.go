@@ -4,10 +4,10 @@ import (
 	"os"
 	"strconv"
 
-	annb "lsh-search-engine/annbench"
-	cl "lsh-search-engine/client"
-	cm "lsh-search-engine/common"
-	"lsh-search-engine/db"
+	annb "lsh-search-service/annbench"
+	cl "lsh-search-service/client"
+	cm "lsh-search-service/common"
+	"lsh-search-service/db"
 )
 
 var (
