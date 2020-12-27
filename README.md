@@ -98,7 +98,7 @@ Here are example visualizations:
     - ~~store vectors alongside with hashes in the index collection~~;  
     - ~~send dataset stats in the `build-index` request body~~;  
     - ~~add ability to provide an *array* of vectors in the `put` query~~;  
-    - refactor `getNeighbors` function to get feature vectors from hashes db;  
+    - ~~refactor `getNeighbors` function to get feature vectors from hashes db~~;  
     - write a script for populating the search index (inside `annbench` module);  
 6. Make readme section on "how it works" (See readme to-do's).  
 

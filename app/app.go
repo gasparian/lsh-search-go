@@ -143,7 +143,7 @@ func (annServer *ANNServer) PopHashRecordHandler(w http.ResponseWriter, r *http.
 }
 
 // PutHashRecordHandler puts new vector to the search index
-// curl -v -X POST -H "Content-Type: application/json" -d '{"id": "sdf87sdfsdf9s8dfb", "vec": []}' http://localhost:8080/put
+// curl -v -X POST -H "Content-Type: application/json" -d '[{"id":"as8d7dhus", "vec":[...]}]' http://localhost:8080/put
 func (annServer *ANNServer) PutHashRecordHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
@@ -154,14 +154,14 @@ func (annServer *ANNServer) PutHashRecordHandler(w http.ResponseWriter, r *http.
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		var input map[string][]cm.RequestData
+		var input []cm.RequestData
 		err = json.Unmarshal(body, &input)
 		if err != nil || len(input) == 0 {
 			annServer.Logger.Err.Println("Put hash record: " + err.Error())
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		err = annServer.putHashRecord(input["vecs"])
+		err = annServer.putHashRecord(input)
 		if err != nil {
 			annServer.Logger.Err.Println("Put hash record: " + err.Error())
 			w.WriteHeader(http.StatusInternalServerError)

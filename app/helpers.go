@@ -186,7 +186,7 @@ func (annServer *ANNServer) TryUpdateLocalHasher() error {
 }
 
 // BuildIndex gets data stats from the db and creates the new Hasher (or hasher) object
-// and submitting status to the helper collection
+// and submits status to the helper collection
 func (annServer *ANNServer) BuildIndex(input DatasetStats) error {
 	start := time.Now().UnixNano()
 	// NOTE: check if the previous build has been done
@@ -229,7 +229,7 @@ func (annServer *ANNServer) BuildIndex(input DatasetStats) error {
 	if err != nil {
 		return err
 	}
-	newHashColl, err := annServer.Mongo.CreateCollection(newHashCollName)
+	_, err = annServer.Mongo.CreateCollection(newHashCollName)
 	if err != nil {
 		return err
 	}
@@ -310,11 +310,6 @@ func (annServer *ANNServer) putHashRecord(vecs []cm.RequestData) error {
 	if err != nil {
 		return err
 	}
-	// recordInterfaces := make([]interface{}, len(records))
-	// for i := range records {
-	// 	recordInterfaces[i] = records[i]
-	// }
-	// err = hashesColl.SetRecords(recordInterfaces)
 	err = hashesColl.SetRecords(records)
 	if err != nil {
 		return err
@@ -333,7 +328,6 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 		return nil, err
 	}
 	hashesColl := annServer.Mongo.GetCollection(helperRecord.HashCollName)
-	var hashesRecords []db.HashesRecord
 	if len(input.ID) > 0 {
 		objectID, err := primitive.ObjectIDFromHex(input.ID)
 		if err != nil {
@@ -361,27 +355,10 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 	for k, v := range hashes {
 		hashesQuery = append(hashesQuery, bson.E{strconv.Itoa(k), v})
 	}
-	hashesRecords, err = hashesColl.GetHashesRecords(
+	hashesCursor, err := hashesColl.GetCursor(
 		db.FindQuery{
 			Limit: annServer.Config.App.MaxHashesNumber,
 			Query: hashesQuery,
-			Proj:  bson.M{"_id": 1},
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	vectorIDs := bson.A{}
-	for idx := range hashesRecords {
-		vectorIDs = append(vectorIDs, hashesRecords[idx].ID)
-	}
-	hashesRecords = nil
-
-	dataColl := annServer.Mongo.GetCollection(annServer.Config.Db.DataCollectionName)
-	vectorsCursor, err := dataColl.GetCursor(
-		db.FindQuery{
-			Query: bson.D{{"_id", bson.D{{"$in", vectorIDs}}}},
 			Proj:  bson.M{"_id": 1, "featureVec": 1},
 		},
 	)
@@ -391,18 +368,17 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 
 	var neighbors []cm.ResponseRecord
 	var idx int = 0
-	var candidate db.VectorRecord
-	for vectorsCursor.Next(context.Background()) {
-		if err := vectorsCursor.Decode(&candidate); err != nil {
+	var candidate db.HashesRecord
+	for hashesCursor.Next(context.Background()) {
+		if err := hashesCursor.Decode(&candidate); err != nil {
 			continue
 		}
 		hexID := candidate.ID.Hex()
 		dist := annServer.Hasher.GetDist(inputVec, cm.Vector(candidate.FeatureVec))
 		if dist <= annServer.Config.App.DistanceThrsh {
 			neighbors = append(neighbors, cm.ResponseRecord{
-				ID:     hexID,
-				OrigID: candidate.OrigID,
-				Dist:   dist,
+				ID:   hexID,
+				Dist: dist,
 			})
 			idx++
 		}

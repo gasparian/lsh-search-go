@@ -13,9 +13,8 @@ type Logger struct {
 
 // ResponseRecord holds a single neighbor
 type ResponseRecord struct {
-	ID     string  `json:"id,omitempty"`
-	OrigID int32   `json:"origId,omitempty"`
-	Dist   float64 `json:"dist,omitempty"`
+	ID   string  `json:"id,omitempty"`
+	Dist float64 `json:"dist,omitempty"`
 }
 
 // ResponseData holds the resulting objectIDs of nearest neighbors found

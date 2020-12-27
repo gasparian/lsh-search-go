@@ -32,6 +32,6 @@ type ANNServer struct {
 
 // DatasetStats holds basic feature vector stats like mean and standart deviation
 type DatasetStats struct {
-	Mean []float64
-	Std  []float64
+	Mean []float64 `json:"mean"`
+	Std  []float64 `json:"std"`
 }

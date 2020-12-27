@@ -64,7 +64,6 @@ type VectorRecord struct {
 }
 
 // HashesRecord stores the id of original document in other collection and hashes map
-// TO DO: add feature vector here
 type HashesRecord struct {
 	ID         primitive.ObjectID `bson:"_id,omitempty"`
 	FeatureVec []float64          `bson:"featureVec,omitempty"`
