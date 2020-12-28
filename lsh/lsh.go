@@ -14,7 +14,7 @@ import (
 )
 
 // getPointPlaneDist calculates distance between origin and plane
-func getPointPlaneDist(planeCoefs *blas64.Vector) *blas64.Vector {
+func getPointPlaneDist(planeCoefs blas64.Vector) blas64.Vector {
 	values := make([]float64, planeCoefs.N-1)
 	dCoef := planeCoefs.Data[planeCoefs.N-1]
 	var denom float64 = 0.0
@@ -52,7 +52,7 @@ func NewLSHIndex(config Config) *Hasher {
 	return lshIndex
 }
 
-func (lsh *HasherInstance) getRandomPlane() *blas64.Vector {
+func (lsh *HasherInstance) getRandomPlane() blas64.Vector {
 	coefs := make([]float64, lsh.Dims+1)
 	var l2 float64 = 0.0
 	for i := 0; i < lsh.Dims; i++ {
@@ -72,12 +72,12 @@ func (lsh *HasherInstance) build() error {
 	}
 
 	rand.Seed(time.Now().UnixNano())
-	var coefs *blas64.Vector
+	var coefs blas64.Vector
 	for i := 0; i < lsh.NPlanes; i++ {
 		coefs = lsh.getRandomPlane()
 		lsh.Planes = append(lsh.Planes, Plane{
-			Coefs:      *coefs,
-			InnerPoint: *getPointPlaneDist(coefs),
+			Coefs:      coefs,
+			InnerPoint: getPointPlaneDist(coefs),
 		})
 	}
 	return nil
@@ -86,7 +86,7 @@ func (lsh *HasherInstance) build() error {
 // getHash calculates LSH code
 func (lsh *HasherInstance) getHash(inpVec blas64.Vector) uint64 {
 	var hash uint64
-	vec := *cm.NewVec(make([]float64, inpVec.N))
+	vec := cm.NewVec(make([]float64, inpVec.N))
 	var plane *Plane
 	var dpSign bool
 	for i := 0; i < lsh.NPlanes; i++ {
@@ -104,6 +104,9 @@ func (lsh *HasherInstance) getHash(inpVec blas64.Vector) uint64 {
 
 // Generate method creates the lsh instances
 func (lshIndex *Hasher) Generate(convMean, convStd blas64.Vector) error {
+	lshIndex.Lock()
+	defer lshIndex.Unlock()
+
 	if lshIndex.Config.IsAngularDistance == 1 {
 		blas64.Scal(0.0, convStd)
 	}
@@ -122,6 +125,9 @@ func (lshIndex *Hasher) Generate(convMean, convStd blas64.Vector) error {
 
 // GetHashes returns map of calculated lsh values
 func (lshIndex *Hasher) GetHashes(vec blas64.Vector) (map[int]uint64, error) {
+	lshIndex.Lock()
+	defer lshIndex.Unlock()
+
 	var result map[int]uint64
 	for idx, lshInstance := range lshIndex.Instances {
 		result[idx] = lshInstance.getHash(vec)
@@ -131,6 +137,9 @@ func (lshIndex *Hasher) GetHashes(vec blas64.Vector) (map[int]uint64, error) {
 
 // GetDist returns measure of the specified distance metric
 func (lshIndex *Hasher) GetDist(lv, rv blas64.Vector) float64 {
+	lshIndex.Lock()
+	defer lshIndex.Unlock()
+
 	if lshIndex.Config.IsAngularDistance == 1 {
 		return cm.CosineSim(lv, rv)
 	}
@@ -159,6 +168,9 @@ func (lshIndex *Hasher) Dump() ([]byte, error) {
 
 // Load loads Hasher struct from the byte-array file
 func (lshIndex *Hasher) Load(inp []byte) error {
+	lshIndex.Lock()
+	defer lshIndex.Unlock()
+
 	buf := &bytes.Buffer{}
 	buf.Write(inp)
 	dec := gob.NewDecoder(buf)

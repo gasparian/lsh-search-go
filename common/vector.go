@@ -5,11 +5,11 @@ import (
 )
 
 // NewVec creates new blas vector
-func NewVec(data []float64) *blas64.Vector {
+func NewVec(data []float64) blas64.Vector {
 	if data == nil {
 		data = make([]float64, 0)
 	}
-	return &blas64.Vector{
+	return blas64.Vector{
 		N:    len(data),
 		Inc:  1,
 		Data: data,

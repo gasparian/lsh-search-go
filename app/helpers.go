@@ -153,7 +153,7 @@ func (annServer *ANNServer) hashBatch(vecs []cm.RequestData) ([]interface{}, err
 		if err != nil {
 			return nil, err
 		}
-		hashes, err := annServer.Hasher.GetHashes(cm.Vector(vec.Vec))
+		hashes, err := annServer.Hasher.GetHashes(cm.NewVec(vec.Vec))
 		if err != nil {
 			return nil, err
 		}
@@ -207,7 +207,7 @@ func (annServer *ANNServer) BuildIndex(input DatasetStats) error {
 		return err
 	}
 
-	err = annServer.Hasher.Generate(cm.Vector(input.Mean), cm.Vector(input.Std))
+	err = annServer.Hasher.Generate(cm.NewVec(input.Mean), cm.NewVec(input.Std))
 	if err != nil {
 		return err
 	}
@@ -349,7 +349,7 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 		input.Vec = dbRecords[0].FeatureVec
 	}
 
-	inputVec := cm.Vector(input.Vec)
+	inputVec := cm.NewVec(input.Vec)
 	hashes, err := annServer.Hasher.GetHashes(inputVec)
 	hashesQuery := bson.D{}
 	for k, v := range hashes {
@@ -374,7 +374,7 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 			continue
 		}
 		hexID := candidate.ID.Hex()
-		dist := annServer.Hasher.GetDist(inputVec, cm.Vector(candidate.FeatureVec))
+		dist := annServer.Hasher.GetDist(inputVec, cm.NewVec(candidate.FeatureVec))
 		if dist <= annServer.Config.App.DistanceThrsh {
 			neighbors = append(neighbors, cm.ResponseRecord{
 				ID:   hexID,
