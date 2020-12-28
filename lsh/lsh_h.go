@@ -3,20 +3,20 @@ package lsh
 import (
 	"sync"
 
-	cm "lsh-search-service/common"
+	"gonum.org/v1/gonum/blas/blas64"
 )
 
 // Plane struct holds data needed to work with plane
 type Plane struct {
-	Coefs      cm.Vector
-	InnerPoint cm.Vector
+	Coefs      blas64.Vector
+	InnerPoint blas64.Vector
 }
 
 // HasherInstance holds data for local sensetive hashing algorithm
 type HasherInstance struct {
 	Dims    int
 	Bias    float64
-	MeanVec cm.Vector
+	MeanVec blas64.Vector
 	MaxDist float64
 	Planes  []Plane
 	NPlanes int

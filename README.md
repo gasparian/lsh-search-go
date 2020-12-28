@@ -86,7 +86,8 @@ Here are example visualizations:
     - ~~add decorator to handlers to measure the response time~~;  
     - ~~add hasher update on pop/put/get (store timestamp of the last change and compare the local one with the actual)~~;  
     - ~~make docker image even lighter - deploy only binaries using [docker scratch](https://github.com/phrozen/geohash/blob/master/server/Dockerfile)~~;  
-    - replace vector with the gonum's blas based [implementation](https://godoc.org/gonum.org/v1/gonum/mat#VecDense);  
+    - ~~replace vector with the gonum's blas based [implementation](https://godoc.org/gonum.org/v1/gonum/mat#VecDense)~~;  
+    - Lock Hasher object where needed!;  
     - add unit tests for API methods;  
 4. Add search quality testing using the test part of the benchmark dataset:  
     - ~~implement client~~;  
