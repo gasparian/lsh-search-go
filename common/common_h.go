@@ -28,3 +28,9 @@ type RequestData struct {
 	ID  string    `json:"id,omitempty"`
 	Vec []float64 `json:"vec,omitempty"`
 }
+
+// DatasetStats holds basic feature vector stats like mean and standart deviation
+type DatasetStats struct {
+	Mean []float64 `json:"mean"`
+	Std  []float64 `json:"std"`
+}

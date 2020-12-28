@@ -62,8 +62,17 @@ func (client *ANNClient) CheckBuildStatus() (*cm.ResponseData, error) {
 }
 
 // BuildHasher returns the actual status of the latest index build
-func (client *ANNClient) BuildHasher() error {
-	err := client.MakeRequest("GET", client.Methods.BuildIndex, nil, nil)
+func (client *ANNClient) BuildHasher(mean, std []float64) error {
+	request := &cm.DatasetStats{
+		Mean: mean,
+		Std:  std,
+	}
+
+	jsonRequest, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+	err = client.MakeRequest("POST", client.Methods.BuildIndex, bytes.NewBuffer(jsonRequest), nil)
 	if err != nil {
 		return err
 	}
@@ -80,8 +89,19 @@ func (client *ANNClient) PopHash(id string) error {
 }
 
 // PutHash adds specified hash to the search index
-func (client *ANNClient) PutHash(id string) error {
-	err := client.MakeRequest("GET", client.Methods.PutHash+id, nil, nil)
+func (client *ANNClient) PutHash(vecs [][]float64) error {
+	request := make([]cm.RequestData, len(vecs))
+	for i := range vecs {
+		request[i] = cm.RequestData{
+			Vec: vecs[i],
+		}
+
+	}
+	jsonRequest, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+	err = client.MakeRequest("POST", client.Methods.PutHash, bytes.NewBuffer(jsonRequest), nil)
 	if err != nil {
 		return err
 	}

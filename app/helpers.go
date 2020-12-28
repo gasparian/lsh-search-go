@@ -187,7 +187,7 @@ func (annServer *ANNServer) TryUpdateLocalHasher() error {
 
 // BuildIndex gets data stats from the db and creates the new Hasher (or hasher) object
 // and submits status to the helper collection
-func (annServer *ANNServer) BuildIndex(input DatasetStats) error {
+func (annServer *ANNServer) BuildIndex(input cm.DatasetStats) error {
 	start := time.Now().UnixNano()
 	// NOTE: check if the previous build has been done
 	helperRecord, err := annServer.Mongo.GetHelperRecord(false)

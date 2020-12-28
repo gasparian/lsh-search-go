@@ -33,7 +33,7 @@ func (annServer *ANNServer) BuildHasherHandler(w http.ResponseWriter, r *http.Re
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		var input DatasetStats
+		var input cm.DatasetStats
 		err = json.Unmarshal(body, &input)
 		if err != nil {
 			annServer.Logger.Err.Println("Build hasher: " + err.Error())
