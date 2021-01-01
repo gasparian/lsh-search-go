@@ -86,12 +86,12 @@ func main() {
 	// vectorsTestCollection := mongodb.GetCollection(testCollectionName)
 	// vectorsTrainCollection := mongodb.GetCollection(trainCollectionName)
 
-	logger.Info.Println("Creating index on OrigId field...")
-	err = vectorsTestCollection.CreateIndexesByFields([]string{"origId"}, true)
+	logger.Info.Println("Creating index on secondary id field...")
+	err = vectorsTestCollection.CreateIndexesByFields([]string{"secondaryId"}, true)
 	if err != nil {
 		logger.Err.Fatal(err)
 	}
-	err = vectorsTrainCollection.CreateIndexesByFields([]string{"origId"}, true)
+	err = vectorsTrainCollection.CreateIndexesByFields([]string{"secondaryId"}, true)
 	if err != nil {
 		logger.Err.Fatal(err)
 	}

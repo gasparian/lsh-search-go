@@ -60,16 +60,16 @@ func UploadDatasetMongoDb(collection db.MongoCollection, data []db.FeatureVec, n
 	var tmpRecord db.VectorRecord
 	for idx := range data {
 		tmpRecord = db.VectorRecord{
-			OrigID:     int32(idx),
-			FeatureVec: make([]float64, len(data[0])),
+			SecondaryID: idx,
+			FeatureVec:  make([]float64, len(data[0])),
 		}
 		for valIdx := range data[idx] {
 			tmpRecord.FeatureVec[valIdx] = float64(data[idx][valIdx])
 		}
 		if dataLen == neighborsLen {
-			tmpRecord.NeighborsIds = make([]int32, len(neighbors[0]))
+			tmpRecord.NeighborsIds = make([]int, len(neighbors[0]))
 			for valIdx := range neighbors[idx] {
-				tmpRecord.NeighborsIds[valIdx] = neighbors[idx][valIdx]
+				tmpRecord.NeighborsIds[valIdx] = int(neighbors[idx][valIdx])
 			}
 		}
 		batch = append(batch, tmpRecord)

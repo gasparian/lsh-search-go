@@ -1,7 +1,9 @@
 package annbench
 
 import (
+	"context"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	cl "lsh-search-service/client"
 	cm "lsh-search-service/common"
 	"lsh-search-service/db"
@@ -12,19 +14,21 @@ import (
 
 var (
 	testCollectionName = os.Getenv("TEST_COLLECTION_NAME")
+	dataCollectionName = os.Getenv("DATA_COLLECTION_NAME")
 )
 
 // BenchClient holds db for getting vectors from test collection
 // and a client for performing requests to the running ann service
 type BenchClient struct {
-	Client cl.ANNClient
-	Db     *db.MongoDatastore
-	Logger *cm.Logger
+	Client               cl.ANNClient
+	Db                   *db.MongoDatastore
+	Logger               *cm.Logger
+	HelperCollectionName string
 }
 
 // Recall returns ratio of relevant predictions over the all true relevant items
 // both arrays MUST BE SORTED
-func Recall(prediction, groundTruth []int32) float64 {
+func Recall(prediction, groundTruth []int) float64 {
 	valid := 0
 	for i := range prediction {
 		if prediction[i] == groundTruth[i] {
@@ -37,7 +41,7 @@ func Recall(prediction, groundTruth []int32) float64 {
 // ValidateThrsh takes the distance threshold and returns recall value
 func (benchClient *BenchClient) ValidateThrsh(results []db.VectorRecord, thrsh float64) (float64, error) {
 	var averageRecall float64 = 0.0
-	var prediction []int32
+	var prediction []int
 	for _, result := range results {
 		sort.Slice(result.NeighborsIds, func(i, j int) bool {
 			return result.NeighborsIds[i] < result.NeighborsIds[j]
@@ -48,7 +52,7 @@ func (benchClient *BenchClient) ValidateThrsh(results []db.VectorRecord, thrsh f
 		}
 		prediction = nil
 		for _, neighbor := range respData.Neighbors {
-			prediction = append(prediction, neighbor.OrigID)
+			prediction = append(prediction, neighbor.SecondaryID)
 		}
 		averageRecall += Recall(prediction, result.NeighborsIds)
 	}
@@ -76,68 +80,47 @@ func (benchClient *BenchClient) Validate(thrshs []float64) ([]float64, error) {
 	return metrics, nil
 }
 
-// BuildIndex creates hasher object on server
-// TO DO:
-func (benchClient *BenchClient) BuildIndex() error {
-
-	dataColl := annServer.Mongo.GetCollection(annServer.Config.Db.DataCollectionName)
+// Populate put vectors into search index
+func (benchClient *BenchClient) Populate(batchSize int) error {
+	dataColl := benchClient.Db.GetCollection(dataCollectionName)
 	convMean, convStd, err := dataColl.GetAggregatedStats()
 	if err != nil {
 		return err
 	}
 
-	annServer.Logger.Info.Println(convMean) // DEBUG - check for not being [0]
-	annServer.Logger.Info.Println(convStd)  // DEBUG - check for not being [0]
+	benchClient.Logger.Info.Println(convMean) // DEBUG - check for not being [0]
+	benchClient.Logger.Info.Println(convStd)  // DEBUG - check for not being [0]
 
-	// NOTE: fill the new collection with pointers to documents (_id) and fields with hashes
-	cursor, err := dataColl.GetCursor(
-		db.FindQuery{
-			Limit: 0,
-			Query: bson.D{},
-		},
-	)
+	benchClient.Client.BuildHasher(convMean, convStd)
+
+	cursor, err := dataColl.GetCursor(db.FindQuery{})
 	for cursor.Next(context.Background()) {
-		hashesBatch, err := annServer.hashDbRecordsBatch(cursor, annServer.Config.App.BatchSize)
-		if err != nil {
-			return err
-		}
-		err = newHashColl.SetRecords(hashesBatch)
+		err = benchClient.putBatch(cursor, batchSize)
 		if err != nil {
 			return err
 		}
 	}
-
-	dataColl := annServer.Mongo.GetCollection(annServer.Config.Db.DataCollectionName)
-	records, err := dataColl.GetDbRecords(
-		db.FindQuery{
-			Limit: 1,
-			Query: bson.D{{"_id", objectID}},
-		},
-	)
-	if err != nil {
-		return err
-	}
+	return nil
 }
 
-// hashDbRecordsBatch accumulates db documents in a batch of desired length and calculates hashes
-// TO DO: refactor to use on index building (look up ^)
-func (annServer *ANNServer) hashDbRecordsBatch(cursor *mongo.Cursor, batchSize int) ([]interface{}, error) {
-	batch := make([]interface{}, batchSize)
+// putBatch accumulates db documents in a batch of desired length and calculates hashes
+func (benchClient *BenchClient) putBatch(cursor *mongo.Cursor, batchSize int) error {
+	batch := make([]cm.RequestData, batchSize)
 	batchID := 0
 	for cursor.Next(context.Background()) {
 		var record db.VectorRecord
 		if err := cursor.Decode(&record); err != nil {
 			continue
 		}
-		hashes, err := annServer.Hasher.GetHashes(cm.Vector(record.FeatureVec))
-		if err != nil {
-			return nil, err
-		}
-		batch[batchID] = db.HashesRecord{
-			ID:     record.ID,
-			Hashes: hashes,
+		batch[batchID] = cm.RequestData{
+			SecondaryID: record.SecondaryID,
+			Vec:         record.FeatureVec,
 		}
 		batchID++
 	}
-	return batch[:batchID], nil
+	err := benchClient.Client.PutHashes(batch[:batchID])
+	if err != nil {
+		return err
+	}
+	return nil
 }

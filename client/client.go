@@ -88,16 +88,9 @@ func (client *ANNClient) PopHash(id string) error {
 	return nil
 }
 
-// PutHash adds specified hash to the search index
-func (client *ANNClient) PutHash(vecs [][]float64) error {
-	request := make([]cm.RequestData, len(vecs))
-	for i := range vecs {
-		request[i] = cm.RequestData{
-			Vec: vecs[i],
-		}
-
-	}
-	jsonRequest, err := json.Marshal(request)
+// PutHashes adds specified hash to the search index
+func (client *ANNClient) PutHashes(requestData []cm.RequestData) error {
+	jsonRequest, err := json.Marshal(requestData)
 	if err != nil {
 		return err
 	}

@@ -118,7 +118,7 @@ Here are example visualizations:
    ```  
    You can create/drop indexes:  
    ```
-   db.train.createIndex({OrigId: 1})
+   db.train.createIndex({Info: 1})
    # index on array may take much time
    db.train.createIndex({featureVec: 1})
    db.train.dropIndex({featureVec: 1})
@@ -129,7 +129,7 @@ Here are example visualizations:
    ```  
    Also extra-useful thing is query analysis:  
    ```
-   db.train.find("origId": 1).limit(2).explain("executionStats)
+   db.train.find("secondaryId": 1).limit(2).explain("executionStats)
    ```  
    Clean the collection:  
    ```
@@ -201,4 +201,4 @@ Here are example visualizations:
     }
 ```  
  - if the mongo consumes too much ram while running inside the docker - just try to specify the WiredTiger mem cache  `-wiredTigerCacheSizeGB 2.5` to some lower value, like `(docker_mem_limit - 1) / 2`;  
- - don't forget to define indexes. In my case its `OrigID` and `Hashes.hash#` fields;  
+ - don't forget to define indexes. In my case its `SecondaryID` and `Hashes.hash#` fields;  

@@ -280,7 +280,7 @@ func (coll MongoCollection) DeleteRecords(query bson.D) error {
 
 // GetCursor returns db cursor for specified collection and query
 // Example queries:
-//     bson.D{{"origId", bson.M{"$in": []int{1, 3}}}}
+//     bson.D{{"secondaryId", bson.M{"$in": []int{1, 3}}}}
 // 	   bson.D{{"Hasher", bson.D{{"$exists", true}}}}
 func (coll MongoCollection) GetCursor(query FindQuery) (*mongo.Cursor, error) {
 	opts := options.MergeFindOptions(
