@@ -17,12 +17,13 @@ func New(config Config) ANNClient {
 		ServerAddress: config.ServerAddress,
 		Client:        http.Client{Timeout: time.Duration(config.Timeout)},
 		Methods: methods{
-			HealthCheck: config.ServerAddress + "/",
-			CheckBuild:  config.ServerAddress + "/check-build",
-			BuildIndex:  config.ServerAddress + "/build-index",
-			GetNN:       config.ServerAddress + "/get-nn",
-			PopHash:     config.ServerAddress + "/pop-hash?id=",
-			PutHash:     config.ServerAddress + "/put-hash?id=",
+			HealthCheck:     config.ServerAddress + "/",
+			CheckBuild:      config.ServerAddress + "/check-build",
+			BuildIndex:      config.ServerAddress + "/build-index",
+			GetHashCollSize: config.ServerAddress + "/get-hash-coll-size",
+			GetNN:           config.ServerAddress + "/get-nn",
+			PopHash:         config.ServerAddress + "/pop-hash?id=",
+			PutHash:         config.ServerAddress + "/put-hash?id=",
 		},
 	}
 }
@@ -52,6 +53,7 @@ func (client *ANNClient) MakeRequest(method, url string, body io.Reader, target 
 }
 
 // CheckBuildStatus returns the actual status of the latest index build
+// TO DO: make build status as enum and return it
 func (client *ANNClient) CheckBuildStatus() (*cm.ResponseData, error) {
 	target := &cm.ResponseData{}
 	err := client.MakeRequest("GET", client.Methods.CheckBuild, nil, target)
@@ -61,7 +63,21 @@ func (client *ANNClient) CheckBuildStatus() (*cm.ResponseData, error) {
 	return target, nil
 }
 
-// BuildHasher returns the actual status of the latest index build
+// GetHashCollSize returns number of documents in the hash collection
+func (client *ANNClient) GetHashCollSize() (int64, error) {
+	target := &cm.ResponseData{}
+	err := client.MakeRequest("GET", client.Methods.GetHashCollSize, nil, target)
+	if err != nil {
+		return 0, err
+	}
+	result, ok := target.Results.(int64)
+	if !ok {
+		0, errors.New("GetHashCollSize: can't cast response to the int64 type")
+	}
+	return target, nil
+}
+
+// BuildHasher initiates hasher building process on server
 func (client *ANNClient) BuildHasher(mean, std []float64) error {
 	request := &cm.DatasetStats{
 		Mean: mean,
@@ -79,7 +95,7 @@ func (client *ANNClient) BuildHasher(mean, std []float64) error {
 	return nil
 }
 
-// PopHash drops specified hash from the search index (GET)
+// PopHash drops specified hash from the search index
 func (client *ANNClient) PopHash(id string) error {
 	err := client.MakeRequest("GET", client.Methods.PopHash+id, nil, nil)
 	if err != nil {
@@ -102,7 +118,7 @@ func (client *ANNClient) PutHashes(requestData []cm.RequestData) error {
 }
 
 // GetNeighbors gets the nearest neighbors for the query point (by ID or feature vector)
-func (client *ANNClient) GetNeighbors(vec []float64) (*cm.ResponseData, error) {
+func (client *ANNClient) GetNeighbors(vec []float64) ([]cm.NeighborsRecord, error) {
 	request := &cm.RequestData{
 		Vec: vec,
 	}
@@ -115,5 +131,9 @@ func (client *ANNClient) GetNeighbors(vec []float64) (*cm.ResponseData, error) {
 	if err != nil {
 		return nil, err
 	}
-	return target, nil
+	neighbors, ok := target.Results.([]cm.NeighborsRecord)
+	if !ok {
+		return nil, errors.New("GetNeighbors: can't cast result to the []NeighborsRecord type")
+	}
+	return neighbors, nil
 }

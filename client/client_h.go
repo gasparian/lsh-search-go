@@ -11,12 +11,13 @@ type Config struct {
 }
 
 type methods struct {
-	HealthCheck string
-	CheckBuild  string
-	BuildIndex  string
-	GetNN       string
-	PopHash     string
-	PutHash     string
+	HealthCheck     string
+	CheckBuild      string
+	BuildIndex      string
+	GetHashCollSize string
+	GetNN           string
+	PopHash         string
+	PutHash         string
 }
 
 // ANNClient holds data needed to perform custom http requests

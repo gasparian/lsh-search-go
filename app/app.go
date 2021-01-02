@@ -89,6 +89,20 @@ func (annServer *ANNServer) CheckBuildHandler(w http.ResponseWriter, r *http.Req
 	w.Write(jsonResp)
 }
 
+// GetHashCollSizeHandler checks the hashCollection size, returns `0` if it doesnt exist
+func (annServer *ANNServer) GetHashCollSizeHandler(w http.ResponseWriter, r *http.Request) {
+	size, err := annServer.GetHashCollSize()
+	if err != nil {
+		annServer.Logger.Err.Println("Checking hash coll. size: " + err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	resp := cm.ResponseData{Results: size}
+	jsonResp, _ := json.Marshal(resp)
+	w.Write(jsonResp)
+	w.WriteHeader(http.StatusOK)
+}
+
 // PopHashRecordHandler drops vector from the search index
 // curl -v http://localhost:8080/check?id=kd8f9wfhsdfs9df
 func (annServer *ANNServer) PopHashRecordHandler(w http.ResponseWriter, r *http.Request) {

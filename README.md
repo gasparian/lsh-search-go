@@ -89,6 +89,7 @@ Here are example visualizations:
     - ~~replace vector with the gonum's blas based [implementation](https://godoc.org/gonum.org/v1/gonum/mat#VecDense)~~;  
     - ~~Lock Hasher object where needed!~~;  
     - ~~Fix the client: `build` and `put` method must get vectors~~;  
+    - replace exact type in response with the interface (`ResponseData`, `ResponseRecord` --> `NeighborsRecord`);  
     - add unit tests for API methods;  
 4. Add search quality testing using the test part of the benchmark dataset:  
     - ~~implement client~~;  

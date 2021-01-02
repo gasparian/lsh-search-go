@@ -2,28 +2,23 @@ package annbench
 
 import (
 	"context"
+	"errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	cl "lsh-search-service/client"
 	cm "lsh-search-service/common"
 	"lsh-search-service/db"
-	"os"
 	"sort"
 	"time"
-)
-
-var (
-	testCollectionName = os.Getenv("TEST_COLLECTION_NAME")
-	dataCollectionName = os.Getenv("DATA_COLLECTION_NAME")
 )
 
 // BenchClient holds db for getting vectors from test collection
 // and a client for performing requests to the running ann service
 type BenchClient struct {
-	Client               cl.ANNClient
-	Db                   *db.MongoDatastore
-	Logger               *cm.Logger
-	HelperCollectionName string
+	Client         cl.ANNClient
+	Db             *db.MongoDatastore
+	Logger         *cm.Logger
+	TestCollection db.MongoCollection
 }
 
 // Recall returns ratio of relevant predictions over the all true relevant items
@@ -51,7 +46,11 @@ func (benchClient *BenchClient) ValidateThrsh(results []db.VectorRecord, thrsh f
 			return 0.0, err
 		}
 		prediction = nil
-		for _, neighbor := range respData.Neighbors {
+		for i := range respData.Results {
+			neighbor, ok := respData.Results[i].(cm.NeighborsRecord)
+			if !ok {
+				return 0.0, errors.New("Cannot cast the answer to the `Neighbors` type")
+			}
 			prediction = append(prediction, neighbor.SecondaryID)
 		}
 		averageRecall += Recall(prediction, result.NeighborsIds)
@@ -62,8 +61,7 @@ func (benchClient *BenchClient) ValidateThrsh(results []db.VectorRecord, thrsh f
 // Validate takes the array of distance thresholds and returns array of recall values
 func (benchClient *BenchClient) Validate(thrshs []float64) ([]float64, error) {
 	metrics := make([]float64, len(thrshs))
-	testColl := benchClient.Db.GetCollection(testCollectionName)
-	results, err := testColl.GetDbRecords(db.FindQuery{Proj: bson.M{"featureVec": 1}})
+	results, err := benchClient.TestCollection.GetDbRecords(db.FindQuery{Proj: bson.M{"featureVec": 1}})
 	if err != nil {
 		return nil, err
 	}
@@ -81,8 +79,8 @@ func (benchClient *BenchClient) Validate(thrshs []float64) ([]float64, error) {
 }
 
 // Populate put vectors into search index
-func (benchClient *BenchClient) Populate(batchSize int) error {
-	dataColl := benchClient.Db.GetCollection(dataCollectionName)
+func (benchClient *BenchClient) PopulateDataset(batchSize int, dataCollName string) error {
+	dataColl := benchClient.Db.GetCollection(dataCollName)
 	convMean, convStd, err := dataColl.GetAggregatedStats()
 	if err != nil {
 		return err

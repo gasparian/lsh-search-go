@@ -21,7 +21,8 @@ import (
 
 // getHelpMessage forms a byte array contains message
 func getHelloMessage() []byte {
-	helloMessage := []byte(`{
+	helloMessage := cm.ResponseData{
+		Message: `{
 		"methods": {
 			"GET/POST": {
 				"/build-index": "starts building search index from scratch",
@@ -33,11 +34,9 @@ func getHelloMessage() []byte {
 				"/get-nn": "returns db ids and distances of the nearest data points"
 			}
 	    }
-	}`)
+	}`}
 	// NOTE: ugly, but it's more convinient to update the text message by hand and then serialize to json
-	var raw map[string]interface{}
-	err := json.Unmarshal(helloMessage, &raw)
-	out, _ := json.Marshal(raw)
+	out, err := json.Marshal(helloMessage)
 	if err != nil {
 		return []byte("")
 	}
@@ -183,6 +182,19 @@ func (annServer *ANNServer) TryUpdateLocalHasher() error {
 		return errors.New("build is in progress or not valid. Please, do not use the index right now")
 	}
 	return nil
+}
+
+// GetHashCollSize returns number of documents in hash collection
+// TO DO: get last hash coll name and return it's size
+func (annServer *ANNServer) GetHashCollSize() (int64, error) {
+	// // get and print an estimated of the number of documents in the collection
+	// // specify the MaxTime option to limit the amount of time the operation can run on the server
+	// opts := options.EstimatedDocumentCount().SetMaxTime(2 * time.Second)
+	// count, err := coll.EstimatedDocumentCount(context.TODO(), opts)
+	// if err != nil {
+	//     log.Fatal(err)
+	// }
+	return 0.0, nil
 }
 
 // BuildIndex gets data stats from the db and creates the new Hasher (or hasher) object
@@ -366,7 +378,7 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 		return nil, err
 	}
 
-	var neighbors []cm.ResponseRecord
+	var neighbors []cm.NeighborsRecord
 	var idx int = 0
 	var candidate db.HashesRecord
 	for hashesCursor.Next(context.Background()) {
@@ -376,7 +388,7 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 		hexID := candidate.ID.Hex()
 		dist := annServer.Hasher.GetDist(inputVec, cm.NewVec(candidate.FeatureVec))
 		if dist <= annServer.Config.App.DistanceThrsh {
-			neighbors = append(neighbors, cm.ResponseRecord{
+			neighbors = append(neighbors, cm.NeighborsRecord{
 				ID:   hexID,
 				Dist: dist,
 			})
@@ -386,5 +398,8 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 	sort.Slice(neighbors, func(i, j int) bool {
 		return neighbors[i].Dist < neighbors[j].Dist
 	})
-	return &cm.ResponseData{Neighbors: neighbors[:annServer.Config.App.MaxNN]}, nil
+	results := &cm.ResponseData{
+		Results: neighbors[:annServer.Config.App.MaxNN],
+	}
+	return results, nil
 }

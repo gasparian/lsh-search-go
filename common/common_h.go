@@ -11,17 +11,17 @@ type Logger struct {
 	Err  *log.Logger
 }
 
-// ResponseRecord holds a single neighbor
-type ResponseRecord struct {
+// NeighborsRecord holds a single neighbor
+type NeighborsRecord struct {
 	ID          string  `json:"id,omitempty"`
 	SecondaryID int     `json:"secondaryId,omitempty"`
 	Dist        float64 `json:"dist,omitempty"`
 }
 
-// ResponseData holds the resulting objectIDs of nearest neighbors found
+// ResponseData holds the response data of any hanlder
 type ResponseData struct {
-	Neighbors []ResponseRecord `json:"neighbors,omitempty"`
-	Message   string           `json:"message,omitempty"`
+	Results interface{} `json:"neighbors,omitempty"`
+	Message string      `json:"message,omitempty"`
 }
 
 // RequestData used for unpacking the request payload for Pop/Put vectors
