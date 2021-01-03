@@ -140,6 +140,7 @@ func (annServer *ANNServer) LoadHasher() error {
 	}
 	if len(HasherRecord.Hasher) > 0 && HasherRecord.IsBuildDone {
 		annServer.Hasher.Load(HasherRecord.Hasher)
+		annServer.HashCollName = HasherRecord.HashCollName
 	}
 	return nil
 }
@@ -182,19 +183,6 @@ func (annServer *ANNServer) TryUpdateLocalHasher() error {
 		return errors.New("build is in progress or not valid. Please, do not use the index right now")
 	}
 	return nil
-}
-
-// GetHashCollSize returns number of documents in hash collection
-// TO DO: get last hash coll name and return it's size
-func (annServer *ANNServer) GetHashCollSize() (int64, error) {
-	// // get and print an estimated of the number of documents in the collection
-	// // specify the MaxTime option to limit the amount of time the operation can run on the server
-	// opts := options.EstimatedDocumentCount().SetMaxTime(2 * time.Second)
-	// count, err := coll.EstimatedDocumentCount(context.TODO(), opts)
-	// if err != nil {
-	//     log.Fatal(err)
-	// }
-	return 0.0, nil
 }
 
 // BuildIndex gets data stats from the db and creates the new Hasher (or hasher) object
@@ -285,6 +273,19 @@ func (annServer *ANNServer) BuildIndex(input cm.DatasetStats) error {
 	return nil
 }
 
+// GetHashCollSize returns number of documents in hash collection
+func (annServer *ANNServer) GetHashCollSize() (int64, error) {
+	err := annServer.TryUpdateLocalHasher()
+	if err != nil {
+		return 0, err
+	}
+	size, err := annServer.Mongo.GetCollSize(annServer.HashCollName)
+	if err != nil {
+		return 0, err
+	}
+	return size, nil
+}
+
 // popHashRecord drops record from collection by objectID (string Hex)
 func (annServer *ANNServer) popHashRecord(id string) error {
 	err := annServer.TryUpdateLocalHasher()
@@ -340,7 +341,7 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 		return nil, err
 	}
 	hashesColl := annServer.Mongo.GetCollection(helperRecord.HashCollName)
-	if len(input.ID) > 0 {
+	if len(input.ID) > 0 { // TO DO: why this needed? We need to pass only vector, aren't we?
 		objectID, err := primitive.ObjectIDFromHex(input.ID)
 		if err != nil {
 			return nil, err

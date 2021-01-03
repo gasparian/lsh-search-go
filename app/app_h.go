@@ -28,4 +28,5 @@ type ANNServer struct {
 	Logger        *cm.Logger
 	Config        ServiceConfig
 	LastBuildTime int64
+	HashCollName  string
 }

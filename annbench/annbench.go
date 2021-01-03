@@ -16,7 +16,7 @@ import (
 // and a client for performing requests to the running ann service
 type BenchClient struct {
 	Client         cl.ANNClient
-	Db             *db.MongoDatastore
+	Mongo          *db.MongoDatastore
 	Logger         *cm.Logger
 	TestCollection db.MongoCollection
 }
@@ -80,7 +80,7 @@ func (benchClient *BenchClient) Validate(thrshs []float64) ([]float64, error) {
 
 // Populate put vectors into search index
 func (benchClient *BenchClient) PopulateDataset(batchSize int, dataCollName string) error {
-	dataColl := benchClient.Db.GetCollection(dataCollName)
+	dataColl := benchClient.Mongo.GetCollection(dataCollName)
 	convMean, convStd, err := dataColl.GetAggregatedStats()
 	if err != nil {
 		return err

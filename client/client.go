@@ -20,7 +20,7 @@ func New(config Config) ANNClient {
 			HealthCheck:     config.ServerAddress + "/",
 			CheckBuild:      config.ServerAddress + "/check-build",
 			BuildIndex:      config.ServerAddress + "/build-index",
-			GetHashCollSize: config.ServerAddress + "/get-hash-coll-size",
+			GetHashCollSize: config.ServerAddress + "/get-index-size",
 			GetNN:           config.ServerAddress + "/get-nn",
 			PopHash:         config.ServerAddress + "/pop-hash?id=",
 			PutHash:         config.ServerAddress + "/put-hash?id=",
@@ -70,11 +70,11 @@ func (client *ANNClient) GetHashCollSize() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	result, ok := target.Results.(int64)
+	size, ok := target.Results.(int64)
 	if !ok {
-		0, errors.New("GetHashCollSize: can't cast response to the int64 type")
+		return 0, errors.New("GetHashCollSize: can't cast response to the int64 type")
 	}
-	return target, nil
+	return size, nil
 }
 
 // BuildHasher initiates hasher building process on server

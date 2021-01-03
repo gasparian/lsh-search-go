@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 
@@ -36,15 +37,23 @@ func main() {
 			ServerAddress: "http://192.168.0.132",
 			Timeout:       dbtimeOut,
 		}),
-		Db:             mongodb,
+		Mongo:          mongodb,
 		Logger:         logger,
 		TestCollection: mongodb.GetCollection(testCollectionName),
 	}
-	defer benchClient.Db.Disconnect()
+	defer benchClient.Mongo.Disconnect()
 
 	hashCollSize, err := benchClient.Client.GetHashCollSize()
 	if err != nil {
 		logger.Err.Fatal(err)
+	}
+	datasetSize, err := benchClient.Mongo.GetCollSize(dataCollectionName)
+	if err != nil {
+		logger.Err.Fatal(err)
+	}
+	logger.Info.Printf("Index size: %v; Full dataset size: %v", hashCollSize, datasetSize)
+	if hashCollSize != 0 && hashCollSize != datasetSize {
+		logger.Err.Fatal(fmt.Errorf("Search index size not equals to the bench dataset size"))
 	}
 	if hashCollSize == 0 {
 		err = benchClient.PopulateDataset(batchSize, dataCollectionName)

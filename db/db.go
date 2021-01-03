@@ -149,6 +149,19 @@ func (mongodb *MongoDatastore) GetHelperRecord(getHasherObject bool) (HelperReco
 	return results[0], nil
 }
 
+// GetCollSize returns number of documents in the requested collection
+func (mongodb *MongoDatastore) GetCollSize(collName string) (int64, error) {
+	opts := options.EstimatedDocumentCount().SetMaxTime(5 * time.Second)
+	coll := mongodb.GetCollection(collName)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
+	defer cancel()
+	count, err := coll.EstimatedDocumentCount(ctx, opts)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 // CreateIndexesByFields just creates the new unique ascending
 // indexes based on field name (type should be int)
 func (coll MongoCollection) CreateIndexesByFields(fields []string, unique bool) error {

@@ -23,7 +23,7 @@ func main() {
 	mux.HandleFunc("/build-index", annServer.BuildHasherHandler)
 	mux.HandleFunc("/check-build", annServer.CheckBuildHandler)
 	mux.HandleFunc("/get-nn", annServer.GetNeighborsHandler)
-	mux.HandleFunc("/get-hash-coll-size", annServer.GetHashCollSizeHandler)
+	mux.HandleFunc("/get-index-size", annServer.GetHashCollSizeHandler)
 	mux.HandleFunc("/pop-hash", annServer.PopHashRecordHandler)
 	mux.HandleFunc("/put-hash", annServer.PutHashRecordHandler)
 	http.Handle("/", cm.Decorate(mux, cm.Timer(logger)))

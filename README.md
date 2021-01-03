@@ -89,7 +89,7 @@ Here are example visualizations:
     - ~~replace vector with the gonum's blas based [implementation](https://godoc.org/gonum.org/v1/gonum/mat#VecDense)~~;  
     - ~~Lock Hasher object where needed!~~;  
     - ~~Fix the client: `build` and `put` method must get vectors~~;  
-    - replace exact type in response with the interface (`ResponseData`, `ResponseRecord` --> `NeighborsRecord`);  
+    - ~~replace exact type in response with the interface (`ResponseData`, `ResponseRecord` --> `NeighborsRecord`)~~;  
     - add unit tests for API methods;  
 4. Add search quality testing using the test part of the benchmark dataset:  
     - ~~implement client~~;  
@@ -103,7 +103,9 @@ Here are example visualizations:
     - ~~add ability to provide an *array* of vectors in the `put` query~~;  
     - ~~refactor `getNeighbors` function to get feature vectors from hashes db~~;  
     - write a script for populating the search index (inside `annbench` module);  
-6. Make readme section on "how it works" (See readme to-do's).  
+6. Additional things / refactoring:  
+    - Add context with timeout everywhere in the db code;  
+    - Make readme section on "how it works" (See readme to-do's);  
 
 ### Notes:  
  - Below I'll show how to talk with mongodb via console, to make quick checks on the dataset.  
