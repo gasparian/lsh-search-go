@@ -63,47 +63,18 @@ Here are example visualizations:
 
 ### Dev. plan:   
 
-1. Prepare the [ANN benchmark dataset](http://ann-benchmarks.com/deep-image-96-angular.hdf5):  
-    - ~~download dataset and write script for stats calculating using the hdf5;~~  
-    - ~~add mongodb in project~~;  
-    - ~~write a script to fill mongodb with the benchmarked dataset. Search index will be stored as new fields in the documents~~;  
-    - add unit tests for basic db functions;  
-2. Implement the LSH algorithm:  
-    - ~~write functions for random planes generation~~;  
-    - ~~write functions to perform basic vector operations~~;  
-    - ~~add ability to store generated plane coefs on disk~~;  
-    - add unit tests for public functions;  
-3. Make main app API:  
-    - ~~(build) the app needs to get dataset stats from the db (using mongo's aggregations) and iterate over the documents to update the search index collection~~;  
-    - ~~(get) returns the NNs' "ids" of the queried data point~~;  
-    - ~~(put) calculates the hashes and adds the document into the index collection~~;  
-    - ~~(pop) clean the search index by the given point "name"~~;  
-    - ~~rewrite the functions to save and load search index to hold the slice of Hasher objects instead of a single one~~;  
-    - ~~add ability to store the build sync. status and the LSH index object in special collection in the same mongodb~~;  
-    - ~~add proper logging~~;  
-    - ~~rafactor mongo client~~;  
-    - ~~update work with mongo client in bench prep code~~;  
-    - ~~add decorator to handlers to measure the response time~~;  
-    - ~~add hasher update on pop/put/get (store timestamp of the last change and compare the local one with the actual)~~;  
-    - ~~make docker image even lighter - deploy only binaries using [docker scratch](https://github.com/phrozen/geohash/blob/master/server/Dockerfile)~~;  
-    - ~~replace vector with the gonum's blas based [implementation](https://godoc.org/gonum.org/v1/gonum/mat#VecDense)~~;  
-    - ~~Lock Hasher object where needed!~~;  
-    - ~~Fix the client: `build` and `put` method must get vectors~~;  
-    - ~~replace exact type in response with the interface (`ResponseData`, `ResponseRecord` --> `NeighborsRecord`)~~;  
-    - add unit tests for API methods;  
-4. Add search quality testing using the test part of the benchmark dataset:  
-    - ~~implement client~~;  
-    - ~~write code for recall calculation, depending on threshold value~~;  
-    - ~~add logging during for the benchmark~~;  
-    - add unit tests for metrics calculation funcs;  
-5. Decouple db with the "original" data and lsh:  
-    - ~~drop data collection usage from the application level~~;  
-    - ~~store vectors alongside with hashes in the index collection~~;  
-    - ~~send dataset stats in the `build-index` request body~~;  
-    - ~~add ability to provide an *array* of vectors in the `put` query~~;  
-    - ~~refactor `getNeighbors` function to get feature vectors from hashes db~~;  
-    - write a script for populating the search index (inside `annbench` module);  
+1. ~~Prepare the [ANN benchmark dataset](http://ann-benchmarks.com/deep-image-96-angular.hdf5)~~  
+2. ~~Implement the LSH algorithm~~  
+3. ~~Make main app API~~  
+4. ~~Add search quality testing using the test part of the benchmark dataset~~  
+5. Tests:  
+    - lsh algorithm;  
+    - db;  
+    - client;  
+    - API;  
+    - Run benchmark!;  
 6. Additional things / refactoring:  
+    - ~~decouple db and client~~;  
     - Add context with timeout everywhere in the db code;  
     - Make readme section on "how it works" (See readme to-do's);  
 

@@ -2,7 +2,6 @@ package annbench
 
 import (
 	"context"
-	"errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	cl "lsh-search-service/client"
@@ -46,11 +45,7 @@ func (benchClient *BenchClient) ValidateThrsh(results []db.VectorRecord, thrsh f
 			return 0.0, err
 		}
 		prediction = nil
-		for i := range respData.Results {
-			neighbor, ok := respData.Results[i].(cm.NeighborsRecord)
-			if !ok {
-				return 0.0, errors.New("Cannot cast the answer to the `Neighbors` type")
-			}
+		for _, neighbor := range respData {
 			prediction = append(prediction, neighbor.SecondaryID)
 		}
 		averageRecall += Recall(prediction, result.NeighborsIds)
