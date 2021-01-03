@@ -188,7 +188,7 @@ func (annServer *ANNServer) PutHashRecordHandler(w http.ResponseWriter, r *http.
 	}
 }
 
-// GetNeighborsHandler makes query to the db and returns all neighbors in the MaxDist
+// GetNeighborsHandler makes query to the db and returns all neighbors
 func (annServer *ANNServer) GetNeighborsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {

@@ -27,22 +27,6 @@ func getPointPlaneDist(planeCoefs blas64.Vector) blas64.Vector {
 	return cm.NewVec(values)
 }
 
-// newLSHIndexInstance creates new instance of Hasher object
-// TO DO: expand the config with MaxDist (DistanceThrsh); rethink lsh instance config?
-func newLSHIndexInstance(meanVec, stdVec blas64.Vector, NPlanes int) (HasherInstance, error) {
-	lshIndex := HasherInstance{
-		Dims:    meanVec.N,
-		Bias:    blas64.Nrm2(stdVec),
-		MeanVec: meanVec,
-		NPlanes: NPlanes,
-	}
-	err := lshIndex.build()
-	if err != nil {
-		return HasherInstance{}, err
-	}
-	return lshIndex, nil
-}
-
 // NewLSHIndex creates slice of LSHIndexInstances to hold several permutations results
 func NewLSHIndex(config Config) *Hasher {
 	lshIndex := &Hasher{
@@ -53,47 +37,45 @@ func NewLSHIndex(config Config) *Hasher {
 	return lshIndex
 }
 
-func (lsh *HasherInstance) getRandomPlane() blas64.Vector {
-	coefs := make([]float64, lsh.Dims+1)
+func (lshIndex *Hasher) getRandomPlane() blas64.Vector {
+	coefs := make([]float64, lshIndex.Config.Dims+1)
 	var l2 float64 = 0.0
-	for i := 0; i < lsh.Dims; i++ {
+	for i := 0; i < lshIndex.Config.Dims; i++ {
 		coefs[i] = -1.0 + rand.Float64()*2
 		l2 += coefs[i] * coefs[i]
 	}
 	l2 = math.Sqrt(l2)
-	bias := l2 * lsh.Bias
+	bias := l2 * lshIndex.Config.Bias
 	coefs[len(coefs)-1] = -1.0*bias + rand.Float64()*bias*2
 	return cm.NewVec(coefs)
 }
 
-// build creates set of planes which will be used to calculate hash
-func (lsh *HasherInstance) build() error {
-	if lsh.Dims <= 0 {
-		return errors.New("dimensions number must be a positive integer")
+// NewHasherInstance creates set of planes which will be used to calculate hash
+func (lshIndex *Hasher) NewHasherInstance() (HasherInstance, error) {
+	if lshIndex.Config.Dims <= 0 {
+		return HasherInstance{}, errors.New("dimensions number must be a positive integer")
 	}
-
 	rand.Seed(time.Now().UnixNano())
+	lshInstance := HasherInstance{}
 	var coefs blas64.Vector
-	for i := 0; i < lsh.NPlanes; i++ {
-		coefs = lsh.getRandomPlane()
-		lsh.Planes = append(lsh.Planes, Plane{
+	for i := 0; i < lshIndex.Config.NPlanes; i++ {
+		coefs = lshIndex.getRandomPlane()
+		lshInstance.Planes = append(lshInstance.Planes, Plane{
 			Coefs:      coefs,
 			InnerPoint: getPointPlaneDist(coefs),
 		})
 	}
-	return nil
+	return lshInstance, nil
 }
 
 // getHash calculates LSH code
-func (lsh *HasherInstance) getHash(inpVec blas64.Vector) uint64 {
+func (lshInstance *HasherInstance) getHash(inpVec, meanVec blas64.Vector) uint64 {
 	var hash uint64
 	vec := cm.NewVec(make([]float64, inpVec.N))
-	var plane *Plane
 	var dpSign bool
-	for i := 0; i < lsh.NPlanes; i++ {
-		plane = &lsh.Planes[i]
+	for i, plane := range lshInstance.Planes {
 		blas64.Copy(inpVec, vec)
-		blas64.Axpy(-1.0, lsh.MeanVec, vec)
+		blas64.Axpy(-1.0, meanVec, vec)
 		blas64.Axpy(-1.0, plane.InnerPoint, vec)
 		dpSign = math.Signbit(blas64.Dot(vec, plane.Coefs))
 		if !dpSign {
@@ -111,10 +93,13 @@ func (lshIndex *Hasher) Generate(convMean, convStd blas64.Vector) error {
 	if lshIndex.Config.IsAngularDistance == 1 {
 		blas64.Scal(0.0, convStd)
 	}
+	lshIndex.Config.MeanVec = convMean
+	lshIndex.Config.Bias = blas64.Nrm2(convStd) * float64(lshIndex.Config.BiasMultiplier) // TO DO: why l2 norm is here? maybe mean or max of this vector?
+
 	var tmpLSHIndex HasherInstance
 	var err error
 	for i := 0; i < lshIndex.Config.NPermutes; i++ {
-		tmpLSHIndex, err = newLSHIndexInstance(convMean, convStd, lshIndex.Config.NPlanes)
+		tmpLSHIndex, err = lshIndex.NewHasherInstance()
 		if err != nil {
 			return err
 		}
@@ -131,20 +116,25 @@ func (lshIndex *Hasher) GetHashes(vec blas64.Vector) (map[int]uint64, error) {
 
 	var result map[int]uint64
 	for idx, lshInstance := range lshIndex.Instances {
-		result[idx] = lshInstance.getHash(vec)
+		result[idx] = lshInstance.getHash(vec, lshIndex.Config.MeanVec)
 	}
 	return result, nil
 }
 
 // GetDist returns measure of the specified distance metric
-func (lshIndex *Hasher) GetDist(lv, rv blas64.Vector) float64 {
+func (lshIndex *Hasher) GetDist(lv, rv blas64.Vector) (float64, bool) {
 	lshIndex.Lock()
 	defer lshIndex.Unlock()
-
+	var dist float64 = 0.0
 	if lshIndex.Config.IsAngularDistance == 1 {
-		return cm.CosineSim(lv, rv)
+		dist = cm.CosineSim(lv, rv)
+	} else {
+		dist = cm.L2(lv, rv)
 	}
-	return cm.L2(lv, rv)
+	if dist <= lshIndex.Config.DistanceThrsh {
+		return dist, true
+	}
+	return dist, false
 }
 
 // Dump encodes Hasher object as a byte-array
@@ -158,7 +148,9 @@ func (lshIndex *Hasher) Dump() ([]byte, error) {
 	buf := &bytes.Buffer{}
 	enc := gob.NewEncoder(buf)
 	encodable := HasherEncode{
-		Instances: &lshIndex.Instances,
+		Instances:       &lshIndex.Instances,
+		HashFieldsNames: &lshIndex.HashFieldsNames,
+		Config:          &lshIndex.Config,
 	}
 	err := enc.Encode(encodable)
 	if err != nil {

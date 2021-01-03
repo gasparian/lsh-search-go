@@ -151,7 +151,7 @@ func (annServer *ANNServer) LoadHasher() error {
 func (annServer *ANNServer) hashBatch(vecs []cm.RequestData) ([]interface{}, error) {
 	batch := make([]interface{}, len(vecs))
 	for idx, vec := range vecs {
-		objectID, err := primitive.ObjectIDFromHex(vec.ID)
+		objectID, err := primitive.ObjectIDFromHex(vec.ID) // TO DO: add secondary ID?
 		if err != nil {
 			return nil, err
 		}
@@ -311,6 +311,7 @@ func (annServer *ANNServer) popHashRecord(id string) error {
 }
 
 // putHashRecord drops record from collection by objectID (string Hex)
+// TO DO: use SecondaryID here
 func (annServer *ANNServer) putHashRecord(vecs []cm.RequestData) error {
 	err := annServer.TryUpdateLocalHasher()
 	if err != nil {
@@ -343,27 +344,6 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 		return nil, err
 	}
 	hashesColl := annServer.Mongo.GetCollection(helperRecord.HashCollName)
-	if len(input.ID) > 0 { // TO DO: why this needed? We need to pass only vector, aren't we?
-		objectID, err := primitive.ObjectIDFromHex(input.ID)
-		if err != nil {
-			return nil, err
-		}
-		dbRecords, err := hashesColl.GetDbRecords(
-			db.FindQuery{
-				Limit: 1,
-				Query: bson.D{{"_id", objectID}},
-				Proj:  bson.M{"featureVec": 1},
-			},
-		)
-		if err != nil {
-			return nil, err
-		}
-		if len(dbRecords) != 1 {
-			return nil, errors.New("id must be presented in the database")
-		}
-		input.Vec = dbRecords[0].FeatureVec
-	}
-
 	inputVec := cm.NewVec(input.Vec)
 	hashes, err := annServer.Hasher.GetHashes(inputVec)
 	hashesQuery := bson.D{}
@@ -389,8 +369,8 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 			continue
 		}
 		hexID := candidate.ID.Hex()
-		dist := annServer.Hasher.GetDist(inputVec, cm.NewVec(candidate.FeatureVec)) // TO DO: apply thrsh inside GetDist function
-		if dist <= annServer.Config.Hasher.DistanceThrsh {
+		dist, ok := annServer.Hasher.GetDist(inputVec, cm.NewVec(candidate.FeatureVec))
+		if ok {
 			neighbors = append(neighbors, cm.NeighborsRecord{
 				ID:   hexID,
 				Dist: dist,

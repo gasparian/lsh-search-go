@@ -52,7 +52,7 @@ go mod tidy && build -o /usr/bin/run_prep_data run_prep_data.go
 
 ### Local sensitive hashing reference   
 
-LSH algorithm implies generation of random plane equation coefs. So, depending on similarity metric, we just need to define "bias" coef "D" as zero (for "angular" metric) or non-zero (limited by the datapoints deviation).  
+LSH algorithm implies generation of random plane equation coefs. So, depending on similarity metric, we just need to define "bias" component (usually referred as "D") as zero (for "angular" metric) or non-zero (limited by the datapoints deviation).  
 Here are visual examples of the planes generation for angular and non-angular distance metrics:  
 <p align="center"> <img src="https://github.com/gasparian/lsh-search-service/blob/master/pics/non-biased.jpg" height=400/>  <img src="https://github.com/gasparian/lsh-search-service/blob/master/pics/biased.jpg" height=400/> </p>  
 

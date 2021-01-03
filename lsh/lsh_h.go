@@ -14,12 +14,7 @@ type Plane struct {
 
 // HasherInstance holds data for local sensetive hashing algorithm
 type HasherInstance struct {
-	Dims    int
-	Bias    float64
-	MeanVec blas64.Vector
-	MaxDist float64
-	Planes  []Plane
-	NPlanes int
+	Planes []Plane
 }
 
 // Config holds all needed constants for creating the Hasher instance
@@ -28,7 +23,10 @@ type Config struct {
 	NPermutes         int
 	NPlanes           int
 	BiasMultiplier    int
-	DistanceThrsh   float64
+	DistanceThrsh     float64
+	Dims              int
+	Bias              float64
+	MeanVec           blas64.Vector
 }
 
 // Hasher holds N_PERMUTS number of HasherInstance instances
@@ -41,5 +39,7 @@ type Hasher struct {
 
 // HasherEncode using for encoding/decoding the Hasher structure
 type HasherEncode struct {
-	Instances *[]HasherInstance
+	Instances       *[]HasherInstance
+	HashFieldsNames *[]string
+	Config          *Config
 }
