@@ -74,7 +74,6 @@ Here are visual examples of the planes generation for angular and non-angular di
     - Run benchmark! (~10);  
 6. Additional things / refactoring:  
     - ~~decouple db and app~~;  
-    - change pics to the 2D analogs;  
     - Add context with timeout everywhere in the db code;  
     - Make readme section on "how it works" (See readme to-do's);  
 
