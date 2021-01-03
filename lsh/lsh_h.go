@@ -25,8 +25,10 @@ type HasherInstance struct {
 // Config holds all needed constants for creating the Hasher instance
 type Config struct {
 	IsAngularDistance int
-	MaxNPlanes        int
 	NPermutes         int
+	NPlanes           int
+	BiasMultiplier    int
+	DistanceThrsh   float64
 }
 
 // Hasher holds N_PERMUTS number of HasherInstance instances

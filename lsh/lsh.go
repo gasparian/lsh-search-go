@@ -28,12 +28,13 @@ func getPointPlaneDist(planeCoefs blas64.Vector) blas64.Vector {
 }
 
 // newLSHIndexInstance creates new instance of Hasher object
-func newLSHIndexInstance(meanVec, stdVec blas64.Vector, maxNPlanes int) (HasherInstance, error) {
+// TO DO: expand the config with MaxDist (DistanceThrsh); rethink lsh instance config?
+func newLSHIndexInstance(meanVec, stdVec blas64.Vector, NPlanes int) (HasherInstance, error) {
 	lshIndex := HasherInstance{
 		Dims:    meanVec.N,
 		Bias:    blas64.Nrm2(stdVec),
 		MeanVec: meanVec,
-		NPlanes: maxNPlanes,
+		NPlanes: NPlanes,
 	}
 	err := lshIndex.build()
 	if err != nil {
@@ -113,7 +114,7 @@ func (lshIndex *Hasher) Generate(convMean, convStd blas64.Vector) error {
 	var tmpLSHIndex HasherInstance
 	var err error
 	for i := 0; i < lshIndex.Config.NPermutes; i++ {
-		tmpLSHIndex, err = newLSHIndexInstance(convMean, convStd, lshIndex.Config.MaxNPlanes)
+		tmpLSHIndex, err = newLSHIndexInstance(convMean, convStd, lshIndex.Config.NPlanes)
 		if err != nil {
 			return err
 		}

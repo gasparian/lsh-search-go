@@ -9,9 +9,8 @@ import (
 // Config holds general constants
 type Config struct {
 	BatchSize       int
-	MaxHashesNumber int
+	MaxHashesQuery int
 	MaxNN           int
-	DistanceThrsh   float64
 }
 
 // ServiceConfig holds all needed variables to run the app

@@ -46,12 +46,13 @@ func getHelloMessage() []byte {
 // ParseEnv forms app config by parsing the environment variables
 func ParseEnv() (*ServiceConfig, error) {
 	intVars := map[string]int{
-		"BATCH_SIZE":       0,
-		"MAX_HASHES_QUERY": 0,
-		"MAX_NN":           0,
+		"BATCH_SIZE":       1000,
+		"MAX_HASHES_QUERY": 10000,
+		"MAX_NN":           100,
 		"ANGULAR_METRIC":   0,
-		"MAX_N_PLANES":     0,
-		"N_PERMUTS":        0,
+		"N_PLANES":         30,
+		"N_PERMUTS":        5,
+		"BIAS_MULTIPLIER":  1,
 	}
 	for key := range intVars {
 		val, err := strconv.Atoi(os.Getenv(key))
@@ -83,15 +84,16 @@ func ParseEnv() (*ServiceConfig, error) {
 			HelperCollectionName: stringVars["HELPER_COLLECTION_NAME"],
 		},
 		App: Config{
-			BatchSize:       intVars["BATCH_SIZE"],
-			MaxHashesNumber: intVars["MAX_HASHES_QUERY"],
-			MaxNN:           intVars["MAX_NN"],
-			DistanceThrsh:   distanceThrsh,
+			BatchSize:      intVars["BATCH_SIZE"],
+			MaxHashesQuery: intVars["MAX_HASHES_QUERY"],
+			MaxNN:          intVars["MAX_NN"],
 		},
 		Hasher: hashing.Config{
 			IsAngularDistance: intVars["ANGULAR_METRIC"],
-			MaxNPlanes:        intVars["MAX_N_PLANES"],
+			NPlanes:           intVars["N_PLANES"],
 			NPermutes:         intVars["N_PERMUTS"],
+			BiasMultiplier:    intVars["BIAS_MULTIPLIER"],
+			DistanceThrsh:     distanceThrsh,
 		},
 	}
 
@@ -370,7 +372,7 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 	}
 	hashesCursor, err := hashesColl.GetCursor(
 		db.FindQuery{
-			Limit: annServer.Config.App.MaxHashesNumber,
+			Limit: annServer.Config.App.MaxHashesQuery,
 			Query: hashesQuery,
 			Proj:  bson.M{"_id": 1, "featureVec": 1},
 		},
@@ -387,8 +389,8 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 			continue
 		}
 		hexID := candidate.ID.Hex()
-		dist := annServer.Hasher.GetDist(inputVec, cm.NewVec(candidate.FeatureVec))
-		if dist <= annServer.Config.App.DistanceThrsh {
+		dist := annServer.Hasher.GetDist(inputVec, cm.NewVec(candidate.FeatureVec)) // TO DO: apply thrsh inside GetDist function
+		if dist <= annServer.Config.Hasher.DistanceThrsh {
 			neighbors = append(neighbors, cm.NeighborsRecord{
 				ID:   hexID,
 				Dist: dist,

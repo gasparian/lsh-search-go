@@ -52,9 +52,8 @@ go mod tidy && build -o /usr/bin/run_prep_data run_prep_data.go
 
 ### Local sensitive hashing reference   
 
-LSH algorithm implies generation of random plane equation coefs. So, depending on the similarity metric, often we just need to define "bias" coef "d" as zero (for "angular" metric) or non-zero.  
-Also, we need to limit coefs range, based on data points deviation.
-Here are example visualizations:  
+LSH algorithm implies generation of random plane equation coefs. So, depending on similarity metric, we just need to define "bias" coef "D" as zero (for "angular" metric) or non-zero (limited by the datapoints deviation).  
+Here are visual examples of the planes generation for angular and non-angular distance metrics:  
 <img src="https://github.com/gasparian/lsh-search-service/blob/master/pics/non-biased.png" height=300 >  <img src="https://github.com/gasparian/lsh-search-service/blob/master/pics/biased.png" height=300 >  
 
 *TO DO: Complexity*
@@ -67,14 +66,15 @@ Here are example visualizations:
 2. ~~Implement the LSH algorithm~~  
 3. ~~Make main app API~~  
 4. ~~Add search quality testing using the test part of the benchmark dataset~~  
-5. Tests:  
-    - lsh algorithm;  
-    - db;  
-    - client;  
-    - API;  
-    - Run benchmark!;  
+5. Tests (~100 unit tests in total):  
+    - lsh algorithm (~22);  
+    - db (~40);  
+    - client (~14);  
+    - API (~14);  
+    - Run benchmark! (~10);  
 6. Additional things / refactoring:  
-    - ~~decouple db and client~~;  
+    - ~~decouple db and app~~;  
+    - change pics to the 2D analogs;  
     - Add context with timeout everywhere in the db code;  
     - Make readme section on "how it works" (See readme to-do's);  
 
