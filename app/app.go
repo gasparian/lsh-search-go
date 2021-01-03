@@ -68,23 +68,23 @@ func (annServer *ANNServer) BuildHasherHandler(w http.ResponseWriter, r *http.Re
 // CheckBuildHandler checks the build status in the db
 func (annServer *ANNServer) CheckBuildHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	var message string = "Build status unknown"
+	resp := cm.ResponseData{Results: cm.BuildStatusUnknown}
 	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
 	if err != nil {
 		annServer.Logger.Err.Println("Checking build status: " + err.Error())
+		resp.Results = cm.BuildStatusError
+		resp.Message = err.Error()
 		w.WriteHeader(http.StatusInternalServerError)
-		message = "Smth went wrong (may be the helper doesn't exist)"
 	} else {
 		if !helperRecord.IsBuildDone && len(helperRecord.BuildError) == 0 {
-			message = "Build in process"
+			resp.Results = cm.BuildStatusInProgress
 		} else if helperRecord.IsBuildDone && len(helperRecord.BuildError) == 0 {
-			message = "Build done"
+			resp.Results = cm.BuildStatusDone
 		} else if len(helperRecord.BuildError) > 0 {
-			message = fmt.Sprintf("Build error: %s", helperRecord.BuildError)
+			resp.Message = fmt.Sprintf("Build error: %s", helperRecord.BuildError)
 		}
 		w.WriteHeader(http.StatusOK)
 	}
-	resp := cm.ResponseData{Message: message}
 	jsonResp, _ := json.Marshal(resp)
 	w.Write(jsonResp)
 }

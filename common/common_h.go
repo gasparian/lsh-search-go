@@ -4,6 +4,14 @@ import (
 	"log"
 )
 
+// Used to represent the hasher build status
+const (
+	BuildStatusUnknown = iota
+	BuildStatusError
+	BuildStatusInProgress
+	BuildStatusDone
+)
+
 // Logger holds several logger instances with different prefixes
 type Logger struct {
 	Warn *log.Logger

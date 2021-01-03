@@ -53,7 +53,6 @@ func (client *ANNClient) MakeRequest(method, url string, body io.Reader, target 
 }
 
 // CheckBuildStatus returns the actual status of the latest index build
-// TO DO: make build status as enum and return it
 func (client *ANNClient) CheckBuildStatus() (*cm.ResponseData, error) {
 	target := &cm.ResponseData{}
 	err := client.MakeRequest("GET", client.Methods.CheckBuild, nil, target)
