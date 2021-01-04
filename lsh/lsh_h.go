@@ -43,3 +43,9 @@ type HasherEncode struct {
 	HashFieldsNames *[]string
 	Config          *Config
 }
+
+// SafeHashesHolder allows to lock map while write values in it
+type safeHashesHolder struct {
+	sync.Mutex
+	v map[int]uint64
+}

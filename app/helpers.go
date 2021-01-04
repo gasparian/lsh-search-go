@@ -149,14 +149,10 @@ func (annServer *ANNServer) LoadHasher() error {
 func (annServer *ANNServer) hashBatch(vecs []cm.RequestData) ([]interface{}, error) {
 	batch := make([]interface{}, len(vecs))
 	for idx, vec := range vecs {
-		hashes, err := annServer.Hasher.GetHashes(cm.NewVec(vec.Vec))
-		if err != nil {
-			return nil, err
-		}
 		batch[idx] = db.HashesRecord{
 			SecondaryID: vec.SecondaryID,
 			FeatureVec:  vec.Vec,
-			Hashes:      hashes,
+			Hashes:      annServer.Hasher.GetHashes(cm.NewVec(vec.Vec)),
 		}
 	}
 	return batch, nil
@@ -334,7 +330,7 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 	}
 	hashesColl := annServer.Mongo.GetCollection(helperRecord.HashCollName)
 	inputVec := cm.NewVec(input.Vec)
-	hashes, err := annServer.Hasher.GetHashes(inputVec)
+	hashes := annServer.Hasher.GetHashes(inputVec)
 	hashesQuery := bson.D{}
 	for k, v := range hashes {
 		hashesQuery = append(hashesQuery, bson.E{strconv.Itoa(k), v})

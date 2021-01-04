@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/rand"
 	"strconv"
+	"sync"
 	"time"
 
 	"gonum.org/v1/gonum/blas/blas64"
@@ -110,16 +111,23 @@ func (lshIndex *Hasher) Generate(convMean, convStd blas64.Vector) error {
 }
 
 // GetHashes returns map of calculated lsh values
-// TO DO: may be better to calculate each hash in a different goroutine? (getHash will become separate function)
-func (lshIndex *Hasher) GetHashes(vec blas64.Vector) (map[int]uint64, error) {
+func (lshIndex *Hasher) GetHashes(vec blas64.Vector) map[int]uint64 {
 	lshIndex.Lock()
 	defer lshIndex.Unlock()
 
-	var result map[int]uint64
-	for idx, lshInstance := range lshIndex.Instances {
-		result[idx] = lshInstance.getHash(vec, lshIndex.Config.MeanVec)
+	hashes := safeHashesHolder{v: make(map[int]uint64)}
+	var wg sync.WaitGroup
+	for i, lshInstance := range lshIndex.Instances {
+		wg.Add(1)
+		go func(idx int, lsh *HasherInstance, hashesMap *safeHashesHolder) {
+			hashesMap.Lock()
+			hashesMap.v[idx] = lsh.getHash(vec, lshIndex.Config.MeanVec)
+			hashesMap.Unlock()
+			wg.Done()
+		}(i, &lshInstance, &hashes)
 	}
-	return result, nil
+	wg.Wait()
+	return hashes.v
 }
 
 // GetDist returns measure of the specified distance metric
