@@ -73,7 +73,7 @@ Here are visual examples of the planes generation for angular and non-angular di
     - API (~14);  
     - Run benchmark! (~10);  
 6. Additional things / refactoring:  
-    - ~~decouple db and app~~;  
+    - add build and test on each push to the master branch;  
     - Add context with timeout everywhere in the db code;  
     - Make readme section on "how it works" (See readme to-do's);  
 
