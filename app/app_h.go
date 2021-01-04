@@ -8,9 +8,9 @@ import (
 
 // Config holds general constants
 type Config struct {
-	BatchSize       int
+	BatchSize      int
 	MaxHashesQuery int
-	MaxNN           int
+	MaxNN          int
 }
 
 // ServiceConfig holds all needed variables to run the app

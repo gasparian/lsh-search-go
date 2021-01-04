@@ -7,6 +7,7 @@ import (
 	cm "lsh-search-service/common"
 	"lsh-search-service/db"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -110,40 +111,19 @@ func (annServer *ANNServer) PopHashRecordHandler(w http.ResponseWriter, r *http.
 	switch r.Method {
 	case "GET":
 		params := r.URL.Query()
-		// NOTE: id generated from mongodb ObjectID with Hex() method
-		id, ok := params["id"]
-		if !ok || len(id) == 0 {
+		ids, ok := params["id"]
+		if !ok || len(ids) == 0 {
 			annServer.Logger.Err.Println("Pop hash record: object id must be specified")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		if len(id[0]) == 0 {
-			annServer.Logger.Err.Println("Pop hash record: object id must be specified")
+		id, err := strconv.ParseUint(ids[0], 10, 64)
+		if err != nil {
+			annServer.Logger.Err.Println("Pop hash record: cannot convert id to uint64 type")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		err := annServer.popHashRecord(id[0])
-		if err != nil {
-			annServer.Logger.Err.Println("Pop hash record: " + err.Error())
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	case "POST":
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			annServer.Logger.Err.Println("Pop hash record: " + err.Error())
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		var input cm.RequestData
-		err = json.Unmarshal(body, &input)
-		if err != nil {
-			annServer.Logger.Err.Println("Pop hash record: " + err.Error())
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		err = annServer.popHashRecord(input.ID)
+		err = annServer.popHashRecord(id)
 		if err != nil {
 			annServer.Logger.Err.Println("Pop hash record: " + err.Error())
 			w.WriteHeader(http.StatusInternalServerError)

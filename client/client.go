@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	cm "lsh-search-service/common"
@@ -95,8 +96,9 @@ func (client *ANNClient) BuildHasher(mean, std []float64) error {
 }
 
 // PopHash drops specified hash from the search index
-func (client *ANNClient) PopHash(id string) error {
-	err := client.MakeRequest("GET", client.Methods.PopHash+id, nil, nil)
+func (client *ANNClient) PopHash(id uint64) error {
+	stringID := strconv.FormatUint(id, 10)
+	err := client.MakeRequest("GET", client.Methods.PopHash+stringID, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -117,7 +119,7 @@ func (client *ANNClient) PutHashes(requestData []cm.RequestData) error {
 }
 
 // GetNeighbors gets the nearest neighbors for the query point (by ID or feature vector)
-func (client *ANNClient) GetNeighbors(vec []float64) ([]cm.NeighborsRecord, error) {
+func (client *ANNClient) GetNeighbors(vec []float64) ([]uint64, error) {
 	request := &cm.RequestData{
 		Vec: vec,
 	}
@@ -130,9 +132,9 @@ func (client *ANNClient) GetNeighbors(vec []float64) ([]cm.NeighborsRecord, erro
 	if err != nil {
 		return nil, err
 	}
-	neighbors, ok := target.Results.([]cm.NeighborsRecord)
+	neighbors, ok := target.Results.([]uint64)
 	if !ok {
-		return nil, errors.New("GetNeighbors: can't cast result to the []NeighborsRecord type")
+		return nil, errors.New("GetNeighbors: can't cast result to the []uint64 type")
 	}
 	return neighbors, nil
 }

@@ -94,7 +94,7 @@ func (lshIndex *Hasher) Generate(convMean, convStd blas64.Vector) error {
 		blas64.Scal(0.0, convStd)
 	}
 	lshIndex.Config.MeanVec = convMean
-	lshIndex.Config.Bias = blas64.Nrm2(convStd) * float64(lshIndex.Config.BiasMultiplier) // TO DO: why l2 norm is here? maybe mean or max of this vector?
+	lshIndex.Config.Bias = blas64.Nrm2(convStd) * float64(lshIndex.Config.BiasMultiplier)
 
 	var tmpLSHIndex HasherInstance
 	var err error
@@ -110,6 +110,7 @@ func (lshIndex *Hasher) Generate(convMean, convStd blas64.Vector) error {
 }
 
 // GetHashes returns map of calculated lsh values
+// TO DO: may be better to calculate each hash in a different goroutine? (getHash will become separate function)
 func (lshIndex *Hasher) GetHashes(vec blas64.Vector) (map[int]uint64, error) {
 	lshIndex.Lock()
 	defer lshIndex.Unlock()

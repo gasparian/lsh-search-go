@@ -20,9 +20,10 @@ type Logger struct {
 }
 
 // NeighborsRecord holds a single neighbor
+// Used only to store filtered neighbors for sorting
 type NeighborsRecord struct {
 	ID          string  `json:"id,omitempty"`
-	SecondaryID int     `json:"secondaryId,omitempty"`
+	SecondaryID uint64  `json:"secondaryId,omitempty"`
 	Dist        float64 `json:"dist,omitempty"`
 }
 
@@ -35,7 +36,7 @@ type ResponseData struct {
 // RequestData used for unpacking the request payload for Pop/Put vectors
 type RequestData struct {
 	ID          string    `json:"id,omitempty"`
-	SecondaryID int       `json:"secondaryId,omitempty"`
+	SecondaryID uint64    `json:"secondaryId,omitempty"`
 	Vec         []float64 `json:"vec,omitempty"`
 }
 

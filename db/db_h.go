@@ -58,16 +58,17 @@ type DistanceVec [100]float32
 // VectorRecord used to store the vectors to search in the mongodb
 type VectorRecord struct {
 	ID           primitive.ObjectID `bson:"_id,omitempty"`
-	SecondaryID  int                `bson:"secondaryId"` // needed for benchmarks
-	NeighborsIds []int              `bson:"neighborsIds,omitempty"`
+	SecondaryID  uint64             `bson:"secondaryId"` // needed primarily for benchmarks
+	NeighborsIds []uint64           `bson:"neighborsIds,omitempty"`
 	FeatureVec   []float64          `bson:"featureVec,omitempty"`
 }
 
 // HashesRecord stores the id of original document in other collection and hashes map
 type HashesRecord struct {
-	ID         primitive.ObjectID `bson:"_id,omitempty"`
-	FeatureVec []float64          `bson:"featureVec,omitempty"`
-	Hashes     map[int]uint64     `bson:"hashes,omitempty"`
+	ID          primitive.ObjectID `bson:"_id,omitempty"`
+	SecondaryID uint64             `bson:"secondaryId,omitempty"`
+	FeatureVec  []float64          `bson:"featureVec,omitempty"`
+	Hashes      map[int]uint64     `bson:"hashes,omitempty"`
 }
 
 // HelperRecord holds the Hasher model and supplementary data

@@ -22,7 +22,7 @@ type BenchClient struct {
 
 // Recall returns ratio of relevant predictions over the all true relevant items
 // both arrays MUST BE SORTED
-func Recall(prediction, groundTruth []int) float64 {
+func Recall(prediction, groundTruth []uint64) float64 {
 	valid := 0
 	for i := range prediction {
 		if prediction[i] == groundTruth[i] {
@@ -35,18 +35,18 @@ func Recall(prediction, groundTruth []int) float64 {
 // ValidateThrsh takes the distance threshold and returns recall value
 func (benchClient *BenchClient) ValidateThrsh(results []db.VectorRecord, thrsh float64) (float64, error) {
 	var averageRecall float64 = 0.0
-	var prediction []int
+	var prediction []uint64
 	for _, result := range results {
 		sort.Slice(result.NeighborsIds, func(i, j int) bool {
 			return result.NeighborsIds[i] < result.NeighborsIds[j]
 		})
-		respData, err := benchClient.Client.GetNeighbors(result.FeatureVec)
+		neighborsIDs, err := benchClient.Client.GetNeighbors(result.FeatureVec)
 		if err != nil {
 			return 0.0, err
 		}
 		prediction = nil
-		for _, neighbor := range respData {
-			prediction = append(prediction, neighbor.SecondaryID)
+		for _, neighborID := range neighborsIDs {
+			prediction = append(prediction, neighborID)
 		}
 		averageRecall += Recall(prediction, result.NeighborsIds)
 	}

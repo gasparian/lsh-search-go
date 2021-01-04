@@ -3,8 +3,6 @@ package app
 import (
 	"encoding/json"
 	"errors"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	// "go.mongodb.org/mongo-driver/mongo"
 	"os"
 	"time"
 
@@ -151,18 +149,14 @@ func (annServer *ANNServer) LoadHasher() error {
 func (annServer *ANNServer) hashBatch(vecs []cm.RequestData) ([]interface{}, error) {
 	batch := make([]interface{}, len(vecs))
 	for idx, vec := range vecs {
-		objectID, err := primitive.ObjectIDFromHex(vec.ID) // TO DO: add secondary ID?
-		if err != nil {
-			return nil, err
-		}
 		hashes, err := annServer.Hasher.GetHashes(cm.NewVec(vec.Vec))
 		if err != nil {
 			return nil, err
 		}
 		batch[idx] = db.HashesRecord{
-			ID:         objectID,
-			FeatureVec: vec.Vec,
-			Hashes:     hashes,
+			SecondaryID: vec.SecondaryID,
+			FeatureVec:  vec.Vec,
+			Hashes:      hashes,
 		}
 	}
 	return batch, nil
@@ -288,13 +282,9 @@ func (annServer *ANNServer) GetHashCollSize() (int64, error) {
 	return size, nil
 }
 
-// popHashRecord drops record from collection by objectID (string Hex)
-func (annServer *ANNServer) popHashRecord(id string) error {
+// popHashRecord drops record from collection by SecondaryID (ID - is mongo-specific id)
+func (annServer *ANNServer) popHashRecord(id uint64) error {
 	err := annServer.TryUpdateLocalHasher()
-	if err != nil {
-		return err
-	}
-	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return err
 	}
@@ -303,7 +293,7 @@ func (annServer *ANNServer) popHashRecord(id string) error {
 		return err
 	}
 	hashesColl := annServer.Mongo.GetCollection(helperRecord.HashCollName)
-	err = hashesColl.DeleteRecords(bson.D{{"_id", objectID}})
+	err = hashesColl.DeleteRecords(bson.D{{"secondaryId", id}})
 	if err != nil {
 		return err
 	}
@@ -311,7 +301,6 @@ func (annServer *ANNServer) popHashRecord(id string) error {
 }
 
 // putHashRecord drops record from collection by objectID (string Hex)
-// TO DO: use SecondaryID here
 func (annServer *ANNServer) putHashRecord(vecs []cm.RequestData) error {
 	err := annServer.TryUpdateLocalHasher()
 	if err != nil {
@@ -368,12 +357,11 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 		if err := hashesCursor.Decode(&candidate); err != nil {
 			continue
 		}
-		hexID := candidate.ID.Hex()
 		dist, ok := annServer.Hasher.GetDist(inputVec, cm.NewVec(candidate.FeatureVec))
 		if ok {
 			neighbors = append(neighbors, cm.NeighborsRecord{
-				ID:   hexID,
-				Dist: dist,
+				SecondaryID: candidate.SecondaryID,
+				Dist:        dist,
 			})
 			idx++
 		}
@@ -381,8 +369,15 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 	sort.Slice(neighbors, func(i, j int) bool {
 		return neighbors[i].Dist < neighbors[j].Dist
 	})
-	results := &cm.ResponseData{
-		Results: neighbors[:annServer.Config.App.MaxNN],
+	answerSize := annServer.Config.App.MaxNN
+	if len(neighbors) < answerSize {
+		answerSize = len(neighbors)
 	}
-	return results, nil
+	neighborsIDs := make([]uint64, answerSize)
+	for i := 0; i < answerSize; i++ {
+		neighborsIDs[i] = neighbors[i].SecondaryID
+	}
+	return &cm.ResponseData{
+		Results: neighborsIDs,
+	}, nil
 }
