@@ -13,24 +13,19 @@ I've decided to go first with the LSH since it's pretty convenient to serialize 
 ### Building and running  
 
 To run the app, the only thing you need to be installed on your host machine - is docker engine.  
-The list of objects inside the hdf5:  
- - `train` - train points;  
- - `test` - test points;  
- - `neighbors` - 100 nearest points for each point;  
- - `distances` - 100 distances (angular) to the nearest points;  
+Also, since this solution depends on mongodb, you need to run mongodb and provide it's address in the `config.env`. And don't forget to change the db authentication method (see the note in `/db/db.go`).  
 
 Everything runs inside a docker. Just launch it with:  
  - `./build_docker.sh && ./run_docker.sh` if you want to launch the main app;  
- - `cd ./db && ./launch.sh` if you want to launch the database (mongodb);  
-Don't forget to add the actual db socket in the config.  
+ - `cd ./db && ./launch.sh` if you want to launch the db (suitable for local tests);  
 
-Also, for more convenient development, you can run the app locally. First, install deps:  
+Also, for more convenient development, you can run the app locally, without docker. First, install deps:  
 ```
 sudo apt-get install libhdf5-serial-dev
 go mod init lsh-search-service
 go mod tidy
 ```  
-Then compile and run, passing args from config file (targets are: `main.go` or `bench_data_prep_main.go` or `annbench_main.go`):  
+Then compile and run the needed `*_main.go` file, passing args from config:  
 ```
 go build -o ./main ./main.go
 export $(grep -v '^#' config.env | xargs) && ./main
@@ -40,11 +35,23 @@ In order to run [benchmarks](https://github.com/erikbern/ann-benchmarks), first 
 ```
 wget http://ann-benchmarks.com/deep-image-96-angular.hdf5 -P ./data
 ```   
+Here is the list of objects inside the downloaded hdf5:  
+ - `train` - train points;  
+ - `test` - test points;  
+ - `neighbors` - 100 nearest points for each point;  
+ - `distances` - 100 distances (angular) to the nearest points;  
+
 Then run the prepared script to load data from hdf5 to the mongodb:  
 ```
 cd ./data
 go mod tidy && build -o /usr/bin/run_prep_data run_prep_data.go
 ./run_data_prep
+```  
+
+And then you're ready to run the benchmark itself and see the result in stdout:  
+```
+go build -o ./annbench_main ./annbench_main.go
+./annbench_main
 ```  
 
 ### API Reference  
@@ -71,7 +78,7 @@ Here are visual examples of the planes generation for angular and non-angular di
     - db (~40);  
     - client (~14);  
     - API (~14);  
-    - Run benchmark! (~10);  
+    - Run benchmark with some tests! (~10);  
 6. Additional things / refactoring:  
     - add build and test on each push to the master branch;  
     - add context with timeout everywhere in the db code;  

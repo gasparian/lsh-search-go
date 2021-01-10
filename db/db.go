@@ -20,6 +20,8 @@ var (
 )
 
 // New creates client for talking to the mongodb
+// NOTE: to use it in production, you most likely need to add the preffered way of
+//       authentication, see https://godoc.org/go.mongodb.org/mongo-driver/mongo#Connect
 func New(config Config) (*MongoDatastore, error) {
 	client, err := mongo.NewClient(options.Client().ApplyURI(config.DbLocation))
 	if err != nil {
