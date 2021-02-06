@@ -16,16 +16,13 @@ import (
 
 // getPointPlaneDist calculates distance between origin and plane
 func getPointPlaneDist(planeCoefs blas64.Vector) blas64.Vector {
-	values := make([]float64, planeCoefs.N-1)
+	var values blas64.Vector
+	blas64.Copy(planeCoefs, values)
 	dCoef := planeCoefs.Data[planeCoefs.N-1]
-	var denom float64 = 0.0
-	for i := range values {
-		denom += planeCoefs.Data[i] * planeCoefs.Data[i]
-	}
-	for i := range values {
-		values[i] = planeCoefs.Data[i] * dCoef / denom
-	}
-	return cm.NewVec(values)
+	denom := blas64.Dot(planeCoefs, planeCoefs)
+	coef := dCoef / denom
+	blas64.Scal(coef, values)
+	return values
 }
 
 // NewLSHIndex creates slice of LSHIndexInstances to hold several permutations results
