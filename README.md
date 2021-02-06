@@ -48,14 +48,19 @@ go mod tidy && build -o /usr/bin/run_prep_data run_prep_data.go
 ./run_data_prep
 ```  
 
+Running the unit tests:  
+```
+go test -test.v ./{PACKAGE}/
+```  
+
 And then you're ready to run the benchmark itself and see the result in stdout:  
 ```
 go build -o ./annbench_main ./annbench_main.go
 ./annbench_main
 ```  
 
-### API Reference  
-*TO DO*  
+### API Reference   
+// TO DO: https://github.com/gasparian/lsh-search-service/projects/1#card-54376146
 
 ### Local sensitive hashing reference   
 
@@ -63,25 +68,8 @@ LSH algorithm implies generation of random plane equation coefs. So, depending o
 Here are visual examples of the planes generation for angular and non-angular distance metrics:  
 <p align="center"> <img src="https://github.com/gasparian/lsh-search-service/blob/master/pics/non-biased.jpg" height=400/>  <img src="https://github.com/gasparian/lsh-search-service/blob/master/pics/biased.jpg" height=400/> </p>  
 
-*TO DO: Complexity*
+// TO DO: https://github.com/gasparian/lsh-search-service/projects/1#card-54376167
 
-*TO DO: Obtained metrics*
+// TO DO: https://github.com/gasparian/lsh-search-service/projects/1#card-54376189
 
-### Dev. plan:   
-
-1. ~~Prepare the [ANN benchmark dataset](http://ann-benchmarks.com/deep-image-96-angular.hdf5)~~  
-2. ~~Implement the LSH algorithm~~  
-3. ~~Make main app API~~  
-4. ~~Add search quality testing using the test part of the benchmark dataset~~  
-5. Tests (~100 unit tests in total):  
-    - lsh algorithm (~22);  
-    - db (~40);  
-    - client (~14);  
-    - API (~14);  
-    - Run benchmark with some tests! (~10);  
-6. Additional things / refactoring:  
-    - add build and test on each push to the master branch;  
-    - add context with timeout everywhere in the db code;  
-    - write api reference;  
-    - add complexety analisys;  
-    - add obtain quality metrics and runtime analisys;  
+### [Dev. kanban board](https://github.com/gasparian/lsh-search-service/projects/1?fullscreen=true)

@@ -235,6 +235,7 @@ func ConvertAggResult(inp interface{}) ([]float64, error) {
 }
 
 // GetAggregatedStats returns vectors with Mongo aggregation results (mean and std vectors)
+// TO DO: https://github.com/gasparian/lsh-search-service/projects/1#card-54376084
 func (coll MongoCollection) GetAggregatedStats() ([]float64, []float64, error) {
 	results, err := coll.GetAggregation(GroupMeanStd)
 	if err != nil {
