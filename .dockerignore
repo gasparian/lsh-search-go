@@ -7,7 +7,7 @@
 *.db
 *.txt
 *.sum
-*.mod
+# *.mod
 *.index
 Dockerfile
 docker-compose.yaml

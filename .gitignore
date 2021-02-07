@@ -5,7 +5,7 @@
 *.swp
 *.db
 *.txt
-*.mod
+# *.mod
 *.sum
 *.index
 /db/mongo/*

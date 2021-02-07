@@ -1,4 +1,4 @@
-FROM golang:1.15-alpine as builder
+FROM golang:1.13-alpine as builder
 RUN mkdir /tmp/setup
 WORKDIR /tmp/setup
 RUN apk add build-base && \
@@ -10,17 +10,19 @@ RUN ./configure  --prefix=/usr/local && \
     make && make install && \
     rm -rf /tmp/*
 
-RUN mkdir -p "$GOPATH/src/vector-search-go"
-WORKDIR $GOPATH/src/vector-search-go
+RUN mkdir -p "$GOPATH/src/lsh-search-service"
+WORKDIR $GOPATH/src/lsh-search-service
 COPY . .
 
-RUN go mod init && \
-    go mod tidy
+# RUN go mod init && \
+#     go mod tidy
+# RUN go get -v -t ./...
+RUN go mod tidy -v
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -ldflags="-w -s" -o /usr/bin/app ./main.go
 
 # NOTE: There is a problem compiling with hdf5 for using in scratch image, 
-#       so better make it on your local machine with dynamic linking
+#       so better compile it on your local machine with dynamic linking
 # RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -ldflags="-w -s" -o /usr/bin/bench_data_prep_main ./bench_data_prep_main.go
 
 # -----------------------------------------------------------------------------

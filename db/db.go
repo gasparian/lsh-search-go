@@ -170,9 +170,7 @@ func (coll MongoCollection) CreateIndexesByFields(fields []string, unique bool) 
 	models := make([]mongo.IndexModel, len(fields))
 	for i, field := range fields {
 		models[i] = mongo.IndexModel{
-			Keys: bson.M{
-				field: 1,
-			},
+			Keys: bson.D{{field, 1}},
 			Options: options.MergeIndexOptions(
 				options.Index().SetBackground(true), // deprecated since mongodb 4.2
 				options.Index().SetUnique(unique),
