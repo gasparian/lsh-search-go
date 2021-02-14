@@ -1,5 +1,6 @@
 #!/bin/sh
-if [ "$(docker inspect mongo 1> /dev/null)" != "" ] 
+docker inspect mongo 1> /dev/null 2>&1
+if [ "$?" != 0 ] 
 then
     docker pull mongo:4.0-xenial
     wait $!

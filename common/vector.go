@@ -18,13 +18,12 @@ func NewVec(data []float64) blas64.Vector {
 
 // L2 calculates l2-distance between two vectors
 func L2(a, b blas64.Vector) float64 {
-	var res blas64.Vector
-	blas64.Copy(b, res)
+	res := NewVec(b.Data)
 	blas64.Axpy(-1.0, a, res)
 	return blas64.Nrm2(res)
 }
 
-// CosineSim calculates cosine similarity of the two given vectors
+// CosineSim calculates cosine similarity btw the two given vectors
 func CosineSim(a, b blas64.Vector) float64 {
 	cosine := blas64.Dot(a, b) / (blas64.Nrm2(a) * blas64.Nrm2(b))
 	return 1.0 - cosine
