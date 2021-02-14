@@ -8,8 +8,8 @@ import (
 
 // Plane struct holds data needed to work with plane
 type Plane struct {
-	Coefs      blas64.Vector
-	InnerPoint blas64.Vector
+	Coefs blas64.Vector
+	D     float64
 }
 
 // HasherInstance holds data for local sensetive hashing algorithm

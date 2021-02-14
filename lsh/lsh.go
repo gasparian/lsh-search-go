@@ -14,15 +14,23 @@ import (
 	cm "lsh-search-service/common"
 )
 
-// getPointPlaneDist calculates distance between origin and plane
-func getPointPlaneDist(planeCoefs blas64.Vector) blas64.Vector {
-	var values blas64.Vector
-	blas64.Copy(planeCoefs, values)
-	dCoef := planeCoefs.Data[planeCoefs.N-1]
-	denom := blas64.Dot(planeCoefs, planeCoefs)
-	coef := dCoef / denom
-	blas64.Scal(coef, values)
-	return values
+// GetHash calculates LSH code
+func (lshInstance *HasherInstance) GetHash(inpVec, meanVec blas64.Vector) uint64 {
+	var hash uint64
+	shiftedVec := cm.NewVec(make([]float64, inpVec.N))
+	blas64.Copy(inpVec, shiftedVec)
+	blas64.Axpy(-1.0, meanVec, shiftedVec)
+	vec := cm.NewVec(make([]float64, inpVec.N))
+	var dpSign bool
+	for i, plane := range lshInstance.Planes {
+		blas64.Copy(shiftedVec, vec)
+		dp := blas64.Dot(vec, plane.Coefs) - plane.D
+		dpSign = math.Signbit(dp)
+		if !dpSign {
+			hash |= (1 << i)
+		}
+	}
+	return hash
 }
 
 // NewLSHIndex creates slice of LSHIndexInstances to hold several permutations results
@@ -59,28 +67,11 @@ func (lshIndex *Hasher) NewHasherInstance() (HasherInstance, error) {
 	for i := 0; i < lshIndex.Config.NPlanes; i++ {
 		coefs = lshIndex.getRandomPlane()
 		lshInstance.Planes = append(lshInstance.Planes, Plane{
-			Coefs:      coefs,
-			InnerPoint: getPointPlaneDist(coefs),
+			Coefs: cm.NewVec(coefs.Data[:coefs.N-1]),
+			D:     coefs.Data[coefs.N-1],
 		})
 	}
 	return lshInstance, nil
-}
-
-// getHash calculates LSH code
-func (lshInstance *HasherInstance) getHash(inpVec, meanVec blas64.Vector) uint64 {
-	var hash uint64
-	vec := cm.NewVec(make([]float64, inpVec.N))
-	var dpSign bool
-	for i, plane := range lshInstance.Planes {
-		blas64.Copy(inpVec, vec)
-		blas64.Axpy(-1.0, meanVec, vec)
-		blas64.Axpy(-1.0, plane.InnerPoint, vec)
-		dpSign = math.Signbit(blas64.Dot(vec, plane.Coefs))
-		if !dpSign {
-			hash |= (1 << i)
-		}
-	}
-	return hash
 }
 
 // Generate method creates the lsh instances
@@ -118,7 +109,7 @@ func (lshIndex *Hasher) GetHashes(vec blas64.Vector) map[int]uint64 {
 		wg.Add(1)
 		go func(idx int, lsh *HasherInstance, hashesMap *safeHashesHolder) {
 			hashesMap.Lock()
-			hashesMap.v[idx] = lsh.getHash(vec, lshIndex.Config.MeanVec)
+			hashesMap.v[idx] = lsh.GetHash(vec, lshIndex.Config.MeanVec)
 			hashesMap.Unlock()
 			wg.Done()
 		}(i, &lshInstance, &hashes)

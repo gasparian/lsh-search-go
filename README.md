@@ -62,6 +62,10 @@ Running the unit tests:
 ```
 go test -test.v ./{PACKAGE}/
 ```  
+Or run this to perform all exsiting unit tests:  
+```
+go test -test.v ./...
+```  
 
 And then you're ready to run the benchmark itself and see the result in stdout:  
 ```
