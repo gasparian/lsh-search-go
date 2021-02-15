@@ -22,7 +22,7 @@ type Config struct {
 	IsAngularDistance int
 	NPermutes         int
 	NPlanes           int
-	BiasMultiplier    int
+	BiasMultiplier    float64
 	DistanceThrsh     float64
 	Dims              int
 	Bias              float64

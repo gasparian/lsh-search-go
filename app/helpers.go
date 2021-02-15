@@ -90,7 +90,7 @@ func ParseEnv() (*ServiceConfig, error) {
 			IsAngularDistance: intVars["ANGULAR_METRIC"],
 			NPlanes:           intVars["N_PLANES"],
 			NPermutes:         intVars["N_PERMUTS"],
-			BiasMultiplier:    intVars["BIAS_MULTIPLIER"],
+			BiasMultiplier:    float64(intVars["BIAS_MULTIPLIER"]),
 			DistanceThrsh:     distanceThrsh,
 		},
 	}

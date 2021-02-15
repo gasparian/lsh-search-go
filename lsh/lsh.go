@@ -21,10 +21,11 @@ func (lshInstance *HasherInstance) GetHash(inpVec, meanVec blas64.Vector) uint64
 	blas64.Copy(inpVec, shiftedVec)
 	blas64.Axpy(-1.0, meanVec, shiftedVec)
 	vec := cm.NewVec(make([]float64, inpVec.N))
+	var dp float64
 	var dpSign bool
 	for i, plane := range lshInstance.Planes {
 		blas64.Copy(shiftedVec, vec)
-		dp := blas64.Dot(vec, plane.Coefs) - plane.D
+		dp = blas64.Dot(vec, plane.Coefs) - plane.D
 		dpSign = math.Signbit(dp)
 		if !dpSign {
 			hash |= (1 << i)
@@ -43,6 +44,7 @@ func NewLSHIndex(config Config) *Hasher {
 	return lshIndex
 }
 
+// GetRandomPlane generates random coefficients of a plane
 func (lshIndex *Hasher) getRandomPlane() blas64.Vector {
 	coefs := make([]float64, lshIndex.Config.Dims+1)
 	var l2 float64 = 0.0
@@ -56,8 +58,8 @@ func (lshIndex *Hasher) getRandomPlane() blas64.Vector {
 	return cm.NewVec(coefs)
 }
 
-// NewHasherInstance creates set of planes which will be used to calculate hash
-func (lshIndex *Hasher) NewHasherInstance() (HasherInstance, error) {
+// newHasherInstance creates set of planes which will be used to calculate hash
+func (lshIndex *Hasher) newHasherInstance() (HasherInstance, error) {
 	if lshIndex.Config.Dims <= 0 {
 		return HasherInstance{}, errors.New("dimensions number must be a positive integer")
 	}
@@ -83,12 +85,12 @@ func (lshIndex *Hasher) Generate(convMean, convStd blas64.Vector) error {
 		blas64.Scal(0.0, convStd)
 	}
 	lshIndex.Config.MeanVec = convMean
-	lshIndex.Config.Bias = blas64.Nrm2(convStd) * float64(lshIndex.Config.BiasMultiplier)
+	lshIndex.Config.Bias = blas64.Nrm2(convStd) * lshIndex.Config.BiasMultiplier
 
 	var tmpLSHIndex HasherInstance
 	var err error
 	for i := 0; i < lshIndex.Config.NPermutes; i++ {
-		tmpLSHIndex, err = lshIndex.NewHasherInstance()
+		tmpLSHIndex, err = lshIndex.newHasherInstance()
 		if err != nil {
 			return err
 		}
@@ -124,6 +126,9 @@ func (lshIndex *Hasher) GetDist(lv, rv blas64.Vector) (float64, bool) {
 	defer lshIndex.Unlock()
 	var dist float64 = 0.0
 	if lshIndex.Config.IsAngularDistance == 1 {
+		if cm.IsZeroVector(lv) || cm.IsZeroVector(rv) {
+			return 1.0, false // NOTE: zero vectors are wrong with angular metric
+		}
 		dist = cm.CosineSim(lv, rv)
 	} else {
 		dist = cm.L2(lv, rv)

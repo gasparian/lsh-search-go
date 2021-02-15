@@ -28,3 +28,8 @@ func CosineSim(a, b blas64.Vector) float64 {
 	cosine := blas64.Dot(a, b) / (blas64.Nrm2(a) * blas64.Nrm2(b))
 	return 1.0 - cosine
 }
+
+// IsZeroVector determines if vector zero or not
+func IsZeroVector(v blas64.Vector) bool {
+	return blas64.Asum(v) == 0.0
+}

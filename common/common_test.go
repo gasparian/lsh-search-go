@@ -48,6 +48,17 @@ func TestCosineSim(t *testing.T) {
 	}
 }
 
+func TestIsZeroVec(t *testing.T) {
+	v1 := cm.NewVec([]float64{0.0, 0.0})
+	v2 := cm.NewVec([]float64{0.0, 1.0})
+	if !cm.IsZeroVector(v1) {
+		t.Fatal("Provided vector should be zero vector")
+	}
+	if cm.IsZeroVector(v2) {
+		t.Fatal("Provided vector should be non-zero vector")
+	}
+}
+
 func TestNewLogger(t *testing.T) {
 	var buf bytes.Buffer
 	logger := cm.GetNewLogger()
