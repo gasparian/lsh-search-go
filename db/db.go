@@ -2,13 +2,11 @@ package db
 
 import (
 	"context"
-	"errors"
 	"os"
 	"strconv"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -102,6 +100,7 @@ func (mongodb *MongoDatastore) Disconnect() {
 }
 
 // UpdateBuildStatus updates helper record with the new biuld status and error
+// TO DO: remove to the upper level or to some helpers??; coll may be passed as argument
 func (mongodb *MongoDatastore) UpdateBuildStatus(status HelperRecord) error {
 	helperColl := mongodb.GetCollection(mongodb.config.HelperCollectionName)
 	err := helperColl.UpdateField(
@@ -124,6 +123,7 @@ func (mongodb *MongoDatastore) UpdateBuildStatus(status HelperRecord) error {
 }
 
 // GetHelperRecord gets supplementary data from the specified collection
+// TO DO: remove to the upper level or to some helpers??; coll may be passed as argument
 func (mongodb *MongoDatastore) GetHelperRecord(getHasherObject bool) (HelperRecord, error) {
 	proj := bson.M{}
 	if !getHasherObject {
@@ -215,23 +215,6 @@ func (coll MongoCollection) GetAggregation(groupStage mongo.Pipeline) ([]bson.M,
 	return results, nil
 }
 
-// ConvertAggResult makes Vector from the bson from Mongo
-func ConvertAggResult(inp interface{}) ([]float64, error) {
-	val, ok := inp.(primitive.A)
-	if !ok {
-		return nil, errors.New("type conversion failed")
-	}
-	conv := make([]float64, len(val))
-	for i := range conv {
-		v, ok := val[i].(float64)
-		if !ok {
-			return nil, errors.New("type conversion failed")
-		}
-		conv[i] = v
-	}
-	return conv, nil
-}
-
 // GetAggregatedStats returns vectors with Mongo aggregation results (mean and std vectors)
 // TO DO: https://github.com/gasparian/lsh-search-service/projects/1#card-54376084
 func (coll MongoCollection) GetAggregatedStats() ([]float64, []float64, error) {
@@ -311,26 +294,13 @@ func (coll MongoCollection) GetCursor(query FindQuery) (*mongo.Cursor, error) {
 }
 
 // GetDbRecords get documents from the db collection by field and query (aka `find`)
+// TO DO: remove to the upper level or to some helpers?? Seems it be better belong to the `annbecnh`; coll may be passed as argument
 func (coll MongoCollection) GetDbRecords(query FindQuery) ([]VectorRecord, error) {
 	cursor, err := coll.GetCursor(query)
 	if err != nil {
 		return nil, err
 	}
 	var results []VectorRecord
-	err = cursor.All(context.Background(), &results)
-	if err != nil {
-		return nil, err
-	}
-	return results, nil
-}
-
-// GetHashesRecords gets records from the specified hashes collection
-func (coll MongoCollection) GetHashesRecords(query FindQuery) ([]HashesRecord, error) {
-	cursor, err := coll.GetCursor(query)
-	if err != nil {
-		return nil, err
-	}
-	var results []HashesRecord
 	err = cursor.All(context.Background(), &results)
 	if err != nil {
 		return nil, err
