@@ -132,9 +132,59 @@ func NewANNServer(logger *cm.Logger, config *ServiceConfig) (ANNServer, error) {
 	return annServer, nil
 }
 
+// UpdateBuildStatus updates helper record with the new biuld status and error
+func (annServer *ANNServer) UpdateBuildStatus(status db.HelperRecord) error {
+	helperColl := annServer.Mongo.GetCollection(annServer.Mongo.Config.HelperCollectionName)
+	err := helperColl.UpdateField(
+		bson.D{
+			{"Hasher", bson.D{
+				{"$exists", true},
+			}}},
+		bson.D{
+			{"$set", bson.D{
+				{"isBuildDone", status.IsBuildDone},
+				{"buildError", status.BuildError},
+				{"lastBuildTime", status.LastBuildTime},
+				{"buildElapsedTime", status.BuildElapsedTime},
+			}}})
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetHelperRecord gets supplementary data from the specified collection
+func (annServer *ANNServer) GetHelperRecord(getHasherObject bool) (db.HelperRecord, error) {
+	proj := bson.M{}
+	if !getHasherObject {
+		proj = bson.M{"Hasher": 0}
+	}
+	helperColl := annServer.Mongo.GetCollection(annServer.Mongo.Config.HelperCollectionName)
+	cursor, err := helperColl.GetCursor(
+		db.FindQuery{
+			Limit: 1,
+			Query: bson.D{
+				{"Hasher", bson.D{{"$exists", true}}},
+			},
+			Proj: proj,
+		},
+	)
+	if err != nil {
+		return db.HelperRecord{}, err
+	}
+
+	var results []db.HelperRecord
+	err = cursor.All(context.Background(), &results)
+	if err != nil || len(results) != 1 {
+		return db.HelperRecord{}, err
+	}
+	return results[0], nil
+}
+
 // LoadHasher load Hasher from the db if it exists
 func (annServer *ANNServer) LoadHasher() error {
-	HasherRecord, err := annServer.Mongo.GetHelperRecord(true)
+	HasherRecord, err := annServer.GetHelperRecord(true)
 	if err != nil {
 		return err
 	}
@@ -160,7 +210,7 @@ func (annServer *ANNServer) hashBatch(vecs []cm.RequestData) ([]interface{}, err
 
 // TryUpdateLocalHasher checks if there is a fresher build in db, and if it is - updates the local hasher
 func (annServer *ANNServer) TryUpdateLocalHasher() error {
-	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
+	helperRecord, err := annServer.GetHelperRecord(false)
 	if err != nil {
 		return err
 	}
@@ -182,7 +232,7 @@ func (annServer *ANNServer) TryUpdateLocalHasher() error {
 func (annServer *ANNServer) BuildIndex(input cm.DatasetStats) error {
 	start := time.Now().UnixNano()
 	// NOTE: check if the previous build has been done
-	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
+	helperRecord, err := annServer.GetHelperRecord(false)
 	if err != nil {
 		annServer.Logger.Warn.Println("Building index: seems like helper record does not exist yet")
 	}
@@ -190,7 +240,7 @@ func (annServer *ANNServer) BuildIndex(input cm.DatasetStats) error {
 		return errors.New("Building index: aborting - previous build is not done yet")
 	}
 
-	err = annServer.Mongo.UpdateBuildStatus(
+	err = annServer.UpdateBuildStatus(
 		db.HelperRecord{
 			IsBuildDone: false,
 		},
@@ -211,7 +261,7 @@ func (annServer *ANNServer) BuildIndex(input cm.DatasetStats) error {
 	}
 
 	// NOTE: Getting old hash collection name
-	oldHelperRecord, err := annServer.Mongo.GetHelperRecord(false)
+	oldHelperRecord, err := annServer.GetHelperRecord(false)
 	if err != nil {
 		return err
 	}
@@ -284,7 +334,7 @@ func (annServer *ANNServer) popHashRecord(id uint64) error {
 	if err != nil {
 		return err
 	}
-	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
+	helperRecord, err := annServer.GetHelperRecord(false)
 	if err != nil {
 		return err
 	}
@@ -302,7 +352,7 @@ func (annServer *ANNServer) putHashRecord(vecs []cm.RequestData) error {
 	if err != nil {
 		return err
 	}
-	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
+	helperRecord, err := annServer.GetHelperRecord(false)
 	if err != nil {
 		return err
 	}
@@ -324,7 +374,7 @@ func (annServer *ANNServer) getNeighbors(input cm.RequestData) (*cm.ResponseData
 	if err != nil {
 		return nil, err
 	}
-	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
+	helperRecord, err := annServer.GetHelperRecord(false)
 	if err != nil {
 		return nil, err
 	}

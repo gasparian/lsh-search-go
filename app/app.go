@@ -51,7 +51,7 @@ func (annServer *ANNServer) BuildHasherHandler(w http.ResponseWriter, r *http.Re
 		go func() {
 			err := annServer.BuildIndex(input)
 			if err != nil {
-				annServer.Mongo.UpdateBuildStatus(
+				annServer.UpdateBuildStatus(
 					db.HelperRecord{
 						IsBuildDone:   false,
 						BuildError:    err.Error(),
@@ -70,7 +70,7 @@ func (annServer *ANNServer) BuildHasherHandler(w http.ResponseWriter, r *http.Re
 func (annServer *ANNServer) CheckBuildHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	resp := cm.ResponseData{Results: cm.BuildStatusUnknown}
-	helperRecord, err := annServer.Mongo.GetHelperRecord(false)
+	helperRecord, err := annServer.GetHelperRecord(false)
 	if err != nil {
 		annServer.Logger.Err.Println("Checking build status: " + err.Error())
 		resp.Results = cm.BuildStatusError

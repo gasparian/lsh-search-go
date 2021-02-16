@@ -97,7 +97,7 @@ type MongoCollection struct {
 
 // MongoDatastore holds mongo client and the database object
 type MongoDatastore struct {
-	config  Config
+	Config  Config
 	db      *mongo.Database
 	Session *mongo.Client
 }

@@ -39,7 +39,7 @@ func New(config Config) (*MongoDatastore, error) {
 	}
 	database := client.Database(config.DbName)
 	mongodb := &MongoDatastore{
-		config:  config,
+		Config:  config,
 		db:      database,
 		Session: client,
 	}
@@ -97,58 +97,6 @@ func (mongodb *MongoDatastore) Disconnect() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dbtimeOut)*time.Second)
 	defer cancel()
 	mongodb.Session.Disconnect(ctx)
-}
-
-// UpdateBuildStatus updates helper record with the new biuld status and error
-// TO DO: remove to the upper level or to some helpers??; coll may be passed as argument
-func (mongodb *MongoDatastore) UpdateBuildStatus(status HelperRecord) error {
-	helperColl := mongodb.GetCollection(mongodb.config.HelperCollectionName)
-	err := helperColl.UpdateField(
-		bson.D{
-			{"Hasher", bson.D{
-				{"$exists", true},
-			}}},
-		bson.D{
-			{"$set", bson.D{
-				{"isBuildDone", status.IsBuildDone},
-				{"buildError", status.BuildError},
-				{"lastBuildTime", status.LastBuildTime},
-				{"buildElapsedTime", status.BuildElapsedTime},
-			}}})
-
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// GetHelperRecord gets supplementary data from the specified collection
-// TO DO: remove to the upper level or to some helpers??; coll may be passed as argument
-func (mongodb *MongoDatastore) GetHelperRecord(getHasherObject bool) (HelperRecord, error) {
-	proj := bson.M{}
-	if !getHasherObject {
-		proj = bson.M{"Hasher": 0}
-	}
-	helperColl := mongodb.GetCollection(mongodb.config.HelperCollectionName)
-	cursor, err := helperColl.GetCursor(
-		FindQuery{
-			Limit: 1,
-			Query: bson.D{
-				{"Hasher", bson.D{{"$exists", true}}},
-			},
-			Proj: proj,
-		},
-	)
-	if err != nil {
-		return HelperRecord{}, err
-	}
-
-	var results []HelperRecord
-	err = cursor.All(context.Background(), &results)
-	if err != nil || len(results) != 1 {
-		return HelperRecord{}, err
-	}
-	return results[0], nil
 }
 
 // GetCollSize returns number of documents in the requested collection
@@ -215,24 +163,6 @@ func (coll MongoCollection) GetAggregation(groupStage mongo.Pipeline) ([]bson.M,
 	return results, nil
 }
 
-// GetAggregatedStats returns vectors with Mongo aggregation results (mean and std vectors)
-// TO DO: https://github.com/gasparian/lsh-search-service/projects/1#card-54376084
-func (coll MongoCollection) GetAggregatedStats() ([]float64, []float64, error) {
-	results, err := coll.GetAggregation(GroupMeanStd)
-	if err != nil {
-		return nil, nil, err
-	}
-	convMean, err := ConvertAggResult(results[0]["avg"])
-	if err != nil {
-		return nil, nil, err
-	}
-	convStd, err := ConvertAggResult(results[0]["std"])
-	if err != nil {
-		return nil, nil, err
-	}
-	return convMean, convStd, nil
-}
-
 // UpdateField updates the selected field of the doc.
 // Example:
 //     filter := bson.D{{"_id", id}}
@@ -291,19 +221,4 @@ func (coll MongoCollection) GetCursor(query FindQuery) (*mongo.Cursor, error) {
 		return nil, err
 	}
 	return cursor, nil
-}
-
-// GetDbRecords get documents from the db collection by field and query (aka `find`)
-// TO DO: remove to the upper level or to some helpers?? Seems it be better belong to the `annbecnh`; coll may be passed as argument
-func (coll MongoCollection) GetDbRecords(query FindQuery) ([]VectorRecord, error) {
-	cursor, err := coll.GetCursor(query)
-	if err != nil {
-		return nil, err
-	}
-	var results []VectorRecord
-	err = cursor.All(context.Background(), &results)
-	if err != nil {
-		return nil, err
-	}
-	return results, nil
 }

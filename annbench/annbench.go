@@ -56,7 +56,7 @@ func (benchClient *BenchClient) ValidateThrsh(results []db.VectorRecord, thrsh f
 // Validate takes the array of distance thresholds and returns array of recall values
 func (benchClient *BenchClient) Validate(thrshs []float64) ([]float64, error) {
 	metrics := make([]float64, len(thrshs))
-	results, err := benchClient.TestCollection.GetDbRecords(db.FindQuery{Proj: bson.M{"featureVec": 1}})
+	results, err := db.GetDbRecords(benchClient.TestCollection, db.FindQuery{Proj: bson.M{"featureVec": 1}})
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (benchClient *BenchClient) Validate(thrshs []float64) ([]float64, error) {
 // Populate put vectors into search index
 func (benchClient *BenchClient) PopulateDataset(batchSize int, dataCollName string) error {
 	dataColl := benchClient.Mongo.GetCollection(dataCollName)
-	convMean, convStd, err := dataColl.GetAggregatedStats()
+	convMean, convStd, err := db.GetAggregatedStats(dataColl)
 	if err != nil {
 		return err
 	}
