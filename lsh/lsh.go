@@ -149,6 +149,7 @@ func (lshIndex *Hasher) Dump() ([]byte, error) {
 	}
 	buf := &bytes.Buffer{}
 	enc := gob.NewEncoder(buf)
+	// TODO: maybe it's possible to get rid of helper-struct and make mutex a field
 	encodable := HasherEncode{
 		Instances:       &lshIndex.Instances,
 		HashFieldsNames: &lshIndex.HashFieldsNames,

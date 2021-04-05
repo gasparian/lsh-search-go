@@ -60,11 +60,11 @@ go mod tidy && build -o /usr/bin/run_prep_data run_prep_data.go
 
 Running the unit tests:  
 ```
-go test -test.v ./{PACKAGE}/
+go test -v ./{PACKAGE}/
 ```  
 Or run this to perform all exsiting unit tests:  
 ```
-go test -test.v ./...
+go test -v ./...
 ```  
 
 And then you're ready to run the benchmark itself and see the result in stdout:  
