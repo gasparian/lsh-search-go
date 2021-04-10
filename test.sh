@@ -1,2 +1,8 @@
 #!/bin/sh
-go test -v ./...
+path=$1
+if [ -z "$path" ] 
+then 
+    path=./...
+fi
+go clean -testcache
+go test -v -cover -race $path

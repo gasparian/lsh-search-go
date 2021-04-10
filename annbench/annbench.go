@@ -2,8 +2,6 @@ package annbench
 
 import (
 	"context"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	cl "github.com/gasparian/lsh-search-service/client"
 	cm "github.com/gasparian/lsh-search-service/common"
 	"github.com/gasparian/lsh-search-service/db"
@@ -15,7 +13,6 @@ import (
 // and a client for performing requests to the running ann service
 type BenchClient struct {
 	Client         cl.ANNClient
-	Mongo          *db.MongoDatastore
 	Logger         *cm.Logger
 	TestCollection db.MongoCollection
 }

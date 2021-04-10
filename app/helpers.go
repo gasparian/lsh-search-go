@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strconv"
 
-	"go.mongodb.org/mongo-driver/bson"
 	cm "github.com/gasparian/lsh-search-service/common"
 	"github.com/gasparian/lsh-search-service/db"
 	hashing "github.com/gasparian/lsh-search-service/lsh"
@@ -98,7 +97,7 @@ func ParseEnv() (*ServiceConfig, error) {
 	return config, nil
 }
 
-// NewANNServer returns empty index object with initialized mongo client
+// NewANNServer returns empty index object with initialized db client
 func NewANNServer(logger *cm.Logger, config *ServiceConfig) (ANNServer, error) {
 	mongodb, err := db.New(config.Db)
 	if err != nil {

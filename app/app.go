@@ -3,10 +3,10 @@ package app
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	cm "github.com/gasparian/lsh-search-service/common"
 	"github.com/gasparian/lsh-search-service/db"
 	hashing "github.com/gasparian/lsh-search-service/lsh"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
@@ -30,10 +30,9 @@ type ServiceConfig struct {
 	App    Config
 }
 
-// ANNServer holds Hasher itself and the mongo Client
+// ANNServer holds Hasher itself and the db Client
 type ANNServer struct {
 	Hasher        *hashing.Hasher
-	Mongo         db.MongoDatastore
 	Logger        *cm.Logger
 	Config        ServiceConfig
 	LastBuildTime int64

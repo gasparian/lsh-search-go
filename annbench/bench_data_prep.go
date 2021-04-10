@@ -1,14 +1,12 @@
 package annbench
 
 import (
-	"context"
 	"log"
 	"runtime"
-	"time"
 	"unsafe"
 
-	"gonum.org/v1/hdf5"
 	"github.com/gasparian/lsh-search-service/db"
+	"gonum.org/v1/hdf5"
 )
 
 // GetVectorsFromHDF5 returns slice of feature vectors, from the hdf5 table
@@ -49,47 +47,6 @@ func GetNeighborsFromHDF5(table *hdf5.File, datasetName string) ([]db.NeighborsI
 		return nil, err
 	}
 	return ticks, nil
-}
-
-// UploadDatasetMongoDb sends batches of provided data to the mongodb
-func UploadDatasetMongoDb(collection db.MongoCollection, data []db.FeatureVec, neighbors []db.NeighborsIds, batchSize int) error {
-	var batch []interface{} = nil
-	dataLen := len(data)
-	neighborsLen := len(neighbors)
-	var batchIdx int = 0
-	var tmpRecord db.VectorRecord
-	for idx := range data {
-		tmpRecord = db.VectorRecord{
-			SecondaryID: uint64(idx),
-			FeatureVec:  make([]float64, len(data[0])),
-		}
-		for valIdx := range data[idx] {
-			tmpRecord.FeatureVec[valIdx] = float64(data[idx][valIdx])
-		}
-		if dataLen == neighborsLen {
-			tmpRecord.NeighborsIds = make([]uint64, len(neighbors[0]))
-			for valIdx := range neighbors[idx] {
-				tmpRecord.NeighborsIds[valIdx] = uint64(neighbors[idx][valIdx])
-			}
-		}
-		batch = append(batch, tmpRecord)
-
-		if batchIdx == batchSize-1 || idx == dataLen-1 {
-			_, err := collection.InsertMany(context.Background(), batch)
-			if err != nil {
-				return err
-			}
-			batchIdx = 0
-			batch = nil
-
-			time.Sleep(time.Millisecond * 50)
-			runtime.GC()
-			// printMemUsage()
-		} else {
-			batchIdx++
-		}
-	}
-	return nil
 }
 
 func printMemUsage() {
