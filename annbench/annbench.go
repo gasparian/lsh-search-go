@@ -4,9 +4,9 @@ import (
 	"context"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	cl "lsh-search-service/client"
-	cm "lsh-search-service/common"
-	"lsh-search-service/db"
+	cl "github.com/gasparian/lsh-search-service/client"
+	cm "github.com/gasparian/lsh-search-service/common"
+	"github.com/gasparian/lsh-search-service/db"
 	"sort"
 	"time"
 )

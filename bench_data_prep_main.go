@@ -5,9 +5,9 @@ import (
 	"strconv"
 
 	"gonum.org/v1/hdf5"
-	annb "lsh-search-service/annbench"
-	cm "lsh-search-service/common"
-	"lsh-search-service/db"
+	annb "github.com/gasparian/lsh-search-service/annbench"
+	cm "github.com/gasparian/lsh-search-service/common"
+	"github.com/gasparian/lsh-search-service/db"
 )
 
 var (

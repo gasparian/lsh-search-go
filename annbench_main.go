@@ -5,10 +5,10 @@ import (
 	"os"
 	"strconv"
 
-	annb "lsh-search-service/annbench"
-	cl "lsh-search-service/client"
-	cm "lsh-search-service/common"
-	"lsh-search-service/db"
+	annb "github.com/gasparian/lsh-search-service/annbench"
+	cl "github.com/gasparian/lsh-search-service/client"
+	cm "github.com/gasparian/lsh-search-service/common"
+	"github.com/gasparian/lsh-search-service/db"
 )
 
 var (

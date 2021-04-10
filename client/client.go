@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	cm "lsh-search-service/common"
+	cm "github.com/gasparian/lsh-search-service/common"
 )
 
 // Config holds necessary constants for initiating the ANNClient

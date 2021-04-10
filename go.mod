@@ -1,4 +1,4 @@
-module lsh-search-service
+module github.com/gasparian/lsh-search-service
 
 go 1.13
 

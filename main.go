@@ -1,8 +1,8 @@
 package main
 
 import (
-	"lsh-search-service/app"
-	cm "lsh-search-service/common"
+	"github.com/gasparian/lsh-search-service/app"
+	cm "github.com/gasparian/lsh-search-service/common"
 	"net/http"
 )
 

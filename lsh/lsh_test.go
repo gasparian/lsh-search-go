@@ -1,9 +1,9 @@
 package lsh_test
 
 import (
+	cm "github.com/gasparian/lsh-search-service/common"
+	hashing "github.com/gasparian/lsh-search-service/lsh"
 	"gonum.org/v1/gonum/blas/blas64"
-	cm "lsh-search-service/common"
-	hashing "lsh-search-service/lsh"
 	"math"
 	"testing"
 )

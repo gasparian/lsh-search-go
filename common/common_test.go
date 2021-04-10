@@ -3,7 +3,7 @@ package common_test
 import (
 	"bytes"
 	"gonum.org/v1/gonum/blas/blas64"
-	cm "lsh-search-service/common"
+	cm "github.com/gasparian/lsh-search-service/common"
 	"os"
 	"testing"
 )

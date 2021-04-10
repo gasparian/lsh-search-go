@@ -12,9 +12,9 @@ import (
 	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
-	cm "lsh-search-service/common"
-	"lsh-search-service/db"
-	hashing "lsh-search-service/lsh"
+	cm "github.com/gasparian/lsh-search-service/common"
+	"github.com/gasparian/lsh-search-service/db"
+	hashing "github.com/gasparian/lsh-search-service/lsh"
 )
 
 // getHelpMessage forms a byte array contains message

@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	cm "lsh-search-service/common"
+	cm "github.com/gasparian/lsh-search-service/common"
 )
 
 // Plane struct holds data needed to work with plane
@@ -39,7 +39,7 @@ type Config struct {
 
 // Hasher holds N_PERMUTS number of HasherInstance instances
 type Hasher struct {
-	sync.Mutex
+	sync.RWMutex
 	Config          Config
 	Instances       []HasherInstance
 	HashFieldsNames []string
@@ -146,19 +146,19 @@ func (lshIndex *Hasher) Generate(convMean, convStd blas64.Vector) error {
 
 // GetHashes returns map of calculated lsh values
 func (lshIndex *Hasher) GetHashes(vec blas64.Vector) map[int]uint64 {
-	lshIndex.Lock()
-	defer lshIndex.Unlock()
+	lshIndex.RLock()
+	defer lshIndex.RUnlock()
 
-	hashes := safeHashesHolder{v: make(map[int]uint64)}
-	var wg sync.WaitGroup
+	hashes := &safeHashesHolder{v: make(map[int]uint64)}
+	wg := sync.WaitGroup{}
+	wg.Add(len(lshIndex.Instances))
 	for i, lshInstance := range lshIndex.Instances {
-		wg.Add(1)
-		go func(idx int, lsh *HasherInstance, hashesMap *safeHashesHolder) {
-			hashesMap.Lock()
-			hashesMap.v[idx] = lsh.GetHash(vec, lshIndex.Config.MeanVec)
-			hashesMap.Unlock()
+		go func(i int, lsh HasherInstance, hashes *safeHashesHolder) {
+			hashes.Lock()
+			hashes.v[i] = lsh.GetHash(vec, lshIndex.Config.MeanVec)
+			hashes.Unlock()
 			wg.Done()
-		}(i, &lshInstance, &hashes)
+		}(i, lshInstance, hashes)
 	}
 	wg.Wait()
 	return hashes.v
