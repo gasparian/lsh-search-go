@@ -12,7 +12,6 @@ import (
 
 var (
 	dbLocation         = os.Getenv("MONGO_ADDR")
-	dbName             = os.Getenv("DB_NAME")
 	dbtimeOut, _       = strconv.Atoi(os.Getenv("DB_CLIENT_TIMEOUT"))
 	batchSize, _       = strconv.Atoi(os.Getenv("BATCH_SIZE"))
 	dataCollectionName = os.Getenv("DATA_COLLECTION_NAME")
@@ -24,7 +23,6 @@ func main() {
 	mongodb, err := db.New(
 		db.Config{
 			DbLocation: dbLocation,
-			DbName:     dbName,
 		},
 	)
 	if err != nil {

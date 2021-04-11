@@ -17,7 +17,6 @@ func main() {
 
 // var (
 // 	dbLocation          = os.Getenv("MONGO_ADDR")
-// 	dbName              = os.Getenv("DB_NAME")
 // 	batchSize, _        = strconv.Atoi(os.Getenv("BATCH_SIZE"))
 // 	trainCollectionName = os.Getenv("COLLECTION_NAME")
 // 	testCollectionName  = os.Getenv("TEST_COLLECTION_NAME")
@@ -27,7 +26,6 @@ func main() {
 // 	logger := cm.GetNewLogger()
 // 	config := db.Config{
 // 		DbLocation: dbLocation,
-// 		DbName:     dbName,
 // 	}
 // 	logger.Info.Println("Db communication setup")
 // 	mongodb, err := db.New(config)

@@ -5,12 +5,22 @@ import (
 	"runtime"
 	"unsafe"
 
-	"github.com/gasparian/lsh-search-service/db"
+	// "github.com/gasparian/lsh-search-service/db"
 	"gonum.org/v1/hdf5"
 )
 
+// Objects inside the hdf5:
+// train
+// test
+// distances
+// neighbors
+
+type FeatureVec [96]float32 // TODO: could be 784 for fashion mnist or 65 for glove
+type NeighborsIds [100]int32
+type DistanceVec [100]float32
+
 // GetVectorsFromHDF5 returns slice of feature vectors, from the hdf5 table
-func GetVectorsFromHDF5(table *hdf5.File, datasetName string) ([]db.FeatureVec, error) {
+func GetVectorsFromHDF5(table *hdf5.File, datasetName string) ([]FeatureVec, error) {
 	dataset, err := table.OpenDataset(datasetName)
 	if err != nil {
 		return nil, err
@@ -19,9 +29,9 @@ func GetVectorsFromHDF5(table *hdf5.File, datasetName string) ([]db.FeatureVec, 
 
 	fileSpace := dataset.Space()
 	numTicks := fileSpace.SimpleExtentNPoints()
-	numTicks /= (int)(unsafe.Sizeof(db.FeatureVec{})) / 4
+	numTicks /= (int)(unsafe.Sizeof(FeatureVec{})) / 4
 
-	ticks := make([]db.FeatureVec, numTicks)
+	ticks := make([]FeatureVec, numTicks)
 	err = dataset.Read(&ticks)
 	if err != nil {
 		return nil, err
@@ -30,7 +40,7 @@ func GetVectorsFromHDF5(table *hdf5.File, datasetName string) ([]db.FeatureVec, 
 }
 
 // GetNeighborsFromHDF5 returns slice of feature vectors, from the hdf5 table
-func GetNeighborsFromHDF5(table *hdf5.File, datasetName string) ([]db.NeighborsIds, error) {
+func GetNeighborsFromHDF5(table *hdf5.File, datasetName string) ([]NeighborsIds, error) {
 	dataset, err := table.OpenDataset(datasetName)
 	if err != nil {
 		return nil, err
@@ -39,9 +49,9 @@ func GetNeighborsFromHDF5(table *hdf5.File, datasetName string) ([]db.NeighborsI
 
 	fileSpace := dataset.Space()
 	numTicks := fileSpace.SimpleExtentNPoints()
-	numTicks /= (int)(unsafe.Sizeof(db.NeighborsIds{})) / 4
+	numTicks /= (int)(unsafe.Sizeof(NeighborsIds{})) / 4
 
-	ticks := make([]db.NeighborsIds, numTicks)
+	ticks := make([]NeighborsIds, numTicks)
 	err = dataset.Read(&ticks)
 	if err != nil {
 		return nil, err

@@ -63,8 +63,9 @@ func ParseEnv() (*ServiceConfig, error) {
 		return nil, err
 	}
 	stringVars := map[string]string{
-		"MONGO_ADDR": "", "DB_NAME": "",
-		"COLLECTION_NAME": "", "HELPER_COLLECTION_NAME": "",
+		"MONGO_ADDR":             "",
+		"COLLECTION_NAME":        "",
+		"HELPER_COLLECTION_NAME": "",
 	}
 	for key := range stringVars {
 		val := os.Getenv(key)
@@ -77,7 +78,6 @@ func ParseEnv() (*ServiceConfig, error) {
 	config := &ServiceConfig{
 		Db: db.Config{
 			DbLocation:           stringVars["MONGO_ADDR"],
-			DbName:               stringVars["DB_NAME"],
 			HelperCollectionName: stringVars["HELPER_COLLECTION_NAME"],
 		},
 		App: Config{

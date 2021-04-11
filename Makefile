@@ -5,13 +5,22 @@ ANNBENCH_DATA=./annbench/preprocessing/data
 .SILENT:
 
 build: 
-	$(call GOBUILD, ./, ./lsh-app)
+	$(call GOBUILD,./,lsh-app)
 
 build-annbench: 
-	$(call GOBUILD, ./annbench/bench, annbench)
-
-build-annbench-prep:
+	$(call GOBUILD,./annbench/bench,annbench)
 	$(call GOBUILD,./annbench/preprocessing,annbench-prep)
+
+build-all: build build-annbench
+
+run:
+	./lsh-app
+
+run-annbench:
+	./annbench/bench/annbench
+
+run-annbench-prep:
+	./annbench/preprocessing/annbench-prep
 
 test-coverage:
 	go tool cover -func cover.out | grep total | awk '{print $$3}'
