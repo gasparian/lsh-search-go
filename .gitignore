@@ -5,6 +5,7 @@
 *.swp
 *.db
 *.txt
+*.out
 # *.mod
 # *.sum
 *.index

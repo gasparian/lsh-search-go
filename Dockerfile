@@ -1,15 +1,17 @@
 FROM golang:1.13-alpine as builder
 
-RUN mkdir -p "$GOPATH/src/lsh-search-service"
-WORKDIR $GOPATH/src/lsh-search-service
+RUN mkdir -p "$GOPATH/src/github.com/gasparian/lsh-search-service"
+WORKDIR $GOPATH/src/github.com/gasparian/lsh-search-service
 COPY . .
 
-# RUN go mod init && \
-#     go mod tidy
-# RUN go get -v -t ./...
-RUN go mod tidy -v
+RUN go get -v -t ./...
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -ldflags="-w -s" -o /usr/bin/app ./main.go
+# TODO: CGO_ENABLED=0 is that right? Do we need `cgo` param?
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a \
+    -installsuffix cgo \
+    -ldflags="-w -s" \
+    -o /usr/bin/app \
+    ./main.go
 
 # -----------------------------------------------------------------------------
 

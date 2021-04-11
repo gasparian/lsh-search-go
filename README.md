@@ -1,3 +1,5 @@
+![main tests](https://github.com/gasparian/lsh-search-service/actions/workflows/test.yml/badge.svg?branch=main)
+
 # lsh-search-service
 
 ### Proposal  

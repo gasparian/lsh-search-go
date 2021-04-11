@@ -5,7 +5,6 @@ import (
 	"os"
 	"strconv"
 
-	annb "github.com/gasparian/lsh-search-service/annbench"
 	cl "github.com/gasparian/lsh-search-service/client"
 	cm "github.com/gasparian/lsh-search-service/common"
 	"github.com/gasparian/lsh-search-service/db"

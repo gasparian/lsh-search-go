@@ -1,3 +1,13 @@
 ### Test datasets  
- - fashion mnist dataset for l2 dist. tests (60000/10000x784, 100 neighbors): http://ann-benchmarks.com/fashion-mnist-784-euclidean.hdf5  
- - last.fm dataset for cosine dist. tests (292385/50000x65, 100 neighbors): http://ann-benchmarks.com/lastfm-64-dot.hdf5  
+ - [fashion mnist](https://github.com/zalandoresearch/fashion-mnist) dataset:
+   - distance metric - euclidian;  
+   - N neighbors - 100; 
+   - dimensions - 784;  
+   - train size - 60000;  
+   - test size - 10000;  
+ - [last.fm dataset](https://github.com/erikbern/ann-benchmarks/pull/91):  
+   - distance metric - angular;  
+   - N neighbors - 100; 
+   - dimensions - 65;  
+   - train size - 292385;  
+   - test size - 50000;  

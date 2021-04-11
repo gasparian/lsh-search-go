@@ -1,4 +1,4 @@
-package annbench
+package main
 
 import (
 	"log"
@@ -49,7 +49,8 @@ func GetNeighborsFromHDF5(table *hdf5.File, datasetName string) ([]db.NeighborsI
 	return ticks, nil
 }
 
-func printMemUsage() {
+// PrintMemUsage __
+func PrintMemUsage() {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 	log.Printf("Alloc = %v MiB", bToMb(m.Alloc))
