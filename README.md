@@ -1,4 +1,4 @@
-![main tests](https://github.com/gasparian/lsh-search-service/actions/workflows/test.yml/badge.svg?branch=main)
+![main tests](https://github.com/gasparian/lsh-search-service/actions/workflows/test.yml/badge.svg?branch=master)
 
 # lsh-search-service
 
