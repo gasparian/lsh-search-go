@@ -10,7 +10,7 @@ We have two basic groups of algorithms to perform the ANN search:
  - [local sensetive hashing](https://en.wikipedia.org/wiki/Locality-sensitive_hashing);  
  - [graph-based approaches](https://en.wikipedia.org/wiki/Small-world_network) - local search over proximity graphs, smth like "hierarchical navigatable small world graphs";  
 
-I've decided to go with the LSH algorithm since it's pretty simple to implement and you can store datapoints according to generated hashes in a simple key-value db.  
+I've decided to go with the LSH algorithm since it's pretty simple to implement and you can store datapoints according to generated hashes in a simple key-value storage.  
 
 ### Local sensitive hashing reference   
 

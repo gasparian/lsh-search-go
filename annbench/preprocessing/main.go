@@ -6,7 +6,7 @@ import (
 
 // annb "github.com/gasparian/lsh-search-service/annbench/preprocessing/helpers"
 // cm "github.com/gasparian/lsh-search-service/common"
-// "github.com/gasparian/lsh-search-service/db"
+// "github.com/gasparian/lsh-search-service/storage"
 // "gonum.org/v1/hdf5"
 )
 
@@ -24,11 +24,11 @@ func main() {
 
 // func main() {
 // 	logger := cm.GetNewLogger()
-// 	config := db.Config{
+// 	config := storage.Config{
 // 		DbLocation: dbLocation,
 // 	}
 // 	logger.Info.Println("Db communication setup")
-// 	mongodb, err := db.New(config)
+// 	mongodb, err := storage.New(config)
 // 	if err != nil {
 // 		logger.Err.Fatal(err)
 // 	}
@@ -78,7 +78,7 @@ func main() {
 // 		if err != nil {
 // 			logger.Err.Fatal(err)
 // 		}
-// 		err = annb.UploadDatasetMongoDb(vectorsTrainCollection, featuresTrain, []db.NeighborsIds{}, batchSize)
+// 		err = annb.UploadDatasetMongoDb(vectorsTrainCollection, featuresTrain, []storage.NeighborsIds{}, batchSize)
 // 		if err != nil {
 // 			logger.Err.Fatal(err)
 // 		}

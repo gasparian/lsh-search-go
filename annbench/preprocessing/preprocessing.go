@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"unsafe"
 
-	// "github.com/gasparian/lsh-search-service/db"
+	// "github.com/gasparian/lsh-search-service/storage"
 	"gonum.org/v1/hdf5"
 )
 

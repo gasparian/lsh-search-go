@@ -7,7 +7,7 @@ import (
 
 	cl "github.com/gasparian/lsh-search-service/client"
 	cm "github.com/gasparian/lsh-search-service/common"
-	"github.com/gasparian/lsh-search-service/db"
+	"github.com/gasparian/lsh-search-service/storage"
 )
 
 var (
@@ -20,8 +20,8 @@ var (
 
 func main() {
 	logger := cm.GetNewLogger()
-	mongodb, err := db.New(
-		db.Config{
+	mongodb, err := storage.New(
+		storage.Config{
 			DbLocation: dbLocation,
 		},
 	)

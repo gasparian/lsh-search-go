@@ -4,17 +4,16 @@ import (
 	"context"
 	cl "github.com/gasparian/lsh-search-service/client"
 	cm "github.com/gasparian/lsh-search-service/common"
-	"github.com/gasparian/lsh-search-service/db"
+	"github.com/gasparian/lsh-search-service/storage"
 	"sort"
 	"time"
 )
 
-// BenchClient holds db for getting vectors from test collection
+// BenchClient holds storage for getting vectors from test collection
 // and a client for performing requests to the running ann service
 type BenchClient struct {
-	Client         cl.ANNClient
-	Logger         *cm.Logger
-	TestCollection db.MongoCollection
+	Client cl.ANNClient
+	Logger *cm.Logger
 }
 
 // Recall returns ratio of relevant predictions over the all true relevant items
@@ -30,7 +29,7 @@ func Recall(prediction, groundTruth []uint64) float64 {
 }
 
 // ValidateThrsh takes the distance threshold and returns recall value
-func (benchClient *BenchClient) ValidateThrsh(results []db.VectorRecord, thrsh float64) (float64, error) {
+func (benchClient *BenchClient) ValidateThrsh(results []storage.VectorRecord, thrsh float64) (float64, error) {
 	var averageRecall float64 = 0.0
 	var prediction []uint64
 	for _, result := range results {
