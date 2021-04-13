@@ -29,16 +29,7 @@ func (s *Storage) Open() error {
 	return nil
 }
 
-// Close shutowns rpc client
-func (s *Storage) Close() {
-	s.Client.Close()
-}
-
-// TODO: add funcs for bytes conversion
-func Serialize() {
-
-}
-
-func Deserialize() {
-
+// Close shutdown rpc client
+func (s *Storage) Close() error {
+	return s.Client.Close()
 }

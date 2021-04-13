@@ -26,6 +26,14 @@ import (
 	"github.com/gasparian/lsh-search-service/storage"
 )
 
+// Used to represent the hasher build status
+const (
+	BuildStatusUnknown = iota
+	BuildStatusError
+	BuildStatusInProgress
+	BuildStatusDone
+)
+
 // NeighborsRecord holds a single neighbor
 // Used only to store filtered neighbors for sorting
 type NeighborsRecord struct {

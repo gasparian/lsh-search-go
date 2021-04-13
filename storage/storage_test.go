@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	srv "github.com/gasparian/pure-kv-go/server"
 	"os"
 	"testing"
@@ -25,7 +26,7 @@ func prepareServer(t *testing.T) func() error {
 
 func TestClient(t *testing.T) {
 	defer os.RemoveAll(path)
-	defer prepareServer(t)()
+	closeServer := prepareServer(t)
 	time.Sleep(1 * time.Second) // just wait for server to be started
 
 	s := New("0.0.0.0:6668", 500)
@@ -36,17 +37,32 @@ func TestClient(t *testing.T) {
 	defer s.Close()
 
 	bucketName := "test"
-	keys := []string{
-		"key1", "key2",
-	}
+	key := "key1"
 	valSet := []byte{'a'}
 
-	t.Run("Add kv pair", func(t *testing.T) {
+	t.Run("Set", func(t *testing.T) {
 		err := s.Client.Create(bucketName)
 		if err != nil {
 			t.Error(err)
 		}
-		err = s.Client.Set(bucketName, keys[0], valSet)
+		err = s.Client.Set(bucketName, key, valSet)
+		if err != nil {
+			t.Error(err)
+		}
+	})
+
+	t.Run("Get", func(t *testing.T) {
+		val, ok := s.Client.Get(bucketName, key)
+		if !ok {
+			t.Error("Can't found the value")
+		}
+		if bytes.Compare(val, valSet) != 0 {
+			t.Error("Returned value is not equal to the original one")
+		}
+	})
+
+	t.Run("CloseSrv", func(t *testing.T) {
+		err := closeServer()
 		if err != nil {
 			t.Error(err)
 		}
