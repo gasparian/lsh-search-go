@@ -8,10 +8,9 @@
 // Calculate mean, std of random sample of records (e.g. from bucket with Train data)
 // Populate collection with set of vectors (e.g. Train/Test with "original" vectors)
 
-package app
+package indexer
 
 import (
-	"encoding/json"
 	"errors"
 	"os"
 	"time"
@@ -21,9 +20,8 @@ import (
 	"sort"
 	"strconv"
 
-	cm "github.com/gasparian/lsh-search-service/common"
 	hashing "github.com/gasparian/lsh-search-service/lsh"
-	"github.com/gasparian/lsh-search-service/storage"
+	// pkv "github.com/gasparian/pure-kv-go/client" // TODO: client must be passed in server code
 )
 
 // Used to represent the hasher build status
@@ -34,6 +32,18 @@ const (
 	BuildStatusDone
 )
 
+// DbClient holds interface for the kv storage
+type DbClient interface {
+	Close() error
+	Create(bucketName string) error
+	Destroy(bucketName string) error
+	Del(bucketName, key string) error
+	Set(bucketName, key string, val []byte) error
+	Get(bucketName, key string) ([]byte, bool)
+	MakeIterator(bucketName string) error
+	Next(bucketName string) (string, []byte, error)
+}
+
 // NeighborsRecord holds a single neighbor
 // Used only to store filtered neighbors for sorting
 type NeighborsRecord struct {
@@ -43,8 +53,8 @@ type NeighborsRecord struct {
 
 // ResponseData holds the response data of any hanlder
 type ResponseData struct {
-	Message string `json:"message,omitempty"`
-	Status  int    `json:"status,omitempty"`
+	Message string
+	Status  int
 }
 
 // DatasetStats holds basic feature vector stats like mean and standart deviation
@@ -55,9 +65,9 @@ type DatasetStats struct {
 
 // VectorRecord (the same as RequestData?) used to store the vectors to search in the mongodb
 type VectorRecord struct {
-	Key       string    `json:"key,omitempty"`
-	Neighbors []uint64  `json:"neighbors,omitempty"`
-	Vec       []float64 `json:"vec,omitempty"`
+	Key       string
+	Neighbors []uint64
+	Vec       []float64
 }
 
 // HashRecord stores generated hash and a key of the original vector
@@ -76,30 +86,6 @@ type HasherState struct {
 	HashCollName     string
 	LastBuildTime    int64
 	BuildElapsedTime int64
-}
-
-// getHelpMessage forms a byte array contains message
-func getHelloMessage() []byte {
-	helloMessage := cm.ResponseData{
-		Message: `{
-		"methods": {
-			"GET/POST": {
-				"/build-index": "starts building search index from scratch",
-				"/check-build": "returns current build status",
-				"/pop-hash": "removes the point from the search index",
-				"/put-hash": "adds the point to the search index"
-			},
-			"POST": {
-				"/get-nn": "returns db ids and distances of the nearest data points"
-			}
-	    }
-	}`}
-	// NOTE: ugly, but it's more convinient to update the text message by hand and then serialize to json
-	out, err := json.Marshal(helloMessage)
-	if err != nil {
-		return []byte("")
-	}
-	return out
 }
 
 // ParseEnv forms app config by parsing the environment variables

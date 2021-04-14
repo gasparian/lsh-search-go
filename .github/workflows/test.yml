@@ -14,4 +14,3 @@ jobs:
       run: |
           make test path=./common
           make test path=./lsh
-          make test path=./storage
