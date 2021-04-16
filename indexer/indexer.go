@@ -148,7 +148,6 @@ func ParseEnv() (*Config, error) {
 
 // New returns empty index object with initialized db client
 func New(config *Config, logger *cm.Logger, dbClient DbClient) (*Indexer, error) {
-	dbClient.New(config.DbAddress, config.DbClientTimeout)
 	err := dbClient.Open()
 	if err != nil {
 		return nil, err
