@@ -8,7 +8,6 @@ github.com/fogleman/gg v1.2.1-0.20190220221249-0403632d5b90/go.mod h1:R/bRT+9gY/
 github.com/fogleman/gg v1.3.0/go.mod h1:R/bRT+9gY/C5z7JzPU0zXsXHKM4/ayA+zqcVNZzPa1k=
 github.com/gasparian/pure-kv-go v0.0.0-20210416062839-94c5d09f97c9 h1:zZZrbo0ik5Hc16oKuj8MkHgb3dnVDL1QggNIY3OUO1k=
 github.com/gasparian/pure-kv-go v0.0.0-20210416062839-94c5d09f97c9/go.mod h1:uy8RkA5E3weezsmZADws+X1WAOFaTxZbF8ZJ03UCPcI=
-github.com/gasparian/similarity-search-go v0.0.0-20210416201148-c7820f741064 h1:V5uykXX03D+t34RtK4wNcF40lzuHhktoZMvX2pZleMk=
 github.com/go-fonts/dejavu v0.1.0/go.mod h1:4Wt4I4OU2Nq9asgDCteaAaWZOV24E+0/Pwo0gppep4g=
 github.com/go-fonts/latin-modern v0.2.0/go.mod h1:rQVLdDMK+mK1xscDwsqM5J8U2jrRa3T0ecnM9pNujks=
 github.com/go-fonts/liberation v0.1.1/go.mod h1:K6qoJYypsmfVjWg8KOVDQhLc8UDgIK2HYqyqAO9z7GY=
