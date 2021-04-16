@@ -1,11 +1,11 @@
-package main
+package annbench
 
 import (
 	"log"
 	"runtime"
 	"unsafe"
 
-	// "github.com/gasparian/lsh-search-service/storage"
+	// "github.com/gasparian/similarity-search-go/lsh/storage"
 	"gonum.org/v1/hdf5"
 )
 

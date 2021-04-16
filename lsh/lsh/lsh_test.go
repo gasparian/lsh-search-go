@@ -1,17 +1,16 @@
-package lsh_test
+package lsh
 
 import (
-	cm "github.com/gasparian/lsh-search-service/common"
-	hashing "github.com/gasparian/lsh-search-service/lsh"
+	cm "github.com/gasparian/similarity-search-go/lsh/common"
 	"gonum.org/v1/gonum/blas/blas64"
 	"math"
 	"testing"
 )
 
 func TestGetHash(t *testing.T) {
-	hasherInstance := hashing.HasherInstance{
-		Planes: []hashing.Plane{
-			hashing.Plane{
+	hasherInstance := HasherInstance{
+		Planes: []Plane{
+			Plane{
 				Coefs: cm.NewVec([]float64{1.0, 1.0, 1.0}),
 				D:     5,
 			},
@@ -30,8 +29,8 @@ func TestGetHash(t *testing.T) {
 	}
 }
 
-func getNewHasher(config hashing.Config) (*hashing.Hasher, error) {
-	hasher := hashing.NewLSHIndex(config)
+func getNewHasher(config Config) (*Hasher, error) {
+	hasher := NewLSHIndex(config)
 	mean := cm.NewVec([]float64{0.0, 0.0, 0.0})
 	std := cm.NewVec([]float64{0.2, 0.3, 0.15})
 	err := hasher.Generate(mean, std)
@@ -42,7 +41,7 @@ func getNewHasher(config hashing.Config) (*hashing.Hasher, error) {
 }
 
 func TestGenerateAngular(t *testing.T) {
-	config := hashing.Config{
+	config := Config{
 		IsAngularDistance: 1,
 		NPermutes:         2,
 		NPlanes:           1,
@@ -63,7 +62,7 @@ func TestGenerateAngular(t *testing.T) {
 	}
 }
 func TestGenerateL2(t *testing.T) {
-	config := hashing.Config{
+	config := Config{
 		IsAngularDistance: 0,
 		NPermutes:         2,
 		NPlanes:           1,
@@ -89,7 +88,7 @@ func TestGenerateL2(t *testing.T) {
 }
 
 func TestGetHashes(t *testing.T) {
-	config := hashing.Config{
+	config := Config{
 		IsAngularDistance: 1,
 		NPermutes:         2,
 		NPlanes:           1,
@@ -112,7 +111,7 @@ func TestGetHashes(t *testing.T) {
 }
 
 func TestGetDistAngular(t *testing.T) {
-	config := hashing.Config{
+	config := Config{
 		IsAngularDistance: 1,
 		NPermutes:         2,
 		NPlanes:           1,
@@ -143,7 +142,7 @@ func TestGetDistAngular(t *testing.T) {
 }
 
 func TestGetDistL2(t *testing.T) {
-	config := hashing.Config{
+	config := Config{
 		IsAngularDistance: 0,
 		NPermutes:         2,
 		NPlanes:           1,
@@ -168,7 +167,7 @@ func TestGetDistL2(t *testing.T) {
 }
 
 func TestDumpHasher(t *testing.T) {
-	config := hashing.Config{
+	config := Config{
 		IsAngularDistance: 0,
 		NPermutes:         2,
 		NPlanes:           1,

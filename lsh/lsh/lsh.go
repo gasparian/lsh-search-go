@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	cm "github.com/gasparian/lsh-search-service/common"
+	cm "github.com/gasparian/similarity-search-go/lsh/common"
 )
 
 // Plane struct holds data needed to work with plane
