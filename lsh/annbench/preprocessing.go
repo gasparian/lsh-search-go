@@ -3,10 +3,8 @@ package annbench
 import (
 	"log"
 	"runtime"
-	"unsafe"
-
-	// "github.com/gasparian/similarity-search-go/lsh/storage"
-	"gonum.org/v1/hdf5"
+	// "unsafe"
+	// "gonum.org/v1/hdf5"
 )
 
 // Objects inside the hdf5:
@@ -19,45 +17,45 @@ type FeatureVec [96]float32 // TODO: could be 784 for fashion mnist or 65 for gl
 type NeighborsIds [100]int32
 type DistanceVec [100]float32
 
-// GetVectorsFromHDF5 returns slice of feature vectors, from the hdf5 table
-func GetVectorsFromHDF5(table *hdf5.File, datasetName string) ([]FeatureVec, error) {
-	dataset, err := table.OpenDataset(datasetName)
-	if err != nil {
-		return nil, err
-	}
-	defer dataset.Close()
+// // GetVectorsFromHDF5 returns slice of feature vectors, from the hdf5 table
+// func GetVectorsFromHDF5(table *hdf5.File, datasetName string) ([]FeatureVec, error) {
+// 	dataset, err := table.OpenDataset(datasetName)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer dataset.Close()
 
-	fileSpace := dataset.Space()
-	numTicks := fileSpace.SimpleExtentNPoints()
-	numTicks /= (int)(unsafe.Sizeof(FeatureVec{})) / 4
+// 	fileSpace := dataset.Space()
+// 	numTicks := fileSpace.SimpleExtentNPoints()
+// 	numTicks /= (int)(unsafe.Sizeof(FeatureVec{})) / 4
 
-	ticks := make([]FeatureVec, numTicks)
-	err = dataset.Read(&ticks)
-	if err != nil {
-		return nil, err
-	}
-	return ticks, nil
-}
+// 	ticks := make([]FeatureVec, numTicks)
+// 	err = dataset.Read(&ticks)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return ticks, nil
+// }
 
-// GetNeighborsFromHDF5 returns slice of feature vectors, from the hdf5 table
-func GetNeighborsFromHDF5(table *hdf5.File, datasetName string) ([]NeighborsIds, error) {
-	dataset, err := table.OpenDataset(datasetName)
-	if err != nil {
-		return nil, err
-	}
-	defer dataset.Close()
+// // GetNeighborsFromHDF5 returns slice of feature vectors, from the hdf5 table
+// func GetNeighborsFromHDF5(table *hdf5.File, datasetName string) ([]NeighborsIds, error) {
+// 	dataset, err := table.OpenDataset(datasetName)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	defer dataset.Close()
 
-	fileSpace := dataset.Space()
-	numTicks := fileSpace.SimpleExtentNPoints()
-	numTicks /= (int)(unsafe.Sizeof(NeighborsIds{})) / 4
+// 	fileSpace := dataset.Space()
+// 	numTicks := fileSpace.SimpleExtentNPoints()
+// 	numTicks /= (int)(unsafe.Sizeof(NeighborsIds{})) / 4
 
-	ticks := make([]NeighborsIds, numTicks)
-	err = dataset.Read(&ticks)
-	if err != nil {
-		return nil, err
-	}
-	return ticks, nil
-}
+// 	ticks := make([]NeighborsIds, numTicks)
+// 	err = dataset.Read(&ticks)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return ticks, nil
+// }
 
 // PrintMemUsage __
 func PrintMemUsage() {

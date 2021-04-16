@@ -5,7 +5,7 @@ ANNBENCH_DATA=./lsh/annbench/data
 .SILENT:
 
 build-lsh: 
-	$(call GOBUILD,./lsh,lsh-app)
+	cd ./lsh && $(call GOBUILD,./,lsh-app)
 
 run-lsh:
 	./lsh/lsh-app
