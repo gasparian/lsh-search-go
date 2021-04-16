@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "github.com/gasparian/pure-kv-go"
 	"log"
 )
 
