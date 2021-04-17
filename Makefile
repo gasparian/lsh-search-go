@@ -34,8 +34,9 @@ test:
 	cd $$path && go test -v -cover -coverprofile cover.out -race ./...
 
 install-hdf5:
+	# sudo su
 	mkdir -p /tmp/hdf5 && cd /tmp/hdf5
-	apt-get install build-essential
+	# apt-get install build-essential
 	wget -q ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/hdf5-1.8.13.tar.gz
 	tar -xzf hdf5-1.8.13.tar.gz
 	cd /tmp/hdf5/hdf5-1.8.13
