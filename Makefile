@@ -1,6 +1,6 @@
 DOWNLOAD=wget -P $(1) -nc $(2)
 GOBUILD=go fmt $(1); go build -o $(1)/$(2) $(1)
-ANNBENCH_DATA=./lsh/annbench/data
+ANNBENCH_DATA=./test-data
 
 .SILENT:
 

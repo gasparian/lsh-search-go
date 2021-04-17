@@ -17,6 +17,33 @@ type FeatureVec [96]float32 // TODO: could be 784 for fashion mnist or 65 for gl
 type NeighborsIds [100]int32
 type DistanceVec [100]float32
 
+// NeighborsRecord holds a single neighbor
+// Used only to store filtered neighbors for sorting
+type NeighborsRecord struct {
+	Key  string
+	Dist float64
+}
+
+// DatasetStats holds basic feature vector stats like mean and standart deviation
+type DatasetStats struct {
+	Mean []float64
+	Std  []float64
+}
+
+// VectorRecord (the same as RequestData?) used to store the vectors to search in the mongodb
+type VectorRecord struct {
+	Key       string
+	Neighbors []uint64
+	Vec       []float64
+}
+
+// HashRecord stores generated hash and a key of the original vector
+type HashRecord struct {
+	Key       string
+	Hash      uint64
+	VectorKey string
+}
+
 // // GetVectorsFromHDF5 returns slice of feature vectors, from the hdf5 table
 // func GetVectorsFromHDF5(table *hdf5.File, datasetName string) ([]FeatureVec, error) {
 // 	dataset, err := table.OpenDataset(datasetName)

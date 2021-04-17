@@ -1,4 +1,4 @@
-# lsh-search-service
+# Locality sensetive hashing  
 
 ### Proposal  
 
