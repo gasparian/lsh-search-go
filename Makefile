@@ -41,8 +41,8 @@ install-hdf5:
 	tar -xzf hdf5-1.8.13.tar.gz
 	cd /tmp/hdf5/hdf5-1.8.13
 	./configure  --prefix=/usr/local
-	make && make install
-	rm -rf /tmp/hdf5/
+	# make && make install
+	# rm -rf /tmp/hdf5/
 
 install-go-deps:
 	for d in */ ; do
