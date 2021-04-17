@@ -23,6 +23,18 @@ Here are visual examples of the planes generation for angular and non-angular di
 
 ### Building and running  
 
+Installing hdf5:  
+```
+mkdir -p /tmp/setup
+apt-get install build-essential && \
+    wget -q ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/hdf5-1.8.13.tar.gz && \
+    tar -xzf hdf5-1.8.13.tar.gz
+
+cd /tmp/setup/hdf5-1.8.13
+./configure  --prefix=/usr/local && \
+    make && make install && \
+    rm -rf /tmp/setup/
+```  
+
 // TODO: 
 
-### [Dev. kanban board](https://github.com/gasparian/lsh-search-service/projects/1?fullscreen=true)  

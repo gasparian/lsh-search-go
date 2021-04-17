@@ -5,6 +5,7 @@ import (
 	"log"
 )
 
+// Config:
 // # DB
 // DB_ADDR="0.0.0.0:6666"
 // SAMPLE_SIZE=30000
