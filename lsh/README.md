@@ -17,7 +17,7 @@ LSH algorithm implies generation of random plane equation coefs.
 // TODO: how the algorithm works  
 
 Here are visual examples of the planes generation for angular and non-angular distance metrics:  
-<p align="center"> <img src="https://github.com/gasparian/lsh-search-service/blob/master/pics/non-biased.jpg" height=400/>  <img src="https://github.com/gasparian/lsh-search-service/blob/master/pics/biased.jpg" height=400/> </p>  
+<p align="center"> <img src="https://github.com/gasparian/similarity-search-go/blob/master/lsh/pics/non-biased.jpg" height=400/>  <img src="https://github.com/gasparian/similarity-search-go/blob/master/lsh/pics/biased.jpg" height=400/> </p>  
 
 // TODO: complexety analysis  
 
