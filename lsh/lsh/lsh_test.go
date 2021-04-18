@@ -1,7 +1,7 @@
 package lsh
 
 import (
-	cm "github.com/gasparian/similarity-search-go/lsh/common"
+	vc "github.com/gasparian/similarity-search-go/lsh/vector"
 	"gonum.org/v1/gonum/blas/blas64"
 	"math"
 	"testing"
@@ -11,18 +11,18 @@ func TestGetHash(t *testing.T) {
 	hasherInstance := HasherInstance{
 		Planes: []Plane{
 			Plane{
-				Coefs: cm.NewVec([]float64{1.0, 1.0, 1.0}),
+				Coefs: vc.NewVec([]float64{1.0, 1.0, 1.0}),
 				D:     5,
 			},
 		},
 	}
-	inpVec := cm.NewVec([]float64{5.0, 1.0, 1.0})
-	meanVec := cm.NewVec([]float64{0.0, 0.0, 0.0})
+	inpVec := vc.NewVec([]float64{5.0, 1.0, 1.0})
+	meanVec := vc.NewVec([]float64{0.0, 0.0, 0.0})
 	hash := hasherInstance.GetHash(inpVec, meanVec)
 	if hash != 1 {
 		t.Fatal("Wrong hash value, must be 1")
 	}
-	inpVec = cm.NewVec([]float64{1.0, 1.0, 1.0})
+	inpVec = vc.NewVec([]float64{1.0, 1.0, 1.0})
 	hash = hasherInstance.GetHash(inpVec, meanVec)
 	if hash != 0 {
 		t.Fatal("Wrong hash value, must be 0")
@@ -30,9 +30,9 @@ func TestGetHash(t *testing.T) {
 }
 
 func getNewHasher(config Config) (*Hasher, error) {
-	hasher := NewLSHIndex(config)
-	mean := cm.NewVec([]float64{0.0, 0.0, 0.0})
-	std := cm.NewVec([]float64{0.2, 0.3, 0.15})
+	hasher := New(config)
+	mean := vc.NewVec([]float64{0.0, 0.0, 0.0})
+	std := vc.NewVec([]float64{0.2, 0.3, 0.15})
 	err := hasher.Generate(mean, std)
 	if err != nil {
 		return nil, err
@@ -48,15 +48,14 @@ func TestGenerateAngular(t *testing.T) {
 		BiasMultiplier:    2.0,
 		DistanceThrsh:     0.8,
 		Dims:              3,
-		Bias:              4.0,
 	}
 	hasherAngular, err := getNewHasher(config)
 	if err != nil {
 		t.Fatalf("Smth went wrong with planes generation: %v", err)
 	}
 
-	isHasherEmpty := cm.IsZeroVector(hasherAngular.Instances[0].Planes[0].Coefs) ||
-		cm.IsZeroVector(hasherAngular.Instances[0].Planes[0].Coefs)
+	isHasherEmpty := vc.IsZeroVector(hasherAngular.Instances[0].Planes[0].Coefs) ||
+		vc.IsZeroVector(hasherAngular.Instances[0].Planes[0].Coefs)
 	if isHasherEmpty {
 		t.Fatal("One of the hasher instances is empty")
 	}
@@ -69,14 +68,13 @@ func TestGenerateL2(t *testing.T) {
 		BiasMultiplier:    2.0,
 		DistanceThrsh:     0.8,
 		Dims:              3,
-		Bias:              4.0,
 	}
 	hasher, err := getNewHasher(config)
 	if err != nil {
 		t.Fatalf("Smth went wrong with planes generation: %v", err)
 	}
 	var distToOrigin float64
-	maxDist := config.Bias * config.BiasMultiplier
+	maxDist := hasher.Bias * config.BiasMultiplier
 	for _, hasherInstance := range hasher.Instances {
 		for _, plane := range hasherInstance.Planes {
 			distToOrigin = math.Abs(plane.D) / blas64.Nrm2(plane.Coefs)
@@ -95,13 +93,12 @@ func TestGetHashes(t *testing.T) {
 		BiasMultiplier:    2.0,
 		DistanceThrsh:     0.8,
 		Dims:              3,
-		Bias:              4.0,
 	}
 	hasherAngular, err := getNewHasher(config)
 	if err != nil {
 		t.Fatalf("Smth went wrong with planes generation: %v", err)
 	}
-	inpVec := cm.NewVec([]float64{0.0, 0.0, 0.0})
+	inpVec := vc.NewVec([]float64{0.0, 0.0, 0.0})
 	hashes := hasherAngular.GetHashes(inpVec)
 	for _, v := range hashes {
 		if v != 1 {
@@ -118,20 +115,19 @@ func TestGetDistAngular(t *testing.T) {
 		BiasMultiplier:    2.0,
 		DistanceThrsh:     0.8,
 		Dims:              3,
-		Bias:              4.0,
 	}
 	hasherAngular, err := getNewHasher(config)
 	if err != nil {
 		t.Fatalf("Smth went wrong with planes generation: %v", err)
 	}
-	v1 := cm.NewVec([]float64{0.0, 0.0, 0.0})
-	v2 := cm.NewVec([]float64{0.0, 1.0, 0.0})
+	v1 := vc.NewVec([]float64{0.0, 0.0, 0.0})
+	v2 := vc.NewVec([]float64{0.0, 1.0, 0.0})
 	dist, ok := hasherAngular.GetDist(v1, v2)
 	if ok {
 		t.Fatal("Angular distance can't be calculated properly with zero vector")
 	}
-	v1 = cm.NewVec([]float64{0.0, 0.0, 2.0})
-	v2 = cm.NewVec([]float64{0.0, 1.0, 0.0})
+	v1 = vc.NewVec([]float64{0.0, 0.0, 2.0})
+	v2 = vc.NewVec([]float64{0.0, 1.0, 0.0})
 	dist, _ = hasherAngular.GetDist(v1, v2)
 	if ok {
 		t.Fatal("Measured dist must be greater than the threshold")
@@ -149,14 +145,13 @@ func TestGetDistL2(t *testing.T) {
 		BiasMultiplier:    2.0,
 		DistanceThrsh:     1.1,
 		Dims:              3,
-		Bias:              4.0,
 	}
 	hasher, err := getNewHasher(config)
 	if err != nil {
 		t.Fatalf("Smth went wrong with planes generation: %v", err)
 	}
-	v1 := cm.NewVec([]float64{0.0, 0.0, 0.0})
-	v2 := cm.NewVec([]float64{0.0, 1.0, 0.0})
+	v1 := vc.NewVec([]float64{0.0, 0.0, 0.0})
+	v2 := vc.NewVec([]float64{0.0, 1.0, 0.0})
 	dist, ok := hasher.GetDist(v1, v2)
 	if !ok {
 		t.Fatal("L2 distance must pass the threshold")
@@ -174,7 +169,6 @@ func TestDumpHasher(t *testing.T) {
 		BiasMultiplier:    2.0,
 		DistanceThrsh:     1.1,
 		Dims:              3,
-		Bias:              4.0,
 	}
 	hasher, err := getNewHasher(config)
 	if err != nil {

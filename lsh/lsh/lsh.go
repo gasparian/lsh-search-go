@@ -7,11 +7,10 @@ import (
 	"gonum.org/v1/gonum/blas/blas64"
 	"math"
 	"math/rand"
-	"strconv"
 	"sync"
 	"time"
 
-	cm "github.com/gasparian/similarity-search-go/lsh/common"
+	vc "github.com/gasparian/similarity-search-go/lsh/vector"
 )
 
 // Plane struct holds data needed to work with plane
@@ -33,16 +32,15 @@ type Config struct {
 	BiasMultiplier    float64
 	DistanceThrsh     float64
 	Dims              int
-	Bias              float64
-	MeanVec           blas64.Vector
 }
 
 // Hasher holds N_PERMUTS number of HasherInstance instances
 type Hasher struct {
-	mutex           sync.RWMutex
-	Config          Config
-	Instances       []HasherInstance
-	HashFieldsNames []string
+	mutex     sync.RWMutex
+	Config    Config
+	Instances []HasherInstance
+	Bias      float64
+	MeanVec   blas64.Vector
 }
 
 // SafeHashesHolder allows to lock map while write values in it
@@ -54,10 +52,10 @@ type safeHashesHolder struct {
 // GetHash calculates LSH code
 func (lshInstance *HasherInstance) GetHash(inpVec, meanVec blas64.Vector) uint64 {
 	var hash uint64
-	shiftedVec := cm.NewVec(make([]float64, inpVec.N))
+	shiftedVec := vc.NewVec(make([]float64, inpVec.N))
 	blas64.Copy(inpVec, shiftedVec)
 	blas64.Axpy(-1.0, meanVec, shiftedVec)
-	vec := cm.NewVec(make([]float64, inpVec.N))
+	vec := vc.NewVec(make([]float64, inpVec.N))
 	var dp float64
 	var dpSign bool
 	for i, plane := range lshInstance.Planes {
@@ -71,12 +69,11 @@ func (lshInstance *HasherInstance) GetHash(inpVec, meanVec blas64.Vector) uint64
 	return hash
 }
 
-// NewLSHIndex creates slice of LSHIndexInstances to hold several permutations results
-func NewLSHIndex(config Config) *Hasher {
+// New creates slice of LSHIndexInstances to hold several permutations results
+func New(config Config) *Hasher {
 	lshIndex := &Hasher{
-		Config:          config,
-		Instances:       make([]HasherInstance, config.NPermutes),
-		HashFieldsNames: make([]string, config.NPermutes),
+		Config:    config,
+		Instances: make([]HasherInstance, config.NPermutes),
 	}
 	return lshIndex
 }
@@ -90,9 +87,9 @@ func (lshIndex *Hasher) getRandomPlane() blas64.Vector {
 		l2 += coefs[i] * coefs[i]
 	}
 	l2 = math.Sqrt(l2)
-	bias := l2 * lshIndex.Config.Bias
+	bias := l2 * lshIndex.Bias
 	coefs[len(coefs)-1] = -1.0*bias + rand.Float64()*bias*2
-	return cm.NewVec(coefs)
+	return vc.NewVec(coefs)
 }
 
 // newHasherInstance creates set of planes which will be used to calculate hash
@@ -106,7 +103,7 @@ func (lshIndex *Hasher) newHasherInstance() (HasherInstance, error) {
 	for i := 0; i < lshIndex.Config.NPlanes; i++ {
 		coefs = lshIndex.getRandomPlane()
 		lshInstance.Planes = append(lshInstance.Planes, Plane{
-			Coefs: cm.NewVec(coefs.Data[:coefs.N-1]),
+			Coefs: vc.NewVec(coefs.Data[:coefs.N-1]),
 			D:     coefs.Data[coefs.N-1],
 		})
 	}
@@ -121,8 +118,8 @@ func (lshIndex *Hasher) Generate(convMean, convStd blas64.Vector) error {
 	if lshIndex.Config.IsAngularDistance == 1 {
 		blas64.Scal(0.0, convStd)
 	}
-	lshIndex.Config.MeanVec = convMean
-	lshIndex.Config.Bias = blas64.Nrm2(convStd) * lshIndex.Config.BiasMultiplier
+	lshIndex.MeanVec = convMean
+	lshIndex.Bias = blas64.Nrm2(convStd) * lshIndex.Config.BiasMultiplier
 
 	var tmpLSHIndex HasherInstance
 	var err error
@@ -132,12 +129,11 @@ func (lshIndex *Hasher) Generate(convMean, convStd blas64.Vector) error {
 			return err
 		}
 		lshIndex.Instances[i] = tmpLSHIndex
-		lshIndex.HashFieldsNames[i] = strconv.Itoa(i)
 	}
 	return nil
 }
 
-// GetHashes returns map of calculated lsh values
+// GetHashes returns map of calculated lsh values for a given vector
 func (lshIndex *Hasher) GetHashes(vec blas64.Vector) map[int]uint64 {
 	lshIndex.mutex.RLock()
 	defer lshIndex.mutex.RUnlock()
@@ -148,7 +144,7 @@ func (lshIndex *Hasher) GetHashes(vec blas64.Vector) map[int]uint64 {
 	for i, lshInstance := range lshIndex.Instances {
 		go func(i int, lsh HasherInstance, hashes *safeHashesHolder) {
 			hashes.Lock()
-			hashes.v[i] = lsh.GetHash(vec, lshIndex.Config.MeanVec)
+			hashes.v[i] = lsh.GetHash(vec, lshIndex.MeanVec)
 			hashes.Unlock()
 			wg.Done()
 		}(i, lshInstance, hashes)
@@ -157,18 +153,18 @@ func (lshIndex *Hasher) GetHashes(vec blas64.Vector) map[int]uint64 {
 	return hashes.v
 }
 
-// GetDist returns measure of the specified distance metric
+// GetDist measures the distance by specified distance metric
 func (lshIndex *Hasher) GetDist(lv, rv blas64.Vector) (float64, bool) {
 	lshIndex.mutex.Lock()
 	defer lshIndex.mutex.Unlock()
 	var dist float64 = 0.0
 	if lshIndex.Config.IsAngularDistance == 1 {
-		if cm.IsZeroVector(lv) || cm.IsZeroVector(rv) {
+		if vc.IsZeroVector(lv) || vc.IsZeroVector(rv) {
 			return 1.0, false // NOTE: zero vectors are wrong with angular metric
 		}
-		dist = cm.CosineSim(lv, rv)
+		dist = vc.CosineSim(lv, rv)
 	} else {
-		dist = cm.L2(lv, rv)
+		dist = vc.L2(lv, rv)
 	}
 	if dist <= lshIndex.Config.DistanceThrsh {
 		return dist, true

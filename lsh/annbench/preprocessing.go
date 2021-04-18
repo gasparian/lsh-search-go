@@ -4,7 +4,6 @@ import (
 	"gonum.org/v1/hdf5"
 	"log"
 	"runtime"
-	"unsafe"
 )
 
 // Objects inside the hdf5:
@@ -13,75 +12,30 @@ import (
 // distances
 // neighbors
 
-type FeatureVec [96]float32 // TODO: could be 784 for fashion mnist or 65 for glove
-type NeighborsIds [100]int32
-type DistanceVec [100]float32
-
-// NeighborsRecord holds a single neighbor
-// Used only to store filtered neighbors for sorting
-type NeighborsRecord struct {
-	Key  string
-	Dist float64
-}
-
-// DatasetStats holds basic feature vector stats like mean and standart deviation
-type DatasetStats struct {
-	Mean []float64
-	Std  []float64
-}
-
-// VectorRecord (the same as RequestData?) used to store the vectors to search in the mongodb
-type VectorRecord struct {
-	Key       string
-	Neighbors []uint64
-	Vec       []float64
-}
-
-// HashRecord stores generated hash and a key of the original vector
-type HashRecord struct {
-	Key       string
-	Hash      uint64
-	VectorKey string
-}
-
 // GetVectorsFromHDF5 returns slice of feature vectors, from the hdf5 table
-func GetVectorsFromHDF5(table *hdf5.File, datasetName string) ([]FeatureVec, error) {
+func GetVectorsFromHDF5(table *hdf5.File, datasetName string, vecs interface{}) error {
 	dataset, err := table.OpenDataset(datasetName)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer dataset.Close()
 
 	fileSpace := dataset.Space()
 	numTicks := fileSpace.SimpleExtentNPoints()
-	numTicks /= (int)(unsafe.Sizeof(FeatureVec{})) / 4
 
-	ticks := make([]FeatureVec, numTicks)
-	err = dataset.Read(&ticks)
-	if err != nil {
-		return nil, err
+	switch vecs := vecs.(type) {
+	case *[]float32:
+		*vecs = make([]float32, numTicks)
+	case *[]int32:
+		*vecs = make([]int32, numTicks)
 	}
-	return ticks, nil
-}
 
-// GetNeighborsFromHDF5 returns slice of feature vectors, from the hdf5 table
-func GetNeighborsFromHDF5(table *hdf5.File, datasetName string) ([]NeighborsIds, error) {
-	dataset, err := table.OpenDataset(datasetName)
+	err = dataset.Read(vecs)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	defer dataset.Close()
 
-	fileSpace := dataset.Space()
-	numTicks := fileSpace.SimpleExtentNPoints()
-	numTicks /= (int)(unsafe.Sizeof(NeighborsIds{})) / 4
-
-	ticks := make([]NeighborsIds, numTicks)
-	err = dataset.Read(&ticks)
-	if err != nil {
-		return nil, err
-	}
-	return ticks, nil
+	return nil
 }
 
 // PrintMemUsage __

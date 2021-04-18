@@ -2,17 +2,10 @@ package annbench
 
 import (
 	_ "context"
-	cm "github.com/gasparian/similarity-search-go/lsh/common"
+	// vc "github.com/gasparian/similarity-search-go/lsh/vector"
 	_ "sort"
 	_ "time"
 )
-
-// BenchClient holds storage for getting vectors from test collection
-// and a client for performing requests to the running ann service
-type BenchClient struct {
-	// Client cl.ANNClient
-	Logger *cm.Logger
-}
 
 // Recall returns ratio of relevant predictions over the all true relevant items
 // both arrays MUST BE SORTED
@@ -92,14 +85,14 @@ func Recall(prediction, groundTruth []uint64) float64 {
 
 // // putBatch accumulates db documents in a batch of desired length and calculates hashes
 // func (benchClient *BenchClient) putBatch(cursor *mongo.Cursor, batchSize int) error {
-// 	batch := make([]cm.RequestData, batchSize)
+// 	batch := make([]vc.RequestData, batchSize)
 // 	batchID := 0
 // 	for cursor.Next(context.Background()) {
 // 		var record db.VectorRecord
 // 		if err := cursor.Decode(&record); err != nil {
 // 			continue
 // 		}
-// 		batch[batchID] = cm.RequestData{
+// 		batch[batchID] = vc.RequestData{
 // 			SecondaryID: record.SecondaryID,
 // 			Vec:         record.FeatureVec,
 // 		}
@@ -110,92 +103,4 @@ func Recall(prediction, groundTruth []uint64) float64 {
 // 		return err
 // 	}
 // 	return nil
-// }
-
-// -------------------------------------------
-
-// var (
-// 	dbLocation          = os.Getenv("MONGO_ADDR")
-// 	batchSize, _        = strconv.Atoi(os.Getenv("BATCH_SIZE"))
-// 	trainCollectionName = os.Getenv("COLLECTION_NAME")
-// 	testCollectionName  = os.Getenv("TEST_COLLECTION_NAME")
-// )
-
-// func main() {
-// 	logger := cm.GetNewLogger()
-// 	config := storage.Config{
-// 		DbLocation: dbLocation,
-// 	}
-// 	logger.Info.Println("Db communication setup")
-// 	mongodb, err := storage.New(config)
-// 	if err != nil {
-// 		logger.Err.Fatal(err)
-// 	}
-// 	defer mongodb.Disconnect()
-
-// 	logger.Info.Println("Creating train collection...")
-// 	mongodb.DropCollection(trainCollectionName)
-// 	vectorsTrainCollection, err := mongodb.CreateCollection(trainCollectionName)
-// 	if err != nil {
-// 		logger.Err.Fatal(err)
-// 	}
-// 	logger.Info.Println("Creating test collection...")
-// 	mongodb.DropCollection(testCollectionName)
-// 	vectorsTestCollection, err := mongodb.CreateCollection(testCollectionName)
-// 	if err != nil {
-// 		logger.Err.Fatal(err)
-// 	}
-
-// 	logger.Info.Println("Opening the hdf5 bench dataset...")
-// 	f, err := hdf5.OpenFile("./annbench/deep-image-96-angular.hdf5", hdf5.F_ACC_RDWR)
-// 	if err != nil {
-// 		logger.Err.Fatal(err)
-// 	}
-// 	defer f.Close()
-
-// 	{
-// 		logger.Info.Println("Creating test dataset...")
-// 		featuresTest, err := annb.GetVectorsFromHDF5(f, "test")
-// 		if err != nil {
-// 			logger.Err.Fatal(err)
-// 		}
-// 		neighbors, err := annb.GetNeighborsFromHDF5(f, "neighbors")
-// 		if err != nil {
-// 			logger.Err.Fatal(err)
-// 		}
-
-// 		err = annb.UploadDatasetMongoDb(vectorsTestCollection, featuresTest, neighbors, batchSize)
-// 		if err != nil {
-// 			logger.Err.Fatal(err)
-// 		}
-// 		logger.Info.Println("Test data has been saved to mongo!")
-// 	}
-
-// 	{
-// 		logger.Info.Println("Creating train dataset...")
-// 		featuresTrain, err := annb.GetVectorsFromHDF5(f, "train")
-// 		if err != nil {
-// 			logger.Err.Fatal(err)
-// 		}
-// 		err = annb.UploadDatasetMongoDb(vectorsTrainCollection, featuresTrain, []storage.NeighborsIds{}, batchSize)
-// 		if err != nil {
-// 			logger.Err.Fatal(err)
-// 		}
-// 		logger.Info.Println("Train data has been saved to mongo!")
-// 	}
-
-// 	// DEBUG Index
-// 	// vectorsTestCollection := mongodb.GetCollection(testCollectionName)
-// 	// vectorsTrainCollection := mongodb.GetCollection(trainCollectionName)
-
-// 	logger.Info.Println("Creating index on secondary id field...")
-// 	err = vectorsTestCollection.CreateIndexesByFields([]string{"secondaryId"}, true)
-// 	if err != nil {
-// 		logger.Err.Fatal(err)
-// 	}
-// 	err = vectorsTrainCollection.CreateIndexesByFields([]string{"secondaryId"}, true)
-// 	if err != nil {
-// 		logger.Err.Fatal(err)
-// 	}
-// 	logger.Info.Println("Index has been created!")
 // }

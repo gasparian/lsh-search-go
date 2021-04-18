@@ -1,4 +1,4 @@
-package common
+package vector
 
 import (
 	"gonum.org/v1/gonum/blas/blas64"
