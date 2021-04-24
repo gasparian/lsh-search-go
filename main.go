@@ -1,9 +1,9 @@
 package main
 
 import (
-	bench "github.com/gasparian/similarity-search-go/lsh/annbench"
-	// lsh "github.com/gasparian/similarity-search-go/lsh/lsh"
-	vc "github.com/gasparian/similarity-search-go/lsh/vector"
+	bench "github.com/gasparian/lsh-search-go/annbench"
+	// lsh "github.com/gasparian/lsh-search-go/lsh"
+	vc "github.com/gasparian/lsh-search-go/vector"
 	"gonum.org/v1/hdf5"
 	"log"
 	"path/filepath"
@@ -19,7 +19,7 @@ const (
 func main() {
 
 	// Read train/test data from the fashion mnist dataset
-	absPath, _ := filepath.Abs("../similarity-search-go/test-data/fashion-mnist-784-euclidean.hdf5")
+	absPath, _ := filepath.Abs("../lsh-search-go/test-data/fashion-mnist-784-euclidean.hdf5")
 	f, err := hdf5.OpenFile(absPath, hdf5.F_ACC_RDONLY)
 	if err != nil {
 		log.Panic(err)

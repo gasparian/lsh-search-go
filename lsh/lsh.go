@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	vc "github.com/gasparian/similarity-search-go/lsh/vector"
+	vc "github.com/gasparian/lsh-search-go/vector"
 )
 
 // Plane struct holds data needed to work with plane

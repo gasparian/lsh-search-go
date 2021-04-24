@@ -6,12 +6,10 @@ ANNBENCH_DATA=./test-data
 .SILENT:
 
 build-lsh: 
-	cd ./lsh && $(call GOBUILD,./,lsh-app)
+	$(call GOBUILD,./,lsh-app)
 
-run-lsh:
-	./lsh/lsh-app
-
-# build-all: build-lsh
+run:
+	./lsh-app
 
 download-annbench-data:
 	mkdir -p $(ANNBENCH_DATA)
@@ -45,10 +43,6 @@ install-hdf5:
 	rm -rf /tmp/hdf5/
 
 install-go-deps:
-	for d in */ ; do
-		cd $(PWD)/$$d
-		go get -t 2>/dev/null || true
-	    echo 1>/dev/null 2>&1
-	done
+	go get -t 
 
 install-deps: install-hdf5 install-go-deps

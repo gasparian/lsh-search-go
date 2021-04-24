@@ -1,7 +1,7 @@
 package lsh
 
 import (
-	vc "github.com/gasparian/similarity-search-go/lsh/vector"
+	vc "github.com/gasparian/lsh-search-go/vector"
 	"gonum.org/v1/gonum/blas/blas64"
 	"math"
 	"testing"

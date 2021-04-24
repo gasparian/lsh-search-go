@@ -2,7 +2,7 @@ package annbench
 
 import (
 	_ "context"
-	// vc "github.com/gasparian/similarity-search-go/lsh/vector"
+	// vc "github.com/gasparian/lsh-search-go/vector"
 	_ "sort"
 	_ "time"
 )
