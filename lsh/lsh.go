@@ -13,6 +13,11 @@ import (
 	vc "github.com/gasparian/lsh-search-go/vector"
 )
 
+const (
+	Cosine = iota
+	Euclidian
+)
+
 // Plane struct holds data needed to work with plane
 type Plane struct {
 	Coefs blas64.Vector
@@ -26,12 +31,12 @@ type HasherInstance struct {
 
 // Config holds all needed constants for creating the Hasher instance
 type Config struct {
-	IsAngularDistance int
-	NPermutes         int
-	NPlanes           int
-	BiasMultiplier    float64
-	DistanceThrsh     float64
-	Dims              int
+	DistanceMetric int
+	NPermutes      int
+	NPlanes        int
+	BiasMultiplier float64
+	DistanceThrsh  float64
+	Dims           int
 }
 
 // Hasher holds N_PERMUTS number of HasherInstance instances
@@ -115,7 +120,7 @@ func (lshIndex *Hasher) Generate(convMean, convStd blas64.Vector) error {
 	lshIndex.mutex.Lock()
 	defer lshIndex.mutex.Unlock()
 
-	if lshIndex.Config.IsAngularDistance == 1 {
+	if lshIndex.Config.DistanceMetric == Cosine {
 		blas64.Scal(0.0, convStd)
 	}
 	lshIndex.MeanVec = convMean
@@ -158,12 +163,13 @@ func (lshIndex *Hasher) GetDist(lv, rv blas64.Vector) (float64, bool) {
 	lshIndex.mutex.Lock()
 	defer lshIndex.mutex.Unlock()
 	var dist float64 = 0.0
-	if lshIndex.Config.IsAngularDistance == 1 {
-		if vc.IsZeroVector(lv) || vc.IsZeroVector(rv) {
+	switch lshIndex.Config.DistanceMetric {
+	case Cosine:
+		if vc.IsZeroVectorBlas(lv) || vc.IsZeroVectorBlas(rv) {
 			return 1.0, false // NOTE: zero vectors are wrong with angular metric
 		}
 		dist = vc.CosineSim(lv, rv)
-	} else {
+	case Euclidian:
 		dist = vc.L2(lv, rv)
 	}
 	if dist <= lshIndex.Config.DistanceThrsh {

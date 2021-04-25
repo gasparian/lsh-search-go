@@ -5,7 +5,7 @@ ANNBENCH_DATA=./test-data
 
 .SILENT:
 
-build-lsh: 
+build: 
 	$(call GOBUILD,./,lsh-app)
 
 run:

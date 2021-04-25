@@ -37,11 +37,7 @@ func main() {
 	}
 	train = nil
 
-	mean, err := vc.GetStat(trainSplitted, []float64{}, 0.1, 30000)
-	if err != nil {
-		log.Panic(err)
-	}
-	std, err := vc.GetStat(trainSplitted, mean, 0.1, 30000)
+	mean, std, err := vc.GetMeanStd(trainSplitted, 30000)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -69,7 +65,7 @@ func main() {
 
 	// // Create LSH index
 	// lshIndexMnist := lsh.New(lsh.Config{
-	// 	IsAngularDistance: 0,
+	// 	DistanceMetric: lsh.Euclidian,
 	// 	NPermutes:         N_PERMUTS,
 	// 	NPlanes:           N_PLANES,
 	// 	BiasMultiplier:    1,

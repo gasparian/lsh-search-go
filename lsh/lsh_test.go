@@ -42,32 +42,32 @@ func getNewHasher(config Config) (*Hasher, error) {
 
 func TestGenerateAngular(t *testing.T) {
 	config := Config{
-		IsAngularDistance: 1,
-		NPermutes:         2,
-		NPlanes:           1,
-		BiasMultiplier:    2.0,
-		DistanceThrsh:     0.8,
-		Dims:              3,
+		DistanceMetric: Cosine,
+		NPermutes:      2,
+		NPlanes:        1,
+		BiasMultiplier: 2.0,
+		DistanceThrsh:  0.8,
+		Dims:           3,
 	}
 	hasherAngular, err := getNewHasher(config)
 	if err != nil {
 		t.Fatalf("Smth went wrong with planes generation: %v", err)
 	}
 
-	isHasherEmpty := vc.IsZeroVector(hasherAngular.Instances[0].Planes[0].Coefs) ||
-		vc.IsZeroVector(hasherAngular.Instances[0].Planes[0].Coefs)
+	isHasherEmpty := vc.IsZeroVectorBlas(hasherAngular.Instances[0].Planes[0].Coefs) ||
+		vc.IsZeroVectorBlas(hasherAngular.Instances[0].Planes[0].Coefs)
 	if isHasherEmpty {
 		t.Fatal("One of the hasher instances is empty")
 	}
 }
 func TestGenerateL2(t *testing.T) {
 	config := Config{
-		IsAngularDistance: 0,
-		NPermutes:         2,
-		NPlanes:           1,
-		BiasMultiplier:    2.0,
-		DistanceThrsh:     0.8,
-		Dims:              3,
+		DistanceMetric: Euclidian,
+		NPermutes:      2,
+		NPlanes:        1,
+		BiasMultiplier: 2.0,
+		DistanceThrsh:  0.8,
+		Dims:           3,
 	}
 	hasher, err := getNewHasher(config)
 	if err != nil {
@@ -87,12 +87,12 @@ func TestGenerateL2(t *testing.T) {
 
 func TestGetHashes(t *testing.T) {
 	config := Config{
-		IsAngularDistance: 1,
-		NPermutes:         2,
-		NPlanes:           1,
-		BiasMultiplier:    2.0,
-		DistanceThrsh:     0.8,
-		Dims:              3,
+		DistanceMetric: Cosine,
+		NPermutes:      2,
+		NPlanes:        1,
+		BiasMultiplier: 2.0,
+		DistanceThrsh:  0.8,
+		Dims:           3,
 	}
 	hasherAngular, err := getNewHasher(config)
 	if err != nil {
@@ -109,12 +109,12 @@ func TestGetHashes(t *testing.T) {
 
 func TestGetDistAngular(t *testing.T) {
 	config := Config{
-		IsAngularDistance: 1,
-		NPermutes:         2,
-		NPlanes:           1,
-		BiasMultiplier:    2.0,
-		DistanceThrsh:     0.8,
-		Dims:              3,
+		DistanceMetric: Cosine,
+		NPermutes:      2,
+		NPlanes:        1,
+		BiasMultiplier: 2.0,
+		DistanceThrsh:  0.8,
+		Dims:           3,
 	}
 	hasherAngular, err := getNewHasher(config)
 	if err != nil {
@@ -139,12 +139,12 @@ func TestGetDistAngular(t *testing.T) {
 
 func TestGetDistL2(t *testing.T) {
 	config := Config{
-		IsAngularDistance: 0,
-		NPermutes:         2,
-		NPlanes:           1,
-		BiasMultiplier:    2.0,
-		DistanceThrsh:     1.1,
-		Dims:              3,
+		DistanceMetric: Euclidian,
+		NPermutes:      2,
+		NPlanes:        1,
+		BiasMultiplier: 2.0,
+		DistanceThrsh:  1.1,
+		Dims:           3,
 	}
 	hasher, err := getNewHasher(config)
 	if err != nil {
@@ -163,12 +163,12 @@ func TestGetDistL2(t *testing.T) {
 
 func TestDumpHasher(t *testing.T) {
 	config := Config{
-		IsAngularDistance: 0,
-		NPermutes:         2,
-		NPlanes:           1,
-		BiasMultiplier:    2.0,
-		DistanceThrsh:     1.1,
-		Dims:              3,
+		DistanceMetric: Euclidian,
+		NPermutes:      2,
+		NPlanes:        1,
+		BiasMultiplier: 2.0,
+		DistanceThrsh:  1.1,
+		Dims:           3,
 	}
 	hasher, err := getNewHasher(config)
 	if err != nil {

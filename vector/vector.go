@@ -4,7 +4,10 @@ import (
 	"errors"
 	"gonum.org/v1/gonum/blas/blas64"
 	"math"
+	"math/rand"
 )
+
+const tol = 1e-6
 
 // ConvertTo64 __
 func ConvertTo64(ar []float32) []float64 {
@@ -17,40 +20,36 @@ func ConvertTo64(ar []float32) []float64 {
 	return newar
 }
 
-// GetStat returns mean of vector or std, if the bias argument is not empty
-// TODO: optimize with goroutines and blas64; add test
-func GetStat(data [][]float64, bias []float64, tol float64, maxSampleSize int) ([]float64, error) {
+func generateRandomInt(min, max int) int {
+	return rand.Intn(max-min) + min
+}
+
+// GetMeanStd returns mean and std based on incoming NxM matrix
+func GetMeanStd(data [][]float64, sampleSize int) ([]float64, []float64, error) {
 	if len(data) == 0 {
-		return nil, errors.New("Data slice is empty")
+		return nil, nil, errors.New("Data slice is empty")
+	}
+	if sampleSize <= 0 {
+		return nil, nil, errors.New("sampleSize must be > 0")
+	}
+	sample := make([]int, sampleSize)
+	sampleSizeF := float64(sampleSize)
+	for i := 0; i < sampleSize; i++ {
+		sample[i] = generateRandomInt(0, len(data))
 	}
 	mean := make([]float64, len(data[0]))
-	var relativeDiff, count, val float64
-	var meanRelativeDiff float64 = 1.0
-	var isStd bool = false
-	if !IsZeroVector(NewVec(bias)) {
-		isStd = true
-	}
-	for i := 0; i < len(data); i++ {
-		if i >= maxSampleSize || meanRelativeDiff <= tol {
-			count = (float64)(i) + 1
-			break
-		}
-		oldMeanVec := mean
-		meanRelativeDiff = 0.0
-		for j := 0; j < len(mean); j++ {
-			val = data[i][j]
-			if isStd {
-				val = math.Sqrt((val - bias[j]) * (val - bias[j]))
-			}
-			mean[j] += val
-			relativeDiff = oldMeanVec[j] / (mean[j] / (float64)(i+1))
-			meanRelativeDiff += relativeDiff / (float64)(len(mean))
+	for _, idx := range sample {
+		for j, val := range data[idx] {
+			mean[j] += val / sampleSizeF
 		}
 	}
-	for i := range mean {
-		mean[i] /= count
+	std := make([]float64, len(data[0]))
+	for _, idx := range sample {
+		for j, val := range data[idx] {
+			std[j] += math.Sqrt((val-mean[j])*(val-mean[j])) / sampleSizeF
+		}
 	}
-	return mean, nil
+	return mean, std, nil
 }
 
 // NewVec creates new blas vector
@@ -78,7 +77,16 @@ func CosineSim(a, b blas64.Vector) float64 {
 	return 1.0 - cosine
 }
 
-// IsZeroVector determines if vector zero or not
-func IsZeroVector(v blas64.Vector) bool {
-	return blas64.Asum(v) == 0.0
+// IsZeroVectorBlas returns true if the sum of vectors' elements close to 0.0
+func IsZeroVectorBlas(v blas64.Vector) bool {
+	return math.Abs(blas64.Asum(v)) <= tol
+}
+
+// IsZeroVector __
+func IsZeroVector(v []float64) bool {
+	var sum float64 = 0.0
+	for _, val := range v {
+		sum += val
+	}
+	return math.Abs(sum) <= tol
 }
