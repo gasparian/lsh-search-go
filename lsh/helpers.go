@@ -1,4 +1,4 @@
-package vector
+package lsh
 
 import (
 	"errors"
@@ -20,6 +20,17 @@ func ConvertTo64(ar []float32) []float64 {
 	return newar
 }
 
+// ConvertToInt __
+func ConvertToInt(ar []int32) []int {
+	newar := make([]int, len(ar))
+	var v int32
+	var i int
+	for i, v = range ar {
+		newar[i] = int(v)
+	}
+	return newar
+}
+
 func generateRandomInt(min, max int) int {
 	return rand.Intn(max-min) + min
 }
@@ -31,6 +42,9 @@ func GetMeanStd(data [][]float64, sampleSize int) ([]float64, []float64, error) 
 	}
 	if sampleSize <= 0 {
 		return nil, nil, errors.New("sampleSize must be > 0")
+	}
+	if len(data) <= sampleSize {
+		sampleSize = len(data)
 	}
 	sample := make([]int, sampleSize)
 	sampleSizeF := float64(sampleSize)
