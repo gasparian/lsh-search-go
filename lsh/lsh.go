@@ -82,15 +82,17 @@ func New(config Config) *Hasher {
 }
 
 // GetRandomPlane generates random coefficients of a plane
+// TODO: drop l2 calculation
 func (lshIndex *Hasher) getRandomPlane() blas64.Vector {
 	coefs := make([]float64, lshIndex.Config.Dims+1)
-	var l2 float64 = 0.0
+	// var l2 float64 = 0.0
 	for i := 0; i < lshIndex.Config.Dims; i++ {
 		coefs[i] = -1.0 + rand.Float64()*2
-		l2 += coefs[i] * coefs[i]
+		// l2 += coefs[i] * coefs[i]
 	}
-	l2 = math.Sqrt(l2)
-	bias := l2 * lshIndex.Bias
+	// l2 = math.Sqrt(l2)
+	// bias := l2 * lshIndex.Bias
+	bias := lshIndex.Bias
 	coefs[len(coefs)-1] = -1.0*bias + rand.Float64()*bias*2
 	return NewVec(coefs)
 }
@@ -114,9 +116,12 @@ func (lshIndex *Hasher) newHasherInstance() (HasherInstance, error) {
 }
 
 // Generate method creates the lsh instances
-func (lshIndex *Hasher) Generate(convMean, convStd blas64.Vector) error {
+func (lshIndex *Hasher) Generate(mean, std []float64) error {
 	lshIndex.mutex.Lock()
 	defer lshIndex.mutex.Unlock()
+
+	convMean := NewVec(mean)
+	convStd := NewVec(std)
 
 	if lshIndex.Config.DistanceMetric == Cosine {
 		blas64.Scal(0.0, convStd)

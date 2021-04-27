@@ -33,8 +33,8 @@ func TestGetHash(t *testing.T) {
 
 func getNewHasher(config Config) (*Hasher, error) {
 	hasher := New(config)
-	mean := NewVec([]float64{0.0, 0.0, 0.0})
-	std := NewVec([]float64{0.2, 0.3, 0.15})
+	mean := []float64{0.0, 0.0, 0.0}
+	std := []float64{0.2, 0.3, 0.15}
 	err := hasher.Generate(mean, std)
 	if err != nil {
 		return nil, err
