@@ -124,13 +124,13 @@ func TestGetDistAngular(t *testing.T) {
 	}
 	v1 := []float64{0.0, 0.0, 0.0}
 	v2 := []float64{0.0, 1.0, 0.0}
-	dist, ok := hasherAngular.GetDist(v1, v2)
+	dist, ok := hasherAngular.GetDist(v1, v2) // TODO: now it's standalone func
 	if ok {
 		t.Fatal("Angular distance can't be calculated properly with zero vector")
 	}
 	v1 = []float64{0.0, 0.0, 2.0}
 	v2 = []float64{0.0, 1.0, 0.0}
-	dist, _ = hasherAngular.GetDist(v1, v2)
+	dist, _ = hasherAngular.GetDist(v1, v2) // TODO: now it's standalone func
 	if ok {
 		t.Fatal("Measured dist must be greater than the threshold")
 	}
@@ -154,7 +154,7 @@ func TestGetDistL2(t *testing.T) {
 	}
 	v1 := []float64{0.0, 0.0, 0.0}
 	v2 := []float64{0.0, 1.0, 0.0}
-	dist, ok := hasher.GetDist(v1, v2)
+	dist, ok := hasher.GetDist(v1, v2) // TODO: now it's standalone func
 	if !ok {
 		t.Fatal("L2 distance must pass the threshold")
 	}
@@ -241,9 +241,6 @@ func TestIsZeroVec(t *testing.T) {
 	t.Parallel()
 	v1 := NewVec([]float64{0.0, 0.0})
 	v2 := NewVec([]float64{0.0, 1.0})
-	if !IsZeroVector([]float64{0.0, 0.0}) {
-		t.Error("Provided vector should be zero vector")
-	}
 	if !IsZeroVectorBlas(v1) {
 		t.Error("Provided vector should be zero vector")
 	}

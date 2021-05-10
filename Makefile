@@ -43,6 +43,6 @@ install-hdf5:
 	rm -rf /tmp/hdf5/
 
 install-go-deps:
-	go get -t 
+	go get -t -u ./...
 
 install-deps: install-hdf5 install-go-deps

@@ -4,12 +4,11 @@ import (
 	"github.com/cheggaaa/pb/v3"
 	bench "github.com/gasparian/lsh-search-go/annbench"
 	lsh "github.com/gasparian/lsh-search-go/lsh"
+	_ "github.com/google/uuid" // TODO: use it to generate unique ids on the fly
 	"gonum.org/v1/hdf5"
 	"log"
-	"sort"
-	// "math"
 	"path/filepath"
-	// "reflect"
+	"sort"
 )
 
 const (
@@ -96,18 +95,6 @@ func main() {
 
 	log.Println("Bias: ", lshIndexMnist.Bias)
 
-	// testHash := lshIndexMnist.GetHashes(testSplitted[0])
-	// valHashTrue := lshIndexMnist.GetHashes(trainSplitted[neighborsSplitted[0][0]])
-	// distTrue, isCloseTrue := lshIndexMnist.GetDist(testSplitted[0], trainSplitted[neighborsSplitted[0][0]])
-	// valHashFalse := lshIndexMnist.GetHashes(trainSplitted[neighborsSplitted[5000][0]])
-	// distFalse, isCloseFalse := lshIndexMnist.GetDist(testSplitted[0], trainSplitted[neighborsSplitted[5000][0]])
-
-	// log.Println("Test hash: ", testHash)
-	// log.Println("Val hash true: ", valHashTrue)
-	// log.Println("Dist true: ", distTrue, isCloseTrue)
-	// log.Println("Val hash false: ", valHashFalse)
-	// log.Println("Dist false: ", distFalse, isCloseFalse)
-
 	// Prepare map to store search index
 	// TODO: make concurrent map and store it inside hasher object?
 	m := make(map[int]map[uint64][]*[]float64)
@@ -115,16 +102,14 @@ func main() {
 		m[i] = make(map[uint64][]*[]float64)
 	}
 
-	// Populate index
+	// Populate index (train dataset)
 	log.Println("Populating index...")
+	// TODO: fill indeces map in a separate loop outside
 	indicesMap := make(map[*[]float64]int)
 	bar := pb.StartNew(len(trainSplitted))
 	for i := range trainSplitted {
 		bar.Increment()
-		cpy := make([]float64, len(trainSplitted[i]))
-		copy(cpy, trainSplitted[i])
-		hashes := lshIndexMnist.GetHashes(cpy)
-		// hashes := lshIndexMnist.GetHashes(trainSplitted[i])
+		hashes := lshIndexMnist.GetHashes(trainSplitted[i])
 		for perm, hash := range hashes {
 			m[perm][hash] = append(m[perm][hash], &trainSplitted[i])
 		}
@@ -144,10 +129,7 @@ func main() {
 	precision, recall := 0.0, 0.0
 	for i := range testSplitted {
 		bar.Increment()
-		cpy := make([]float64, len(testSplitted[i]))
-		copy(cpy, testSplitted[i])
-		hashes := lshIndexMnist.GetHashes(cpy)
-		// hashes := lshIndexMnist.GetHashes(vec)
+		hashes := lshIndexMnist.GetHashes(testSplitted[i])
 		closest := make(map[int]bool)
 		for perm, hash := range hashes {
 			if len(closest) == MAX_NN {
@@ -158,9 +140,7 @@ func main() {
 				if closest[indicesMap[nn[j]]] {
 					continue
 				}
-				copy(cpy, testSplitted[i])
-				_, isClose := lshIndexMnist.GetDist(*(nn[j]), cpy)
-				// log.Println(dist, isClose)
+				_, isClose := lshIndexMnist.GetDist(*(nn[j]), testSplitted[i]) // TODO: now it's standalone func
 				if isClose {
 					closest[indicesMap[nn[j]]] = true
 					if len(closest) == MAX_NN {

@@ -5,9 +5,14 @@ import (
 	"gonum.org/v1/gonum/blas/blas64"
 	"math"
 	"math/rand"
+	"sync"
 )
 
-const tol = 1e-6
+const (
+	tol    = 1e-6
+	Cosine = iota
+	Euclidian
+)
 
 // ConvertTo64 __
 func ConvertTo64(ar []float32) []float64 {
@@ -79,16 +84,13 @@ func NewVec(data []float64) blas64.Vector {
 }
 
 // L2 calculates l2-distance between two vectors
-func L2(a, b blas64.Vector) float64 {
-	res := NewVec(b.Data)
-	blas64.Axpy(-1.0, a, res)
+func L2(a, b []float64) float64 {
+	aBlas := NewVec(a)
+	bBlas := NewVec(b)
+	res := NewVec(make([]float64, bBlas.N))
+	blas64.Copy(bBlas, res)
+	blas64.Axpy(-1.0, aBlas, res)
 	return blas64.Nrm2(res)
-}
-
-// CosineSim calculates cosine similarity btw the two given vectors
-func CosineSim(a, b blas64.Vector) float64 {
-	cosine := blas64.Dot(a, b) / (blas64.Nrm2(a) * blas64.Nrm2(b))
-	return 1.0 - cosine
 }
 
 // IsZeroVectorBlas returns true if the sum of vectors' elements close to 0.0
@@ -96,11 +98,43 @@ func IsZeroVectorBlas(v blas64.Vector) bool {
 	return math.Abs(blas64.Asum(v)) <= tol
 }
 
-// IsZeroVector __
-func IsZeroVector(v []float64) bool {
-	var sum float64 = 0.0
-	for _, val := range v {
-		sum += val
+// CosineSim calculates cosine similarity btw the two given vectors
+func CosineSim(a, b []float64) float64 {
+	aBlas := NewVec(a)
+	bBlas := NewVec(b)
+	if IsZeroVectorBlas(aBlas) || IsZeroVectorBlas(bBlas) {
+		return 1.0 // NOTE: zero vectors are wrong with angular metric
 	}
-	return math.Abs(sum) <= tol
+	cosine := blas64.Dot(aBlas, bBlas) / (blas64.Nrm2(aBlas) * blas64.Nrm2(bBlas))
+	return 1.0 - cosine
+}
+
+type StringSet struct {
+	mx sync.RWMutex
+	m  map[string]bool
+}
+
+func NewStringSet() *StringSet {
+	return &StringSet{
+		m: make(map[string]bool),
+	}
+}
+
+func (s *StringSet) Get(key string) bool {
+	s.mx.RLock()
+	defer s.mx.RUnlock()
+	_, ok := s.m[key]
+	return ok
+}
+
+func (s *StringSet) Set(key string) {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+	s.m[key] = true
+}
+
+func (s *StringSet) Remove(key string) {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+	delete(s.m, key)
 }
