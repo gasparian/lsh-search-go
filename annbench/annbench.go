@@ -1,4 +1,4 @@
-package main
+package annbench
 
 import (
 	"gonum.org/v1/hdf5"

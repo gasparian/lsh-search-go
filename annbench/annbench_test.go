@@ -2,13 +2,14 @@ package annbench_test
 
 import (
 	"github.com/cheggaaa/pb/v3"
-	// bench "github.com/gasparian/lsh-search-go/annbench"
+	bench "github.com/gasparian/lsh-search-go/annbench"
 	lsh "github.com/gasparian/lsh-search-go/lsh"
 	_ "github.com/google/uuid" // TODO: use it to generate unique ids on the fly
 	"gonum.org/v1/hdf5"
 	"log"
 	"path/filepath"
 	"sort"
+	"testing"
 )
 
 const (
@@ -19,7 +20,7 @@ const (
 	MAX_DIST    = 3000
 )
 
-func main() {
+func TestBench(t *testing.T) {
 	// Read train/test data from the fashion mnist dataset
 	absPath, _ := filepath.Abs("../lsh-search-go/test-data/fashion-mnist-784-euclidean.hdf5")
 	f, err := hdf5.OpenFile(absPath, hdf5.F_ACC_RDONLY)
