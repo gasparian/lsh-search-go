@@ -37,7 +37,7 @@ func (lshInstance *hasherInstance) getHash(inpVec, meanVec blas64.Vector) uint64
 	var dpSign bool
 	var hash uint64
 	for i, plane := range lshInstance.planes {
-		blas64.Copy(shiftedVec, vec) // TODO: do we need this copy?
+		blas64.Copy(shiftedVec, vec) // TODO: do we really need this copy?
 		dp = blas64.Dot(vec, plane.coefs) - plane.d
 		dpSign = math.Signbit(dp)
 		if !dpSign {

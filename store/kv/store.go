@@ -14,7 +14,7 @@ type KeysIterator struct {
 
 func (it *KeysIterator) Next() (string, error) {
 	_, vecId, err := it.client.Next(it.bucketName)
-	if err != nil {
+	if err != nil || vecId == nil {
 		it.client.Close()
 	}
 	return vecId, err
@@ -97,7 +97,7 @@ func (p *PureKvStore) GetHashIterator(permutation int, hash uint64) (store.Itera
 		return nil, err
 	}
 	it := &KeysIterator{
-		client:     pkv.New(p.config.Address, p.config.Timeout),
+		client:     p.client,
 		bucketName: bucketName,
 	}
 	return it, nil

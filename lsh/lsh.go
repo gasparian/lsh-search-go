@@ -17,17 +17,18 @@ type Record struct {
 }
 
 type lshConfig struct {
+	mx             sync.Mutex
 	DistanceMetric int
 	DistanceThrsh  float64
 	MaxNN          int
-	Mean           []float64
-	Std            []float64
 }
 
 // Config holds all needed constants for creating the Hasher instance
 type Config struct {
 	lshConfig
 	hasherConfig
+	Mean []float64
+	Std  []float64
 }
 
 // LSHIndex holds buckets with vectors and hasher instance
@@ -57,8 +58,6 @@ func New(config Config, store store.Store) (*LSHIndex, error) {
 			DistanceMetric: config.DistanceMetric,
 			DistanceThrsh:  config.DistanceThrsh,
 			MaxNN:          config.MaxNN,
-			Mean:           config.Mean,
-			Std:            config.Std,
 		},
 		hasher: hasher,
 		index:  store,
@@ -96,12 +95,12 @@ func (lsh *LSHIndex) Search(query []float64) ([]Record, error) {
 	defer close(errs)
 	defer close(closest)
 
-	distanceMetric := lsh.config.DistanceMetric
-	distanceThrsh := lsh.config.DistanceThrsh
-	maxNN := lsh.config.MaxNN
+	lsh.config.Lock()
+	config := lsh.config
+	lsh.config.Unlock()
 	for perm, hash := range hashes {
 		go func(perm int, hash uint64) {
-			if len(closest) == maxNN {
+			if len(closest) == config.MaxNN {
 				return
 			}
 			iter, err := lsh.index.GetHashIterator(perm, hash)
@@ -119,7 +118,7 @@ func (lsh *LSHIndex) Search(query []float64) ([]Record, error) {
 					return
 				}
 				var dist float64 = -1
-				switch distanceMetric {
+				switch config.DistanceMetric {
 				case Cosine:
 					dist = CosineSim(vec, query)
 				case Euclidian:
@@ -129,10 +128,10 @@ func (lsh *LSHIndex) Search(query []float64) ([]Record, error) {
 					errs <- distanceErr
 					return
 				}
-				if dist <= distanceThrsh {
+				if dist <= config.DistanceThrsh {
 					closestSet.Set(id)
 					closest <- Record{ID: id, Vec: vec}
-					if len(closest) == maxNN {
+					if len(closest) == config.MaxNN {
 						return
 					}
 				}
