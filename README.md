@@ -19,16 +19,26 @@ LSH algorithm implies generation of random plane equation coefs.
 
 // TODO: how the algorithm works in a few words  
 
-Here are visual examples of the planes generation for angular and non-angular distance metrics:  
+Here are visual examples of the space partitioning for angular and non-angular distance metrics:  
 <p align="center"> <img src="https://github.com/gasparian/lsh-search-go/blob/master/pics/non-biased.jpg" height=400/>  <img src="https://github.com/gasparian/lsh-search-go/blob/master/pics/biased.jpg" height=400/> </p>  
 
 // TODO: complexety analysis  
 
-### Building and running  
+### API  
 
-Install hdf5:  
+// TODO:  
+
+### Building and running benchmark  
+
+Install hdf5 and go deps necessary for testing:  
 ```
-make install-hdf5
+make install-deps
 ```  
-
-// TODO: 
+Download datasets:  
+```
+make download-annbench-data
+```  
+And just run test in `annbench` folder:  
+```
+make test path=./annbench
+```  

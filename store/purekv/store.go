@@ -1,10 +1,15 @@
-package kv
+package purekv
 
 import (
+	"errors"
 	"github.com/gasparian/lsh-search-go/store"
 	pkv "github.com/gasparian/pure-kv-go/client"
 	guuid "github.com/google/uuid"
 	"sync"
+)
+
+var (
+	iteratorStoppedErr = errors.New("Keys iterator stopped")
 )
 
 type KeysIterator struct {
@@ -12,12 +17,17 @@ type KeysIterator struct {
 	bucketName string
 }
 
-func (it *KeysIterator) Next() (string, error) {
-	_, vecId, err := it.client.Next(it.bucketName)
-	if err != nil || vecId == nil {
-		it.client.Close()
+func (it *KeysIterator) Next() (string, bool) {
+	if it.client == nil {
+		return "", false
 	}
-	return vecId, err
+	_, vecIdTmp, err := it.client.Next(it.bucketName)
+	if vecIdTmp == nil || err != nil {
+		it.client.Close()
+		return "", false
+	}
+	vecId := vecIdTmp.(string)
+	return vecId, true
 }
 
 type Config struct {
@@ -73,7 +83,7 @@ func (p *PureKvStore) GetVector(id string) ([]float64, bool) {
 }
 
 func getBucketName(perm int, hash uint64) string {
-	return string(permutation) + "_" + string(hash)
+	return string(perm) + "_" + string(hash)
 }
 
 func (p *PureKvStore) SetHash(permutation int, hash uint64, vecId string) error {
@@ -97,7 +107,7 @@ func (p *PureKvStore) GetHashIterator(permutation int, hash uint64) (store.Itera
 		return nil, err
 	}
 	it := &KeysIterator{
-		client:     p.client,
+		client:     pkv.New(p.config.Address, p.config.Timeout),
 		bucketName: bucketName,
 	}
 	return it, nil

@@ -2,7 +2,7 @@ package store
 
 // Iterator consists from only one method which returns uid of the next vector
 type Iterator interface {
-	Next() (string, error)
+	Next() (string, bool)
 }
 
 // Store methods to be able to hold and use search index

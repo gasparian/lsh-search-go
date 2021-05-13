@@ -16,8 +16,8 @@ type Record struct {
 	Vec []float64
 }
 
-type lshConfig struct {
-	mx             sync.Mutex
+type LshConfig struct {
+	mx             *sync.Mutex
 	DistanceMetric int
 	DistanceThrsh  float64
 	MaxNN          int
@@ -25,36 +25,36 @@ type lshConfig struct {
 
 // Config holds all needed constants for creating the Hasher instance
 type Config struct {
-	lshConfig
-	hasherConfig
+	LshConfig
+	HasherConfig
 	Mean []float64
 	Std  []float64
 }
 
 // LSHIndex holds buckets with vectors and hasher instance
 type LSHIndex struct {
-	config lshConfig
+	config LshConfig
 	index  store.Store
-	hasher *hasher
+	hasher *Hasher
 }
 
 // New creates new instance of hasher and index, where generated hashes will be stored
-func New(config Config, store store.Store) (*LSHIndex, error) {
-	hasher := &hasher{
-		config: hasherConfig{
+func NewLsh(config Config, store store.Store) (*LSHIndex, error) {
+	hasher := NewHasher(
+		HasherConfig{
 			NPermutes:      config.NPermutes,
 			NPlanes:        config.NPlanes,
 			BiasMultiplier: config.BiasMultiplier,
 			Dims:           config.Dims,
 		},
-		instances: make([]hasherInstance, config.NPermutes),
-	}
+	)
 	err := hasher.generate(config.Mean, config.Std)
 	if err != nil {
 		return nil, err
 	}
 	return &LSHIndex{
-		config: lshConfig{
+		config: LshConfig{
+			mx:             new(sync.Mutex),
 			DistanceMetric: config.DistanceMetric,
 			DistanceThrsh:  config.DistanceThrsh,
 			MaxNN:          config.MaxNN,
@@ -89,67 +89,53 @@ func (lsh *LSHIndex) Train(records []Record) error {
 // Search returns NNs for the query point
 func (lsh *LSHIndex) Search(query []float64) ([]Record, error) {
 	hashes := lsh.hasher.getHashes(query)
-	closestSet := NewStringSet()
-	errs := make(chan error, len(hashes))
-	closest := make(chan Record, len(hashes))
-	defer close(errs)
-	defer close(closest)
-
-	lsh.config.Lock()
+	lsh.config.mx.Lock()
 	config := lsh.config
-	lsh.config.Unlock()
+	lsh.config.mx.Unlock()
+
+	closestSet := make(map[string]bool)
+	closest := make([]Record, 0)
 	for perm, hash := range hashes {
-		go func(perm int, hash uint64) {
-			if len(closest) == config.MaxNN {
-				return
+		if len(closest) >= config.MaxNN {
+			break
+		}
+		iter, err := lsh.index.GetHashIterator(perm, hash)
+		if err != nil {
+			continue // NOTE: it's normal when we couldn't find bucket for the query point
+		}
+		for {
+			if len(closest) >= config.MaxNN {
+				break
 			}
-			iter, err := lsh.index.GetHashIterator(perm, hash)
-			if err != nil {
-				errs <- err
-				return
+			id, opened := iter.Next()
+			if !opened {
+				break
 			}
-			for id, err := iter.Next(); err == nil; {
-				if closestSet.Get(id) {
-					continue
-				}
-				vec, err := lsh.index.GetVector(id)
-				if err != nil {
-					errs <- err
-					return
-				}
-				var dist float64 = -1
-				switch config.DistanceMetric {
-				case Cosine:
-					dist = CosineSim(vec, query)
-				case Euclidian:
-					dist = L2(vec, query)
-				}
-				if dist < 0 {
-					errs <- distanceErr
-					return
-				}
-				if dist <= config.DistanceThrsh {
-					closestSet.Set(id)
-					closest <- Record{ID: id, Vec: vec}
-					if len(closest) == config.MaxNN {
-						return
-					}
-				}
+
+			if closestSet[id] {
+				continue
 			}
-		}(perm, hash)
-	}
-	closestArr := make([]Record, 0)
-	for range hashes {
-		select {
-		case res := <-closest:
-			closestArr = append(closestArr, res)
-		case err := <-errs:
+			vec, err := lsh.index.GetVector(id)
 			if err != nil {
 				return nil, err
 			}
+			var dist float64 = -1
+			switch config.DistanceMetric {
+			case Cosine:
+				dist = CosineDist(vec, query)
+			case Euclidian:
+				dist = L2(vec, query)
+			}
+			if dist < 0 {
+				return nil, distanceErr
+			}
+			if dist <= config.DistanceThrsh {
+				closestSet[id] = true
+				closest = append(closest, Record{ID: id, Vec: vec})
+			}
 		}
 	}
-	return closestArr, nil
+	return closest, nil
 }
 
 // DumpHasher serializes hasher

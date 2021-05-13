@@ -98,8 +98,8 @@ func IsZeroVectorBlas(v blas64.Vector) bool {
 	return math.Abs(blas64.Asum(v)) <= tol
 }
 
-// CosineSim calculates cosine similarity btw the two given vectors
-func CosineSim(a, b []float64) float64 {
+// CosineDist calculates cosine distance between two given vectors
+func CosineDist(a, b []float64) float64 {
 	aBlas := NewVec(a)
 	bBlas := NewVec(b)
 	if IsZeroVectorBlas(aBlas) || IsZeroVectorBlas(bBlas) {
@@ -110,31 +110,31 @@ func CosineSim(a, b []float64) float64 {
 }
 
 type StringSet struct {
-	mx sync.RWMutex
-	m  map[string]bool
+	mx    sync.RWMutex
+	Items map[string]bool
 }
 
 func NewStringSet() *StringSet {
 	return &StringSet{
-		m: make(map[string]bool),
+		Items: make(map[string]bool),
 	}
 }
 
 func (s *StringSet) Get(key string) bool {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
-	_, ok := s.m[key]
+	_, ok := s.Items[key]
 	return ok
 }
 
 func (s *StringSet) Set(key string) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
-	s.m[key] = true
+	s.Items[key] = true
 }
 
 func (s *StringSet) Remove(key string) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
-	delete(s.m, key)
+	delete(s.Items, key)
 }

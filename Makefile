@@ -1,15 +1,7 @@
 DOWNLOAD=wget -P $(1) -nc $(2)
-GOBUILD=go fmt $(1); go build -o $(1)/$(2) $(1)
-PWD=$(shell pwd)
 ANNBENCH_DATA=./test-data
 
 .SILENT:
-
-build: 
-	$(call GOBUILD,./,lsh-app)
-
-run:
-	./lsh-app
 
 download-annbench-data:
 	mkdir -p $(ANNBENCH_DATA)
@@ -28,8 +20,7 @@ test:
 	then
 	    path=./...
 	fi
-	go clean -testcache
-	go test -v -cover -coverprofile cover.out -race ./...
+	go test -v -cover -coverprofile cover.out -race -timeout=30s -count=1 $(path)
 
 install-hdf5:
 	mkdir -p /tmp/hdf5 && cd /tmp/hdf5

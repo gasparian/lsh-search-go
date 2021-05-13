@@ -13,4 +13,4 @@ jobs:
     - name: Install hdf5
       run: make install-hdf5 1>/dev/null 2>&1
     - name: Run tests
-      run: make test
+      run: make test path=./lsh

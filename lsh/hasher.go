@@ -17,18 +17,18 @@ var (
 )
 
 // Plane struct holds data needed to work with plane
-type plane struct {
-	coefs blas64.Vector
-	d     float64
+type Plane struct {
+	Coefs blas64.Vector
+	D     float64
 }
 
 // HasherInstance holds data for local sensetive hashing algorithm
-type hasherInstance struct {
-	planes []plane
+type HasherInstance struct {
+	Planes []Plane
 }
 
 // GetHash calculates LSH code
-func (lshInstance *hasherInstance) getHash(inpVec, meanVec blas64.Vector) uint64 {
+func (lshInstance *HasherInstance) getHash(inpVec, meanVec blas64.Vector) uint64 {
 	shiftedVec := NewVec(make([]float64, inpVec.N))
 	blas64.Copy(inpVec, shiftedVec)
 	blas64.Axpy(-1.0, meanVec, shiftedVec)
@@ -36,9 +36,9 @@ func (lshInstance *hasherInstance) getHash(inpVec, meanVec blas64.Vector) uint64
 	var dp float64
 	var dpSign bool
 	var hash uint64
-	for i, plane := range lshInstance.planes {
+	for i, plane := range lshInstance.Planes {
 		blas64.Copy(shiftedVec, vec) // TODO: do we really need this copy?
-		dp = blas64.Dot(vec, plane.coefs) - plane.d
+		dp = blas64.Dot(vec, plane.Coefs) - plane.D
 		dpSign = math.Signbit(dp)
 		if !dpSign {
 			hash |= (1 << i)
@@ -47,7 +47,7 @@ func (lshInstance *hasherInstance) getHash(inpVec, meanVec blas64.Vector) uint64
 	return hash
 }
 
-type hasherConfig struct {
+type HasherConfig struct {
 	NPermutes      int
 	NPlanes        int
 	BiasMultiplier float64
@@ -55,12 +55,19 @@ type hasherConfig struct {
 }
 
 // Hasher holds N_PERMUTS number of HasherInstance instances
-type hasher struct {
+type Hasher struct {
 	mutex     sync.RWMutex
-	config    hasherConfig
-	instances []hasherInstance
-	bias      float64
-	meanVec   blas64.Vector
+	Config    HasherConfig
+	Instances []HasherInstance
+	Bias      float64
+	MeanVec   blas64.Vector
+}
+
+func NewHasher(config HasherConfig) *Hasher {
+	return &Hasher{
+		Config:    config,
+		Instances: make([]HasherInstance, config.NPermutes),
+	}
 }
 
 // SafeHashesHolder allows to lock map while write values in it
@@ -70,70 +77,69 @@ type safeHashesHolder struct {
 }
 
 // GetRandomPlane generates random coefficients of a plane
-func (hasher *hasher) getRandomPlane() blas64.Vector {
-	coefs := make([]float64, hasher.config.Dims+1)
-	for i := 0; i < hasher.config.Dims; i++ {
+func (hasher *Hasher) getRandomPlane() blas64.Vector {
+	coefs := make([]float64, hasher.Config.Dims+1)
+	for i := 0; i < hasher.Config.Dims; i++ {
 		coefs[i] = -1.0 + rand.Float64()*2
 	}
-	bias := hasher.bias
-	coefs[len(coefs)-1] = -1.0*bias + rand.Float64()*bias*2
+	coefs[len(coefs)-1] = -1.0*hasher.Bias + rand.Float64()*hasher.Bias*2
 	return NewVec(coefs)
 }
 
 // newHasherInstance creates set of planes which will be used to calculate hash
-func (hasher *hasher) newHasherInstance() (hasherInstance, error) {
-	if hasher.config.Dims <= 0 {
-		return hasherInstance{}, dimensionsNumberErr
+func (hasher *Hasher) newHasherInstance() (HasherInstance, error) {
+	if hasher.Config.Dims <= 0 {
+		return HasherInstance{}, dimensionsNumberErr
 	}
 	rand.Seed(time.Now().UnixNano())
-	lshInstance := hasherInstance{}
+	lshInstance := HasherInstance{}
 	var coefs blas64.Vector
-	for i := 0; i < hasher.config.NPlanes; i++ {
+	for i := 0; i < hasher.Config.NPlanes; i++ {
 		coefs = hasher.getRandomPlane()
-		lshInstance.planes = append(lshInstance.planes, plane{
-			coefs: NewVec(coefs.Data[:coefs.N-1]),
-			d:     coefs.Data[coefs.N-1],
+		lshInstance.Planes = append(lshInstance.Planes, Plane{
+			Coefs: NewVec(coefs.Data[:coefs.N-1]),
+			D:     coefs.Data[coefs.N-1],
 		})
 	}
 	return lshInstance, nil
 }
 
 // Generate method creates the lsh instances
-func (hasher *hasher) generate(mean, std []float64) error {
+func (hasher *Hasher) generate(mean, std []float64) error {
 	hasher.mutex.Lock()
 	defer hasher.mutex.Unlock()
 
 	convMean := NewVec(mean)
 	convStd := NewVec(std)
 
-	hasher.meanVec = convMean
-	hasher.bias = blas64.Nrm2(convStd) * hasher.config.BiasMultiplier
+	hasher.MeanVec = convMean
+	hasher.Bias = blas64.Nrm2(convStd) * hasher.Config.BiasMultiplier
 
-	var tmpLsh hasherInstance
+	var tmpLsh HasherInstance
 	var err error
-	for i := 0; i < hasher.config.NPermutes; i++ {
+	for i := 0; i < hasher.Config.NPermutes; i++ {
 		tmpLsh, err = hasher.newHasherInstance()
 		if err != nil {
 			return err
 		}
-		hasher.instances[i] = tmpLsh
+		hasher.Instances[i] = tmpLsh
 	}
 	return nil
 }
 
 // GetHashes returns map of calculated lsh values for a given vector
-func (hasher *hasher) getHashes(vec []float64) map[int]uint64 {
+func (hasher *Hasher) getHashes(vec []float64) map[int]uint64 {
 	hasher.mutex.RLock()
 	defer hasher.mutex.RUnlock()
 
 	blasVec := NewVec(vec)
 	hashes := &safeHashesHolder{v: make(map[int]uint64)}
 	wg := sync.WaitGroup{}
-	wg.Add(len(hasher.instances))
-	for i, hsh := range hasher.instances {
-		go func(i int, hsh hasherInstance, hashes *safeHashesHolder) {
+	wg.Add(len(hasher.Instances))
+	for i, hsh := range hasher.Instances {
+		go func(i int, hsh HasherInstance, hashes *safeHashesHolder) {
 			hashes.Lock()
-			hashes.v[i] = hsh.getHash(blasVec, hasher.meanVec)
+			hashes.v[i] = hsh.getHash(blasVec, hasher.MeanVec)
 			hashes.Unlock()
 			wg.Done()
 		}(i, hsh, hashes)
@@ -143,11 +149,11 @@ func (hasher *hasher) getHashes(vec []float64) map[int]uint64 {
 }
 
 // Dump encodes Hasher object as a byte-array
-func (hasher *hasher) dump() ([]byte, error) {
+func (hasher *Hasher) dump() ([]byte, error) {
 	hasher.mutex.RLock()
 	defer hasher.mutex.RUnlock()
 
-	if len(hasher.instances) == 0 {
+	if len(hasher.Instances) == 0 {
 		return nil, hasherEmptyInstancesErr
 	}
 	buf := &bytes.Buffer{}
@@ -160,7 +166,7 @@ func (hasher *hasher) dump() ([]byte, error) {
 }
 
 // Load loads Hasher struct from the byte-array file
-func (hasher *hasher) load(inp []byte) error {
+func (hasher *Hasher) load(inp []byte) error {
 	hasher.mutex.Lock()
 	defer hasher.mutex.Unlock()
 
