@@ -227,27 +227,27 @@ func TestIsZeroVec(t *testing.T) {
 func TestStats(t *testing.T) {
 	t.Parallel()
 	rand.Seed(time.Now().UnixNano())
-	vecs := [][]float64{
-		[]float64{0.0, 1.0},
-		[]float64{0.0, 0.0},
-		[]float64{0.0, 1.0},
-		[]float64{0.0, 0.0},
-		[]float64{0.0, 1.0},
-		[]float64{0.0, 0.0},
-		[]float64{0.0, 1.0},
-		[]float64{0.0, 0.0},
-		[]float64{0.0, 1.0},
-		[]float64{0.0, 0.0},
-		[]float64{0.0, 1.0},
-		[]float64{0.0, 0.0},
-		[]float64{0.0, 1.0},
-		[]float64{0.0, 0.0},
-		[]float64{0.0, 1.0},
-		[]float64{0.0, 0.0},
-		[]float64{0.0, 1.0},
-		[]float64{0.0, 0.0},
-		[]float64{0.0, 1.0},
-		[]float64{0.0, 0.0},
+	vecs := []Record{
+		Record{Vec: []float64{0.0, 1.0}},
+		Record{Vec: []float64{0.0, 0.0}},
+		Record{Vec: []float64{0.0, 1.0}},
+		Record{Vec: []float64{0.0, 0.0}},
+		Record{Vec: []float64{0.0, 1.0}},
+		Record{Vec: []float64{0.0, 0.0}},
+		Record{Vec: []float64{0.0, 1.0}},
+		Record{Vec: []float64{0.0, 0.0}},
+		Record{Vec: []float64{0.0, 1.0}},
+		Record{Vec: []float64{0.0, 0.0}},
+		Record{Vec: []float64{0.0, 1.0}},
+		Record{Vec: []float64{0.0, 0.0}},
+		Record{Vec: []float64{0.0, 1.0}},
+		Record{Vec: []float64{0.0, 0.0}},
+		Record{Vec: []float64{0.0, 1.0}},
+		Record{Vec: []float64{0.0, 0.0}},
+		Record{Vec: []float64{0.0, 1.0}},
+		Record{Vec: []float64{0.0, 0.0}},
+		Record{Vec: []float64{0.0, 1.0}},
+		Record{Vec: []float64{0.0, 0.0}},
 	}
 	trueStat := []float64{0.0, 0.5}
 	statTol := 0.05

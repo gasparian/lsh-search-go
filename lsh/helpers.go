@@ -41,7 +41,7 @@ func generateRandomInt(min, max int) int {
 }
 
 // GetMeanStd returns mean and std based on incoming NxM matrix
-func GetMeanStd(data [][]float64, sampleSize int) ([]float64, []float64, error) {
+func GetMeanStd(data []Record, sampleSize int) ([]float64, []float64, error) {
 	if len(data) == 0 {
 		return nil, nil, errors.New("Data slice is empty")
 	}
@@ -56,15 +56,15 @@ func GetMeanStd(data [][]float64, sampleSize int) ([]float64, []float64, error) 
 	for i := 0; i < sampleSize; i++ {
 		sample[i] = generateRandomInt(0, len(data))
 	}
-	mean := make([]float64, len(data[0]))
+	mean := make([]float64, len(data[0].Vec))
 	for _, idx := range sample {
-		for j, val := range data[idx] {
+		for j, val := range data[idx].Vec {
 			mean[j] += val / sampleSizeF
 		}
 	}
-	std := make([]float64, len(data[0]))
+	std := make([]float64, len(data[0].Vec))
 	for _, idx := range sample {
-		for j, val := range data[idx] {
+		for j, val := range data[idx].Vec {
 			std[j] += math.Sqrt((val-mean[j])*(val-mean[j])) / sampleSizeF
 		}
 	}
