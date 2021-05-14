@@ -11,7 +11,7 @@ We have two basic groups of algorithms to perform the ANN search:
 I've decided to go with the LSH algorithm first, since it's pretty simple to understand and implement.  
 So this repo contains library that has the functionality to create LSH index and perform search by the query vector.  
 The storage and hashing parts are decoupled from each other.  
-I use [pure-kv-go](https://github.com/gasparian/pure-kv-go) for storing index. You can use whatever you want - you just need to implement [store](https://github.com/gasparian/lsh-search-go/blob/master/store/store.go) interface first.  
+You can any db you prefer - you just need to implement [store](https://github.com/gasparian/lsh-search-go/blob/master/store/store.go) interface first.  
 
 ### Local sensitive hashing reference   
 

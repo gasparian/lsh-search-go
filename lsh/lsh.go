@@ -66,6 +66,7 @@ func NewLsh(config Config, store store.Store) (*LSHIndex, error) {
 
 // Train fills new search index with vectors
 func (lsh *LSHIndex) Train(records []Record) error {
+	// TODO: add batching here
 	err := lsh.index.Clear()
 	if err != nil {
 		return err

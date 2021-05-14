@@ -1,9 +1,9 @@
 package annbench_test
 
 import (
-	"github.com/cheggaaa/pb/v3"
 	bench "github.com/gasparian/lsh-search-go/annbench"
 	lsh "github.com/gasparian/lsh-search-go/lsh"
+	"github.com/gasparian/lsh-search-go/store/kv"
 	guuid "github.com/google/uuid"
 	"gonum.org/v1/hdf5"
 	"path/filepath"
@@ -59,6 +59,9 @@ func (nn *NNMock) Search(query []float64) ([]lsh.Record, error) {
 		if len(closest) >= nn.config.MaxNN {
 			return closest, nil
 		}
+		if closestSet[id] {
+			continue
+		}
 		var dist float64 = -1
 		switch nn.config.DistanceMetric {
 		case lsh.Cosine:
@@ -79,6 +82,7 @@ func (nn *NNMock) Search(query []float64) ([]lsh.Record, error) {
 
 func TestFashionMnist(t *testing.T) {
 	// Read train/test data from the fashion mnist dataset
+	t.Log("Opening dataset...")
 	absPath, _ := filepath.Abs("../test-data/fashion-mnist-784-euclidean.hdf5")
 	f, err := hdf5.OpenFile(absPath, hdf5.F_ACC_RDONLY)
 	if err != nil {
@@ -103,12 +107,12 @@ func TestFashionMnist(t *testing.T) {
 	}
 	train = nil
 
-	// mean, std, err := lsh.GetMeanStd(trainSplitted, SAMPLE_SIZE)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
+	mean, std, err := lsh.GetMeanStd(trainSplitted, SAMPLE_SIZE)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	t.Log(len(trainSplitted))
+	t.Logf("Train set ready (%v entries)", len(trainSplitted))
 
 	test := []float32{}
 	err = bench.GetVectorsFromHDF5(f, "test", &test)
@@ -121,7 +125,7 @@ func TestFashionMnist(t *testing.T) {
 	}
 	test = nil
 
-	t.Log(len(testSplitted))
+	t.Logf("Test set is ready (%v entries)", len(testSplitted))
 
 	neighbors := []int32{}
 	err = bench.GetVectorsFromHDF5(f, "neighbors", &neighbors)
@@ -136,16 +140,13 @@ func TestFashionMnist(t *testing.T) {
 	}
 	neighbors = nil
 
-	t.Log(len(neighborsSplitted))
+	t.Logf("Ground truth data set is ready (%v entries)", len(neighborsSplitted))
 
 	t.Log("Populating indeces map")
 	indicesMap := make(map[string]int)
-	bar := pb.StartNew(len(trainSplitted))
 	for i := range trainSplitted {
-		bar.Increment()
 		indicesMap[trainSplitted[i].ID] = i
 	}
-	bar.Finish()
 
 	t.Run("NN", func(t *testing.T) {
 		nn := NewNNMock(NNMockConfig{
@@ -154,12 +155,14 @@ func TestFashionMnist(t *testing.T) {
 			MaxNN:          MAX_NN,
 		})
 
+		// TODO: measure time
+		t.Log("Creating search index...")
 		nn.Train(trainSplitted)
 
-		bar = pb.StartNew(len(testSplitted))
+		// TODO: measure average search time
+		t.Log("Predicting...")
 		precision, recall := 0.0, 0.0
 		for i := range testSplitted {
-			bar.Increment()
 			closest, err := nn.Search(testSplitted[i])
 			if err != nil {
 				t.Fatal(err)
@@ -174,102 +177,62 @@ func TestFashionMnist(t *testing.T) {
 			precision += p
 			recall += r
 		}
-		bar.Finish()
 		precision /= float64(len(testSplitted))
 		recall /= float64(len(testSplitted))
 
-		t.Log("Precision: ", precision, "Recall: ", recall)
+		t.Log("Done! Precision: ", precision, "Recall: ", recall)
 	})
 
-	// t.Run("LSH", func(t *testing.T) {
-	// 	// Create LSH index
-	// 	lshIndexMnist := lsh.New(lsh.Config{
-	// 		DistanceMetric: lsh.Euclidian,
-	// 		NPermutes:      N_PERMUTS,
-	// 		NPlanes:        N_PLANES,
-	// 		BiasMultiplier: 1.0,
-	// 		DistanceThrsh:  MAX_DIST,
-	// 		Dims:           784,
-	// 	})
+	t.Run("LSH", func(t *testing.T) {
+		config := lsh.Config{
+			LshConfig: lsh.LshConfig{
+				DistanceMetric: lsh.Euclidian,
+				DistanceThrsh:  MAX_DIST,
+				MaxNN:          MAX_NN,
+			},
+			HasherConfig: lsh.HasherConfig{
+				NPermutes:      N_PERMUTS,
+				NPlanes:        N_PLANES,
+				BiasMultiplier: 1.0,
+				Dims:           784,
+			},
+		}
+		config.Mean = mean
+		config.Std = std
+		s := kv.NewKVStore()
+		lshIndex, err := lsh.NewLsh(config, s)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	// 	// Generate planes for hashing
-	// 	err = lshIndexMnist.Generate(mean, std)
-	// 	if err != nil {
-	// 		log.Panic(err)
-	// 	}
+		// TODO: measure time
+		t.Log("Creating search index...")
+		lshIndex.Train(trainSplitted)
 
-	// 	log.Println("Bias: ", lshIndexMnist.Bias)
+		// TODO: measure average search time
+		t.Log("Predicting...")
+		precision, recall := 0.0, 0.0
+		for i := range testSplitted {
+			closest, err := lshIndex.Search(testSplitted[i])
+			if err != nil {
+				t.Fatal(err)
+			}
+			closestPointsArr := make([]int, 0)
+			for _, cl := range closest {
+				closestPointsArr = append(closestPointsArr, indicesMap[cl.ID])
+			}
+			// measure Recall
+			sort.Ints(closestPointsArr)
+			p, r := bench.PrecisionRecall(closestPointsArr, neighborsSplitted[i])
+			precision += p
+			recall += r
+		}
+		precision /= float64(len(testSplitted))
+		recall /= float64(len(testSplitted))
 
-	// 	// Prepare map to store search index
-	// 	// TODO: make concurrent map and store it inside hasher object?
-	// 	m := make(map[int]map[uint64][]*[]float64)
-	// 	for i := 0; i < N_PERMUTS; i++ {
-	// 		m[i] = make(map[uint64][]*[]float64)
-	// 	}
+		t.Log("Done! Precision: ", precision, "Recall: ", recall)
 
-	// 	// Populate index (train dataset)
-	// 	log.Println("Populating index...")
-	// 	// TODO: fill indeces map in a separate loop outside
-	// 	indicesMap := make(map[*[]float64]int)
-	// 	bar := pb.StartNew(len(trainSplitted))
-	// 	for i := range trainSplitted {
-	// 		bar.Increment()
-	// 		hashes := lshIndexMnist.GetHashes(trainSplitted[i])
-	// 		for perm, hash := range hashes {
-	// 			m[perm][hash] = append(m[perm][hash], &trainSplitted[i])
-	// 		}
-	// 		indicesMap[&trainSplitted[i]] = i
-	// 	}
-	// 	bar.Finish()
-
-	// 	// for i, v := range m {
-	// 	// 	for hash, s := range v {
-	// 	// 		log.Println(i, hash, len(s))
-	// 	// 	}
-	// 	// }
-
-	// 	// Get test hashes
-	// 	log.Println("Making pedictions...")
-	// 	bar = pb.StartNew(len(testSplitted))
-	// 	precision, recall := 0.0, 0.0
-	// 	for i := range testSplitted {
-	// 		bar.Increment()
-	// 		hashes := lshIndexMnist.GetHashes(testSplitted[i])
-	// 		closest := make(map[int]bool)
-	// 		for perm, hash := range hashes {
-	// 			if len(closest) == MAX_NN {
-	// 				break
-	// 			}
-	// 			nn := m[perm][hash]
-	// 			for j := range nn {
-	// 				if closest[indicesMap[nn[j]]] {
-	// 					continue
-	// 				}
-	// 				_, isClose := lshIndexMnist.GetDist(*(nn[j]), testSplitted[i]) // TODO: now it's standalone func
-	// 				if isClose {
-	// 					closest[indicesMap[nn[j]]] = true
-	// 					if len(closest) == MAX_NN {
-	// 						break
-	// 					}
-	// 				}
-	// 			}
-	// 		}
-	// 		closestPointsArr := make([]int, 0)
-	// 		for k := range closest {
-	// 			closestPointsArr = append(closestPointsArr, k)
-	// 		}
-	// 		// measure Recall
-	// 		sort.Ints(closestPointsArr)
-	// 		p, r := bench.PrecisionRecall(closestPointsArr, neighborsSplitted[i])
-	// 		precision += p
-	// 		recall += r
-	// 	}
-	// 	bar.Finish()
-	// 	precision /= float64(len(testSplitted))
-	// 	recall /= float64(len(testSplitted))
-
-	// 	log.Println("Precision: ", precision, "Recall: ", recall)
-	// })
+	})
 }
 
 func TestLastFM(t *testing.T) {
