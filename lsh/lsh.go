@@ -17,10 +17,11 @@ type Record struct {
 }
 
 type LshConfig struct {
-	mx             *sync.Mutex
+	mx             *sync.RWMutex
 	DistanceMetric int
 	DistanceThrsh  float64
 	MaxNN          int
+	BatchSize      int
 }
 
 // Config holds all needed constants for creating the Hasher instance
@@ -41,24 +42,15 @@ type LSHIndex struct {
 // New creates new instance of hasher and index, where generated hashes will be stored
 func NewLsh(config Config, store store.Store) (*LSHIndex, error) {
 	hasher := NewHasher(
-		HasherConfig{
-			NPermutes:      config.NPermutes,
-			NPlanes:        config.NPlanes,
-			BiasMultiplier: config.BiasMultiplier,
-			Dims:           config.Dims,
-		},
+		config.HasherConfig,
 	)
 	err := hasher.generate(config.Mean, config.Std)
 	if err != nil {
 		return nil, err
 	}
+	config.LshConfig.mx = new(sync.RWMutex)
 	return &LSHIndex{
-		config: LshConfig{
-			mx:             new(sync.Mutex),
-			DistanceMetric: config.DistanceMetric,
-			DistanceThrsh:  config.DistanceThrsh,
-			MaxNN:          config.MaxNN,
-		},
+		config: config.LshConfig,
 		hasher: hasher,
 		index:  store,
 	}, nil
@@ -66,22 +58,31 @@ func NewLsh(config Config, store store.Store) (*LSHIndex, error) {
 
 // Train fills new search index with vectors
 func (lsh *LSHIndex) Train(records []Record) error {
-	// TODO: add batching here
 	err := lsh.index.Clear()
 	if err != nil {
 		return err
 	}
+	lsh.config.mx.RLock()
+	batchSize := lsh.config.BatchSize
+	lsh.config.mx.RUnlock()
+
 	wg := sync.WaitGroup{}
-	wg.Add(len(records))
-	for _, record := range records {
-		go func(record Record, wg *sync.WaitGroup) {
-			hashes := lsh.hasher.getHashes(record.Vec)
-			lsh.index.SetVector(record.ID, record.Vec)
-			for perm, hash := range hashes {
-				lsh.index.SetHash(perm, hash, record.ID)
+	wg.Add(len(records)/batchSize + len(records)%batchSize)
+	for i := 0; i < len(records); i += batchSize {
+		end := i + batchSize
+		if end > len(records) {
+			end = len(records)
+		}
+		go func(batch []Record, wg *sync.WaitGroup) {
+			defer wg.Done()
+			for _, rec := range batch {
+				hashes := lsh.hasher.getHashes(rec.Vec)
+				lsh.index.SetVector(rec.ID, rec.Vec)
+				for perm, hash := range hashes {
+					lsh.index.SetHash(perm, hash, rec.ID)
+				}
 			}
-			wg.Done()
-		}(record, &wg)
+		}(records[i:end], &wg)
 	}
 	wg.Wait()
 	return nil
@@ -90,9 +91,9 @@ func (lsh *LSHIndex) Train(records []Record) error {
 // Search returns NNs for the query point
 func (lsh *LSHIndex) Search(query []float64) ([]Record, error) {
 	hashes := lsh.hasher.getHashes(query)
-	lsh.config.mx.Lock()
+	lsh.config.mx.RLock()
 	config := lsh.config
-	lsh.config.mx.Unlock()
+	lsh.config.mx.RUnlock()
 
 	closestSet := make(map[string]bool)
 	closest := make([]Record, 0)

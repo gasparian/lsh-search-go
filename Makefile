@@ -20,7 +20,7 @@ test:
 	then
 	    path=./...
 	fi
-	go test -v -cover -coverprofile cover.out -race -timeout=30s -count=1 $(path)
+	go test -v -cover -coverprofile cover.out -race -timeout=500s -count=1 $(path)
 
 install-hdf5:
 	mkdir -p /tmp/hdf5 && cd /tmp/hdf5

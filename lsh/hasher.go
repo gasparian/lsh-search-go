@@ -138,10 +138,10 @@ func (hasher *Hasher) getHashes(vec []float64) map[int]uint64 {
 	wg.Add(len(hasher.Instances))
 	for i, hsh := range hasher.Instances {
 		go func(i int, hsh HasherInstance, hashes *safeHashesHolder) {
+			defer wg.Done()
 			hashes.Lock()
 			hashes.v[i] = hsh.getHash(blasVec, hasher.MeanVec)
 			hashes.Unlock()
-			wg.Done()
 		}(i, hsh, hashes)
 	}
 	wg.Wait()

@@ -294,6 +294,7 @@ func TestLshCosine(t *testing.T) {
 			DistanceMetric: Cosine,
 			DistanceThrsh:  0.1,
 			MaxNN:          4,
+			BatchSize:      2,
 		},
 		HasherConfig: HasherConfig{
 			NPermutes:      10,
@@ -371,6 +372,7 @@ func TestLshL2(t *testing.T) {
 			DistanceMetric: Euclidian,
 			DistanceThrsh:  0.02,
 			MaxNN:          4,
+			BatchSize:      2,
 		},
 		HasherConfig: HasherConfig{
 			NPermutes:      10,

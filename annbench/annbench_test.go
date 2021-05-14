@@ -10,10 +10,12 @@ import (
 	"sort"
 	"sync"
 	"testing"
+	"time"
 )
 
 const (
 	SAMPLE_SIZE = 60000
+	BATCH_SIZE  = 500
 	N_PLANES    = 20
 	N_PERMUTS   = 10
 	MAX_NN      = 100
@@ -26,6 +28,7 @@ type NNMockConfig struct {
 	MaxNN          int
 }
 
+// TODO: use kv storage as in lsh indexer - to compare them more fair
 type NNMock struct {
 	mx     sync.RWMutex
 	config NNMockConfig
@@ -78,6 +81,44 @@ func (nn *NNMock) Search(query []float64) ([]lsh.Record, error) {
 		}
 	}
 	return closest, nil
+}
+
+type Indexer interface {
+	Train(records []lsh.Record) error
+	Search(query []float64) ([]lsh.Record, error)
+}
+
+func testIndexer(t *testing.T, indexer Indexer, indicesMap map[string]int, trainSplitted []lsh.Record, testSplitted [][]float64, neighborsSplitted [][]int) {
+	start := time.Now()
+	t.Log("Creating search index...")
+	indexer.Train(trainSplitted)
+	t.Logf("Training finished in %v", time.Since(start))
+
+	t.Log("Predicting...")
+	precision, recall, avgPredTime := 0.0, 0.0, 0.0
+	for i := range testSplitted {
+		start = time.Now()
+		closest, err := indexer.Search(testSplitted[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		closestPointsArr := make([]int, 0)
+		for _, cl := range closest {
+			closestPointsArr = append(closestPointsArr, indicesMap[cl.ID])
+		}
+		// measure Recall
+		sort.Ints(closestPointsArr)
+		p, r := bench.PrecisionRecall(closestPointsArr, neighborsSplitted[i])
+		precision += p
+		recall += r
+		avgPredTime += float64(time.Since(start).Milliseconds())
+	}
+	precision /= float64(len(testSplitted))
+	recall /= float64(len(testSplitted))
+	avgPredTime /= float64(len(testSplitted))
+
+	t.Log("Done! Precision: ", precision, "Recall: ", recall)
+	t.Logf("Average prediction time is %v ms", avgPredTime)
 }
 
 func TestFashionMnist(t *testing.T) {
@@ -154,33 +195,7 @@ func TestFashionMnist(t *testing.T) {
 			DistanceThrsh:  MAX_DIST,
 			MaxNN:          MAX_NN,
 		})
-
-		// TODO: measure time
-		t.Log("Creating search index...")
-		nn.Train(trainSplitted)
-
-		// TODO: measure average search time
-		t.Log("Predicting...")
-		precision, recall := 0.0, 0.0
-		for i := range testSplitted {
-			closest, err := nn.Search(testSplitted[i])
-			if err != nil {
-				t.Fatal(err)
-			}
-			closestPointsArr := make([]int, 0)
-			for _, cl := range closest {
-				closestPointsArr = append(closestPointsArr, indicesMap[cl.ID])
-			}
-			// measure Recall
-			sort.Ints(closestPointsArr)
-			p, r := bench.PrecisionRecall(closestPointsArr, neighborsSplitted[i])
-			precision += p
-			recall += r
-		}
-		precision /= float64(len(testSplitted))
-		recall /= float64(len(testSplitted))
-
-		t.Log("Done! Precision: ", precision, "Recall: ", recall)
+		testIndexer(t, nn, indicesMap, trainSplitted, testSplitted, neighborsSplitted)
 	})
 
 	t.Run("LSH", func(t *testing.T) {
@@ -189,6 +204,7 @@ func TestFashionMnist(t *testing.T) {
 				DistanceMetric: lsh.Euclidian,
 				DistanceThrsh:  MAX_DIST,
 				MaxNN:          MAX_NN,
+				BatchSize:      BATCH_SIZE,
 			},
 			HasherConfig: lsh.HasherConfig{
 				NPermutes:      N_PERMUTS,
@@ -204,37 +220,6 @@ func TestFashionMnist(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		// TODO: measure time
-		t.Log("Creating search index...")
-		lshIndex.Train(trainSplitted)
-
-		// TODO: measure average search time
-		t.Log("Predicting...")
-		precision, recall := 0.0, 0.0
-		for i := range testSplitted {
-			closest, err := lshIndex.Search(testSplitted[i])
-			if err != nil {
-				t.Fatal(err)
-			}
-			closestPointsArr := make([]int, 0)
-			for _, cl := range closest {
-				closestPointsArr = append(closestPointsArr, indicesMap[cl.ID])
-			}
-			// measure Recall
-			sort.Ints(closestPointsArr)
-			p, r := bench.PrecisionRecall(closestPointsArr, neighborsSplitted[i])
-			precision += p
-			recall += r
-		}
-		precision /= float64(len(testSplitted))
-		recall /= float64(len(testSplitted))
-
-		t.Log("Done! Precision: ", precision, "Recall: ", recall)
-
+		testIndexer(t, lshIndex, indicesMap, trainSplitted, testSplitted, neighborsSplitted)
 	})
-}
-
-func TestLastFM(t *testing.T) {
-
 }
