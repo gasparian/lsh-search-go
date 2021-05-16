@@ -37,7 +37,7 @@ func (lshInstance *HasherInstance) getHash(inpVec, meanVec blas64.Vector) uint64
 	var dpSign bool
 	var hash uint64
 	for i, plane := range lshInstance.Planes {
-		blas64.Copy(shiftedVec, vec) // TODO: do we really need this copy?
+		blas64.Copy(shiftedVec, vec)
 		dp = blas64.Dot(vec, plane.Coefs) - plane.D
 		dpSign = math.Signbit(dp)
 		if !dpSign {
@@ -109,12 +109,16 @@ func (hasher *Hasher) generate(mean, std []float64) error {
 	hasher.mutex.Lock()
 	defer hasher.mutex.Unlock()
 
+	if len(mean) == 0 {
+		mean = make([]float64, hasher.Config.Dims)
+	}
+	if len(std) == 0 {
+		std = make([]float64, hasher.Config.Dims)
+	}
 	convMean := NewVec(mean)
 	convStd := NewVec(std)
-
 	hasher.MeanVec = convMean
 	hasher.Bias = blas64.Nrm2(convStd) * hasher.Config.BiasMultiplier
-
 	var tmpLsh HasherInstance
 	var err error
 	for i := 0; i < hasher.Config.NPermutes; i++ {

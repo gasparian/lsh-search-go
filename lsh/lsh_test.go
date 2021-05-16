@@ -132,7 +132,7 @@ func TestCosineSim(t *testing.T) {
 		[]float64{0.0, 1.0},
 		[]float64{0.0, 1.0},
 	)
-	if math.Abs(dist-0.0) > tol {
+	if dist > tol {
 		t.Error("Cosine similarity must be 0.0 for equal vectors")
 	}
 	dist = cosine.GetDist(
@@ -296,7 +296,7 @@ func TestLshCosine(t *testing.T) {
 	t.Parallel()
 	config := Config{
 		LshConfig: LshConfig{
-			DistanceThrsh: 0.1,
+			DistanceThrsh: 0.8,
 			MaxNN:         4,
 			BatchSize:     2,
 		},

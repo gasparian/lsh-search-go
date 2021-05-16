@@ -3,9 +3,10 @@ package annbench_test
 import (
 	bench "github.com/gasparian/lsh-search-go/annbench"
 	lsh "github.com/gasparian/lsh-search-go/lsh"
-	// "github.com/gasparian/lsh-search-go/store/kv"
+	"github.com/gasparian/lsh-search-go/store/kv"
 	guuid "github.com/google/uuid"
 	"gonum.org/v1/hdf5"
+	// "math"
 	"path/filepath"
 	"sort"
 	"sync"
@@ -90,6 +91,7 @@ type benchData struct {
 	test         [][]float64
 	trainIndices map[string]int
 	neighbors    [][]int
+	distances    [][]float64
 	mean         []float64
 	std          []float64
 }
@@ -150,6 +152,19 @@ func prepHdf5BenchDataset(config *benchConfig) (*benchData, error) {
 	for i := range data.train {
 		data.trainIndices[data.train[i].ID] = i
 	}
+
+	// distances := []float32{}
+	// err = bench.GetVectorsFromHDF5(f, "distances", &distances)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// data.distances = make([][]float64, len(distances)/config.neighborsDim)
+	// for i := 0; i <= len(distances)-config.neighborsDim; i = i + config.neighborsDim {
+	// 	data.distances[i/config.neighborsDim] = lsh.ConvertTo64(distances[i : i+config.neighborsDim])
+	// }
+	// distances = nil
+	data.distances = make([][]float64, 0)
+
 	return data, nil
 }
 
@@ -197,52 +212,51 @@ func runBenchTest(t *testing.T, config *benchConfig, data *benchData) {
 		testIndexer(t, nn, data)
 	})
 
-	// t.Run("LSH", func(t *testing.T) {
-	// 	config := lsh.Config{
-	// 		LshConfig: lsh.LshConfig{
-	// 			DistanceMetric: config.metric,
-	// 			DistanceThrsh:  config.maxDist,
-	// 			MaxNN:          config.maxNN,
-	// 			BatchSize:      config.batchSize,
-	// 		},
-	// 		HasherConfig: lsh.HasherConfig{
-	// 			NPermutes:      config.nPermutes,
-	// 			NPlanes:        config.nPlanes,
-	// 			BiasMultiplier: config.lshBiasMultiplier,
-	// 			Dims:           config.trainDim,
-	// 		},
-	// 	}
-	// 	config.Mean = data.mean
-	// 	config.Std = data.std
-	// 	s := kv.NewKVStore()
-	// 	lshIndex, err := lsh.NewLsh(config, s)
-	// 	if err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	testIndexer(t, lshIndex, data)
-	// })
+	t.Run("LSH", func(t *testing.T) {
+		lshConfig := lsh.Config{
+			LshConfig: lsh.LshConfig{
+				DistanceThrsh: config.maxDist,
+				MaxNN:         config.maxNN,
+				BatchSize:     config.batchSize,
+			},
+			HasherConfig: lsh.HasherConfig{
+				NPermutes:      config.nPermutes,
+				NPlanes:        config.nPlanes,
+				BiasMultiplier: config.lshBiasMultiplier,
+				Dims:           config.trainDim,
+			},
+		}
+		lshConfig.Mean = data.mean
+		lshConfig.Std = data.std
+		s := kv.NewKVStore()
+		lshIndex, err := lsh.NewLsh(lshConfig, s, config.metric)
+		if err != nil {
+			t.Fatal(err)
+		}
+		testIndexer(t, lshIndex, data)
+	})
 }
 
-func TestEuclidian(t *testing.T) {
-	config := &benchConfig{
-		datasetPath:       "../test-data/fashion-mnist-784-euclidean.hdf5",
-		sampleSize:        60000,
-		batchSize:         500,
-		nPlanes:           20,
-		nPermutes:         10,
-		maxNN:             100,
-		maxDist:           3000,
-		trainDim:          784,
-		neighborsDim:      100,
-		lshBiasMultiplier: 1.0,
-		metric:            lsh.NewL2(),
-	}
-	data, err := prepHdf5BenchDataset(config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	runBenchTest(t, config, data)
-}
+// func TestEuclidian(t *testing.T) {
+// 	config := &benchConfig{
+// 		datasetPath:       "../test-data/fashion-mnist-784-euclidean.hdf5",
+// 		sampleSize:        60000,
+// 		batchSize:         500,
+// 		nPlanes:           20,
+// 		nPermutes:         10,
+// 		maxNN:             100,
+// 		maxDist:           3000,
+// 		trainDim:          784,
+// 		neighborsDim:      100,
+// 		lshBiasMultiplier: 1.0,
+// 		metric:            lsh.NewL2(),
+// 	}
+// 	data, err := prepHdf5BenchDataset(config)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	runBenchTest(t, config, data)
+// }
 
 func TestAngular(t *testing.T) {
 	config := &benchConfig{
@@ -252,7 +266,7 @@ func TestAngular(t *testing.T) {
 		nPlanes:           20,
 		nPermutes:         10,
 		maxNN:             100,
-		maxDist:           0.9,
+		maxDist:           0.8,
 		trainDim:          256,
 		neighborsDim:      100,
 		lshBiasMultiplier: 1.0,
@@ -262,5 +276,22 @@ func TestAngular(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	data.std = []float64{}
+	// NOTE: optionally, you can measure distance without adjustment by passing empty mean array
+	data.mean = []float64{}
+
+	// NOTE: uncomment to look at the ground truth distances values
+	// min, max := math.MaxFloat64, 0.0
+	// for _, d := range data.distances {
+	// 	sorted := sort.Float64Slice(d)
+	// 	if sorted[0] < min {
+	// 		min = sorted[0]
+	// 	}
+	// 	if sorted[len(d)-1] > max {
+	// 		max = sorted[len(d)-1]
+	// 	}
+	// }
+	// t.Log(min, max)
+
 	runBenchTest(t, config, data)
 }
