@@ -16,12 +16,17 @@ type Record struct {
 	Vec []float64
 }
 
+// Metric holds implementation of needed distance metric
+type Metric interface {
+	GetDist(l, r []float64) float64
+}
+
+// LshConfig ...
 type LshConfig struct {
-	mx             *sync.RWMutex
-	DistanceMetric int
-	DistanceThrsh  float64
-	MaxNN          int
-	BatchSize      int
+	mx            *sync.RWMutex
+	DistanceThrsh float64
+	MaxNN         int
+	BatchSize     int
 }
 
 // Config holds all needed constants for creating the Hasher instance
@@ -34,13 +39,14 @@ type Config struct {
 
 // LSHIndex holds buckets with vectors and hasher instance
 type LSHIndex struct {
-	config LshConfig
-	index  store.Store
-	hasher *Hasher
+	config         LshConfig
+	index          store.Store
+	hasher         *Hasher
+	distanceMetric Metric
 }
 
 // New creates new instance of hasher and index, where generated hashes will be stored
-func NewLsh(config Config, store store.Store) (*LSHIndex, error) {
+func NewLsh(config Config, store store.Store, metric Metric) (*LSHIndex, error) {
 	hasher := NewHasher(
 		config.HasherConfig,
 	)
@@ -50,9 +56,10 @@ func NewLsh(config Config, store store.Store) (*LSHIndex, error) {
 	}
 	config.LshConfig.mx = new(sync.RWMutex)
 	return &LSHIndex{
-		config: config.LshConfig,
-		hasher: hasher,
-		index:  store,
+		config:         config.LshConfig,
+		hasher:         hasher,
+		index:          store,
+		distanceMetric: metric,
 	}, nil
 }
 
@@ -121,16 +128,7 @@ func (lsh *LSHIndex) Search(query []float64) ([]Record, error) {
 			if err != nil {
 				return nil, err
 			}
-			var dist float64 = -1
-			switch config.DistanceMetric {
-			case Cosine:
-				dist = CosineDist(vec, query)
-			case Euclidian:
-				dist = L2(vec, query)
-			}
-			if dist < 0 {
-				return nil, DistanceErr
-			}
+			dist := lsh.distanceMetric.GetDist(vec, query)
 			if dist <= config.DistanceThrsh {
 				closestSet[id] = true
 				closest = append(closest, Record{ID: id, Vec: vec})

@@ -10,9 +10,9 @@ Neighbors dtype: int32, other data - float32. Test sets consists of "query point
     - dimensions - 784 (28x28);  
     - train size - 60000;  
     - test size - 10000;  
-  - [last.fm dataset](https://github.com/erikbern/ann-benchmarks/pull/91):  
+  - [NY times dataset](https://archive.ics.uci.edu/ml/datasets/bag+of+words):  
     - distance metric - angular;  
     - N neighbors - 100; 
-    - dimensions - 65;  
-    - train size - 292385;  
-    - test size - 50000;  
+    - dimensions - 256;  
+    - train size - 290000;  
+    - test size - 10000;  

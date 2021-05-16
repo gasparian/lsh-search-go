@@ -3,7 +3,7 @@ package annbench_test
 import (
 	bench "github.com/gasparian/lsh-search-go/annbench"
 	lsh "github.com/gasparian/lsh-search-go/lsh"
-	"github.com/gasparian/lsh-search-go/store/kv"
+	// "github.com/gasparian/lsh-search-go/store/kv"
 	guuid "github.com/google/uuid"
 	"gonum.org/v1/hdf5"
 	"path/filepath"
@@ -13,32 +13,24 @@ import (
 	"time"
 )
 
-const (
-	SAMPLE_SIZE = 60000
-	BATCH_SIZE  = 500
-	N_PLANES    = 20
-	N_PERMUTS   = 10
-	MAX_NN      = 100
-	MAX_DIST    = 3000
-)
-
 type NNMockConfig struct {
-	DistanceMetric int
-	DistanceThrsh  float64
-	MaxNN          int
+	DistanceThrsh float64
+	MaxNN         int
 }
 
 // TODO: use kv storage as in lsh indexer - to compare them more fair
 type NNMock struct {
-	mx     sync.RWMutex
-	config NNMockConfig
-	index  map[string][]float64
+	mx             sync.RWMutex
+	config         NNMockConfig
+	index          map[string][]float64
+	distanceMetric lsh.Metric
 }
 
-func NewNNMock(config NNMockConfig) *NNMock {
+func NewNNMock(config NNMockConfig, metric lsh.Metric) *NNMock {
 	return &NNMock{
-		config: config,
-		index:  make(map[string][]float64),
+		config:         config,
+		index:          make(map[string][]float64),
+		distanceMetric: metric,
 	}
 }
 
@@ -65,16 +57,7 @@ func (nn *NNMock) Search(query []float64) ([]lsh.Record, error) {
 		if closestSet[id] {
 			continue
 		}
-		var dist float64 = -1
-		switch nn.config.DistanceMetric {
-		case lsh.Cosine:
-			dist = lsh.CosineDist(vec, query)
-		case lsh.Euclidian:
-			dist = lsh.L2(vec, query)
-		}
-		if dist < 0 {
-			return nil, lsh.DistanceErr
-		}
+		dist := nn.distanceMetric.GetDist(vec, query)
 		if dist <= nn.config.DistanceThrsh {
 			closestSet[id] = true
 			closest = append(closest, lsh.Record{ID: id, Vec: vec})
@@ -88,138 +71,196 @@ type Indexer interface {
 	Search(query []float64) ([]lsh.Record, error)
 }
 
-func testIndexer(t *testing.T, indexer Indexer, indicesMap map[string]int, trainSplitted []lsh.Record, testSplitted [][]float64, neighborsSplitted [][]int) {
+type benchConfig struct {
+	datasetPath       string
+	sampleSize        int
+	batchSize         int
+	nPlanes           int
+	nPermutes         int
+	maxNN             int
+	trainDim          int
+	neighborsDim      int
+	metric            lsh.Metric
+	maxDist           float64
+	lshBiasMultiplier float64
+}
+
+type benchData struct {
+	train        []lsh.Record
+	test         [][]float64
+	trainIndices map[string]int
+	neighbors    [][]int
+	mean         []float64
+	std          []float64
+}
+
+func prepHdf5BenchDataset(config *benchConfig) (*benchData, error) {
+	data := &benchData{}
+	absPath, _ := filepath.Abs(config.datasetPath)
+	f, err := hdf5.OpenFile(absPath, hdf5.F_ACC_RDONLY)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	train := []float32{}
+	err = bench.GetVectorsFromHDF5(f, "train", &train)
+	if err != nil {
+		return nil, err
+	}
+	data.train = make([]lsh.Record, len(train)/config.trainDim)
+	for i := 0; i <= len(train)-config.trainDim; i = i + config.trainDim {
+		data.train[i/config.trainDim] = lsh.Record{
+			ID:  guuid.NewString(),
+			Vec: lsh.ConvertTo64(train[i : i+config.trainDim]),
+		}
+	}
+	train = nil
+
+	data.mean, data.std, err = lsh.GetMeanStd(data.train, config.sampleSize)
+	if err != nil {
+		return nil, err
+	}
+
+	test := []float32{}
+	err = bench.GetVectorsFromHDF5(f, "test", &test)
+	if err != nil {
+		return nil, err
+	}
+	data.test = make([][]float64, len(test)/config.trainDim)
+	for i := 0; i <= len(test)-config.trainDim; i = i + config.trainDim {
+		data.test[i/config.trainDim] = lsh.ConvertTo64(test[i : i+config.trainDim])
+	}
+	test = nil
+
+	neighbors := []int32{}
+	err = bench.GetVectorsFromHDF5(f, "neighbors", &neighbors)
+	if err != nil {
+		return nil, err
+	}
+	data.neighbors = make([][]int, len(neighbors)/config.neighborsDim)
+	for i := 0; i <= len(neighbors)-config.neighborsDim; i = i + config.neighborsDim {
+		arr := lsh.ConvertToInt(neighbors[i : i+config.neighborsDim])
+		sort.Ints(arr)
+		data.neighbors[i/config.neighborsDim] = arr
+	}
+	neighbors = nil
+
+	data.trainIndices = make(map[string]int)
+	for i := range data.train {
+		data.trainIndices[data.train[i].ID] = i
+	}
+	return data, nil
+}
+
+func testIndexer(t *testing.T, indexer Indexer, data *benchData) {
 	start := time.Now()
 	t.Log("Creating search index...")
-	indexer.Train(trainSplitted)
+	indexer.Train(data.train)
 	t.Logf("Training finished in %v", time.Since(start))
 
 	t.Log("Predicting...")
 	precision, recall, avgPredTime := 0.0, 0.0, 0.0
-	for i := range testSplitted {
+	for i := range data.test[:10] { // TODO:
 		start = time.Now()
-		closest, err := indexer.Search(testSplitted[i])
+		closest, err := indexer.Search(data.test[i])
 		if err != nil {
 			t.Fatal(err)
 		}
 		closestPointsArr := make([]int, 0)
 		for _, cl := range closest {
-			closestPointsArr = append(closestPointsArr, indicesMap[cl.ID])
+			closestPointsArr = append(closestPointsArr, data.trainIndices[cl.ID])
 		}
 		// measure Recall
 		sort.Ints(closestPointsArr)
-		p, r := bench.PrecisionRecall(closestPointsArr, neighborsSplitted[i])
+		p, r := bench.PrecisionRecall(closestPointsArr, data.neighbors[i])
 		precision += p
 		recall += r
 		avgPredTime += float64(time.Since(start).Milliseconds())
 	}
-	precision /= float64(len(testSplitted))
-	recall /= float64(len(testSplitted))
-	avgPredTime /= float64(len(testSplitted))
+	// testDataLen := float64(len(data.test)) // TODO:
+	testDataLen := float64(10)
+	precision /= testDataLen
+	recall /= testDataLen
+	avgPredTime /= testDataLen
 
 	t.Log("Done! Precision: ", precision, "Recall: ", recall)
 	t.Logf("Average prediction time is %v ms", avgPredTime)
 }
 
-func TestFashionMnist(t *testing.T) {
-	// Read train/test data from the fashion mnist dataset
-	t.Log("Opening dataset...")
-	absPath, _ := filepath.Abs("../test-data/fashion-mnist-784-euclidean.hdf5")
-	f, err := hdf5.OpenFile(absPath, hdf5.F_ACC_RDONLY)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
-
-	trainDim := 784
-	neighborsDim := 100
-
-	train := []float32{}
-	err = bench.GetVectorsFromHDF5(f, "train", &train)
-	if err != nil {
-		t.Fatal(err)
-	}
-	trainSplitted := make([]lsh.Record, len(train)/trainDim)
-	for i := 0; i <= len(train)-trainDim; i = i + trainDim {
-		trainSplitted[i/trainDim] = lsh.Record{
-			ID:  guuid.NewString(),
-			Vec: lsh.ConvertTo64(train[i : i+trainDim]),
-		}
-	}
-	train = nil
-
-	mean, std, err := lsh.GetMeanStd(trainSplitted, SAMPLE_SIZE)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Logf("Train set ready (%v entries)", len(trainSplitted))
-
-	test := []float32{}
-	err = bench.GetVectorsFromHDF5(f, "test", &test)
-	if err != nil {
-		t.Fatal(err)
-	}
-	testSplitted := make([][]float64, len(test)/trainDim)
-	for i := 0; i <= len(test)-trainDim; i = i + trainDim {
-		testSplitted[i/trainDim] = lsh.ConvertTo64(test[i : i+trainDim])
-	}
-	test = nil
-
-	t.Logf("Test set is ready (%v entries)", len(testSplitted))
-
-	neighbors := []int32{}
-	err = bench.GetVectorsFromHDF5(f, "neighbors", &neighbors)
-	if err != nil {
-		t.Fatal(err)
-	}
-	neighborsSplitted := make([][]int, len(neighbors)/neighborsDim)
-	for i := 0; i <= len(neighbors)-neighborsDim; i = i + neighborsDim {
-		arr := lsh.ConvertToInt(neighbors[i : i+neighborsDim])
-		sort.Ints(arr)
-		neighborsSplitted[i/neighborsDim] = arr
-	}
-	neighbors = nil
-
-	t.Logf("Ground truth data set is ready (%v entries)", len(neighborsSplitted))
-
-	t.Log("Populating indeces map")
-	indicesMap := make(map[string]int)
-	for i := range trainSplitted {
-		indicesMap[trainSplitted[i].ID] = i
-	}
-
+func runBenchTest(t *testing.T, config *benchConfig, data *benchData) {
 	t.Run("NN", func(t *testing.T) {
 		nn := NewNNMock(NNMockConfig{
-			DistanceMetric: lsh.Euclidian,
-			DistanceThrsh:  MAX_DIST,
-			MaxNN:          MAX_NN,
-		})
-		testIndexer(t, nn, indicesMap, trainSplitted, testSplitted, neighborsSplitted)
+			DistanceThrsh: config.maxDist,
+			MaxNN:         config.maxNN,
+		}, config.metric)
+		testIndexer(t, nn, data)
 	})
 
-	t.Run("LSH", func(t *testing.T) {
-		config := lsh.Config{
-			LshConfig: lsh.LshConfig{
-				DistanceMetric: lsh.Euclidian,
-				DistanceThrsh:  MAX_DIST,
-				MaxNN:          MAX_NN,
-				BatchSize:      BATCH_SIZE,
-			},
-			HasherConfig: lsh.HasherConfig{
-				NPermutes:      N_PERMUTS,
-				NPlanes:        N_PLANES,
-				BiasMultiplier: 1.0,
-				Dims:           784,
-			},
-		}
-		config.Mean = mean
-		config.Std = std
-		s := kv.NewKVStore()
-		lshIndex, err := lsh.NewLsh(config, s)
-		if err != nil {
-			t.Fatal(err)
-		}
-		testIndexer(t, lshIndex, indicesMap, trainSplitted, testSplitted, neighborsSplitted)
-	})
+	// t.Run("LSH", func(t *testing.T) {
+	// 	config := lsh.Config{
+	// 		LshConfig: lsh.LshConfig{
+	// 			DistanceMetric: config.metric,
+	// 			DistanceThrsh:  config.maxDist,
+	// 			MaxNN:          config.maxNN,
+	// 			BatchSize:      config.batchSize,
+	// 		},
+	// 		HasherConfig: lsh.HasherConfig{
+	// 			NPermutes:      config.nPermutes,
+	// 			NPlanes:        config.nPlanes,
+	// 			BiasMultiplier: config.lshBiasMultiplier,
+	// 			Dims:           config.trainDim,
+	// 		},
+	// 	}
+	// 	config.Mean = data.mean
+	// 	config.Std = data.std
+	// 	s := kv.NewKVStore()
+	// 	lshIndex, err := lsh.NewLsh(config, s)
+	// 	if err != nil {
+	// 		t.Fatal(err)
+	// 	}
+	// 	testIndexer(t, lshIndex, data)
+	// })
+}
+
+func TestEuclidian(t *testing.T) {
+	config := &benchConfig{
+		datasetPath:       "../test-data/fashion-mnist-784-euclidean.hdf5",
+		sampleSize:        60000,
+		batchSize:         500,
+		nPlanes:           20,
+		nPermutes:         10,
+		maxNN:             100,
+		maxDist:           3000,
+		trainDim:          784,
+		neighborsDim:      100,
+		lshBiasMultiplier: 1.0,
+		metric:            lsh.NewL2(),
+	}
+	data, err := prepHdf5BenchDataset(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runBenchTest(t, config, data)
+}
+
+func TestAngular(t *testing.T) {
+	config := &benchConfig{
+		datasetPath:       "../test-data/nytimes-256-angular.hdf5",
+		sampleSize:        60000,
+		batchSize:         500,
+		nPlanes:           20,
+		nPermutes:         10,
+		maxNN:             100,
+		maxDist:           0.9,
+		trainDim:          256,
+		neighborsDim:      100,
+		lshBiasMultiplier: 1.0,
+		metric:            lsh.NewCosine(),
+	}
+	data, err := prepHdf5BenchDataset(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runBenchTest(t, config, data)
 }

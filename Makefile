@@ -7,9 +7,9 @@ download-annbench-data:
 	mkdir -p $(ANNBENCH_DATA)
 	echo "=== Downloading fashion mnist dataset... ==="
 	$(call DOWNLOAD,$(ANNBENCH_DATA),http://ann-benchmarks.com/fashion-mnist-784-euclidean.hdf5)
-	echo "=== Downloading lastfm dataset... ==="
-	$(call DOWNLOAD,$(ANNBENCH_DATA),http://ann-benchmarks.com/lastfm-64-dot.hdf5)
-	echo "=== Downloading complete ==="
+	echo "=== Downloading NY times dataset... ==="
+	$(call DOWNLOAD,$(ANNBENCH_DATA),http://ann-benchmarks.com/nytimes-256-angular.hdf5)
+	echo "=== Downloading complete ==="	
 
 .ONESHELL:
 .SHELLFLAGS=-e -c
@@ -20,7 +20,7 @@ test:
 	then
 	    path=./...
 	fi
-	go test -v -cover -coverprofile cover.out -race -timeout=500s -count=1 $(path)
+	go test -v -cover -race -timeout=3600s -count=1 $(path)
 
 install-hdf5:
 	mkdir -p /tmp/hdf5 && cd /tmp/hdf5

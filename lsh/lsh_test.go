@@ -34,13 +34,8 @@ func TestGetHash(t *testing.T) {
 	}
 }
 
-func getNewHasher(config HasherConfig, metric int) (*Hasher, error) {
+func getNewHasher(config HasherConfig, mean, std []float64) (*Hasher, error) {
 	hasher := NewHasher(config)
-	mean := []float64{0.0, 0.0, 0.0}
-	std := []float64{0.2, 0.3, 0.15}
-	if metric == Cosine {
-		std = []float64{0, 0, 0}
-	}
 	err := hasher.generate(mean, std)
 	if err != nil {
 		return nil, err
@@ -55,7 +50,9 @@ func TestGenerateAngular(t *testing.T) {
 		BiasMultiplier: 2.0,
 		Dims:           3,
 	}
-	hasherAngular, err := getNewHasher(config, Cosine)
+	mean := []float64{0.0, 0.0, 0.0}
+	std := []float64{0.0, 0.0, 0.0}
+	hasherAngular, err := getNewHasher(config, mean, std)
 	if err != nil {
 		t.Fatalf("Smth went wrong with planes generation: %v", err)
 	}
@@ -73,7 +70,9 @@ func TestGenerateL2(t *testing.T) {
 		BiasMultiplier: 2.0,
 		Dims:           3,
 	}
-	hasher, err := getNewHasher(config, Euclidian)
+	mean := []float64{0.0, 0.0, 0.0}
+	std := []float64{0.2, 0.3, 0.15}
+	hasher, err := getNewHasher(config, mean, std)
 	if err != nil {
 		t.Fatalf("Smth went wrong with planes generation: %v", err)
 	}
@@ -96,7 +95,9 @@ func TestGetHashes(t *testing.T) {
 		BiasMultiplier: 2.0,
 		Dims:           3,
 	}
-	hasherAngular, err := getNewHasher(config, Cosine)
+	mean := []float64{0.0, 0.0, 0.0}
+	std := []float64{0.0, 0.0, 0.0}
+	hasherAngular, err := getNewHasher(config, mean, std)
 	if err != nil {
 		t.Fatalf("Smth went wrong with planes generation: %v", err)
 	}
@@ -110,15 +111,16 @@ func TestGetHashes(t *testing.T) {
 }
 
 func TestCosineSim(t *testing.T) {
+	cosine := NewCosine()
 	distanceThrsh := 0.2
-	dist := CosineDist(
+	dist := cosine.GetDist(
 		[]float64{0.0, 0.0, 0.0},
 		[]float64{0.0, 1.0, 0.0},
 	)
 	if math.Abs(dist-1.0) > tol {
 		t.Fatal("Angular distance can't be calculated properly with zero vector")
 	}
-	dist = CosineDist(
+	dist = cosine.GetDist(
 		[]float64{0.0, 0.0, 2.0},
 		[]float64{0.0, 1.0, 0.0},
 	)
@@ -126,21 +128,21 @@ func TestCosineSim(t *testing.T) {
 		t.Fatal("Measured dist must be larger than the threshold")
 	}
 
-	dist = CosineDist(
+	dist = cosine.GetDist(
 		[]float64{0.0, 1.0},
 		[]float64{0.0, 1.0},
 	)
 	if math.Abs(dist-0.0) > tol {
 		t.Error("Cosine similarity must be 0.0 for equal vectors")
 	}
-	dist = CosineDist(
+	dist = cosine.GetDist(
 		[]float64{1.0, 0.0},
 		[]float64{0.0, -1.0},
 	)
 	if math.Abs(dist-1.0) > tol {
 		t.Error("Cosine similarity must be 1.0 for orthogonal vectors")
 	}
-	dist = CosineDist(
+	dist = cosine.GetDist(
 		[]float64{0.0, 1.0},
 		[]float64{0.0, -1.0},
 	)
@@ -153,7 +155,8 @@ func TestL2(t *testing.T) {
 	distanceThrsh := 1.1
 	v1 := []float64{0.0, 0.0, 0.0}
 	v2 := []float64{0.0, 1.0, 0.0}
-	dist := L2(v1, v2)
+	l2 := NewL2()
+	dist := l2.GetDist(v1, v2)
 	if dist > distanceThrsh {
 		t.Fatal("L2 distance must pass the threshold")
 	}
@@ -163,7 +166,7 @@ func TestL2(t *testing.T) {
 
 	v1 = []float64{0.0, 0.0}
 	v2 = []float64{-4.0, 3.0}
-	dist = L2(v1, v2)
+	dist = l2.GetDist(v1, v2)
 	if math.Abs(dist-5.0) > tol {
 		t.Error("L2 distance is wrong")
 	}
@@ -176,7 +179,9 @@ func TestDumpHasher(t *testing.T) {
 		BiasMultiplier: 2.0,
 		Dims:           3,
 	}
-	hasher, err := getNewHasher(config, Euclidian)
+	mean := []float64{0.0, 0.0, 0.0}
+	std := []float64{0.2, 0.3, 0.15}
+	hasher, err := getNewHasher(config, mean, std)
 	if err != nil {
 		t.Fatalf("Smth went wrong with planes generation: %v", err)
 	}
@@ -291,10 +296,9 @@ func TestLshCosine(t *testing.T) {
 	t.Parallel()
 	config := Config{
 		LshConfig: LshConfig{
-			DistanceMetric: Cosine,
-			DistanceThrsh:  0.1,
-			MaxNN:          4,
-			BatchSize:      2,
+			DistanceThrsh: 0.1,
+			MaxNN:         4,
+			BatchSize:     2,
 		},
 		HasherConfig: HasherConfig{
 			NPermutes:      10,
@@ -306,7 +310,8 @@ func TestLshCosine(t *testing.T) {
 	config.Mean = []float64{0.0, 0.0}
 	config.Std = []float64{0.0, 0.0}
 	s := kv.NewKVStore()
-	lsh, err := NewLsh(config, s)
+	metric := NewCosine()
+	lsh, err := NewLsh(config, s, metric)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -369,10 +374,9 @@ func TestLshL2(t *testing.T) {
 	t.Parallel()
 	config := Config{
 		LshConfig: LshConfig{
-			DistanceMetric: Euclidian,
-			DistanceThrsh:  0.02,
-			MaxNN:          4,
-			BatchSize:      2,
+			DistanceThrsh: 0.02,
+			MaxNN:         4,
+			BatchSize:     2,
 		},
 		HasherConfig: HasherConfig{
 			NPermutes:      10,
@@ -384,7 +388,8 @@ func TestLshL2(t *testing.T) {
 	config.Mean = []float64{0.0, 0.0}
 	config.Std = []float64{0.01, 0.01}
 	s := kv.NewKVStore()
-	lsh, err := NewLsh(config, s)
+	metric := NewL2()
+	lsh, err := NewLsh(config, s, metric)
 	if err != nil {
 		t.Fatal(err)
 	}

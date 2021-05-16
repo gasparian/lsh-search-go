@@ -9,9 +9,7 @@ import (
 )
 
 const (
-	tol    = 1e-6
-	Cosine = iota
-	Euclidian
+	tol = 1e-6
 )
 
 // ConvertTo64 __
@@ -84,12 +82,17 @@ func NewVec(data []float64) blas64.Vector {
 }
 
 // L2 calculates l2-distance between two vectors
-func L2(a, b []float64) float64 {
-	aBlas := NewVec(a)
-	bBlas := NewVec(b)
-	res := NewVec(make([]float64, bBlas.N))
-	blas64.Copy(bBlas, res)
-	blas64.Axpy(-1.0, aBlas, res)
+type L2 int
+
+func NewL2() L2 {
+	return L2(42)
+}
+func (l2 L2) GetDist(l, r []float64) float64 {
+	lBlas := NewVec(l)
+	rBlas := NewVec(r)
+	res := NewVec(make([]float64, rBlas.N))
+	blas64.Copy(rBlas, res)
+	blas64.Axpy(-1.0, lBlas, res)
 	return blas64.Nrm2(res)
 }
 
@@ -98,14 +101,19 @@ func IsZeroVectorBlas(v blas64.Vector) bool {
 	return math.Abs(blas64.Asum(v)) <= tol
 }
 
-// CosineDist calculates cosine distance between two given vectors
-func CosineDist(a, b []float64) float64 {
-	aBlas := NewVec(a)
-	bBlas := NewVec(b)
-	if IsZeroVectorBlas(aBlas) || IsZeroVectorBlas(bBlas) {
+// Cosine calculates cosine distance between two given vectors
+type Cosine int
+
+func NewCosine() Cosine {
+	return Cosine(42)
+}
+func (c Cosine) GetDist(l, r []float64) float64 {
+	lBlas := NewVec(l)
+	rBlas := NewVec(r)
+	if IsZeroVectorBlas(lBlas) || IsZeroVectorBlas(rBlas) {
 		return 1.0 // NOTE: zero vectors are wrong with angular metric
 	}
-	cosine := blas64.Dot(aBlas, bBlas) / (blas64.Nrm2(aBlas) * blas64.Nrm2(bBlas))
+	cosine := blas64.Dot(lBlas, rBlas) / (blas64.Nrm2(lBlas) * blas64.Nrm2(rBlas))
 	return 1.0 - cosine
 }
 
