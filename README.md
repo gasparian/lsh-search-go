@@ -64,9 +64,12 @@ lshConfig := lsh.Config{
 	LshConfig: lsh.LshConfig{
 		DistanceThrsh: 3000, // Distance threshold in non-normilized space
 		MaxNN:         100,  // Maximum number of nearest neighbors to find
-		BatchSize:     250,  // How much points to process in a single goroutine during the training phase
-		MeanVec:       mean, // Optionally, you can use some bias vector, to "shift" the data before
-							 // hash calculation on train and search (you can pass nil or the empty slice here)
+		BatchSize:     250,  // How much points to process in a single goroutine 
+		                     // during the training phase
+		MeanVec:       mean, // Optionally, you can use some bias vector, 
+		                     // to "shift" the data before
+		                     // hash calculation on train and search 
+		                     // (you can pass nil or the empty slice here)
 	},
 	HasherConfig: lsh.HasherConfig{
 		NPermutes:      10,  // Number of planes permutations to generate
