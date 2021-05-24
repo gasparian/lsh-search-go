@@ -22,21 +22,20 @@ func TestGetHash(t *testing.T) {
 		},
 	}
 	inpVec := NewVec([]float64{5.0, 1.0, 1.0})
-	meanVec := NewVec([]float64{0.0, 0.0, 0.0})
-	hash := hasherInstance.getHash(inpVec, meanVec)
+	hash := hasherInstance.getHash(inpVec)
 	if hash != 1 {
 		t.Fatal("Wrong hash value, must be 1")
 	}
 	inpVec = NewVec([]float64{1.0, 1.0, 1.0})
-	hash = hasherInstance.getHash(inpVec, meanVec)
+	hash = hasherInstance.getHash(inpVec)
 	if hash != 0 {
 		t.Fatal("Wrong hash value, must be 0")
 	}
 }
 
-func getNewHasher(config HasherConfig, mean, std []float64) (*Hasher, error) {
+func getNewHasher(config HasherConfig) (*Hasher, error) {
 	hasher := NewHasher(config)
-	err := hasher.generate(mean, std)
+	err := hasher.generate()
 	if err != nil {
 		return nil, err
 	}
@@ -50,9 +49,7 @@ func TestGenerateAngular(t *testing.T) {
 		BiasMultiplier: 2.0,
 		Dims:           3,
 	}
-	mean := []float64{0.0, 0.0, 0.0}
-	std := []float64{0.0, 0.0, 0.0}
-	hasherAngular, err := getNewHasher(config, mean, std)
+	hasherAngular, err := getNewHasher(config)
 	if err != nil {
 		t.Fatalf("Smth went wrong with planes generation: %v", err)
 	}
@@ -63,21 +60,20 @@ func TestGenerateAngular(t *testing.T) {
 		t.Fatal("One of the hasher instances is empty")
 	}
 }
+
 func TestGenerateL2(t *testing.T) {
 	config := HasherConfig{
 		NPermutes:      2,
 		NPlanes:        2,
-		BiasMultiplier: 2.0,
+		BiasMultiplier: 1.0,
 		Dims:           3,
 	}
-	mean := []float64{0.0, 0.0, 0.0}
-	std := []float64{0.2, 0.3, 0.15}
-	hasher, err := getNewHasher(config, mean, std)
+	hasher, err := getNewHasher(config)
 	if err != nil {
 		t.Fatalf("Smth went wrong with planes generation: %v", err)
 	}
 	var distToOrigin float64
-	maxDist := hasher.Bias * 3.0
+	maxDist := 3.0
 	for _, hasherInstance := range hasher.Instances {
 		for _, plane := range hasherInstance.Planes {
 			distToOrigin = math.Abs(plane.D) / blas64.Nrm2(plane.Coefs)
@@ -88,31 +84,8 @@ func TestGenerateL2(t *testing.T) {
 	}
 }
 
-func TestGetHashes(t *testing.T) {
-	config := HasherConfig{
-		NPermutes:      2,
-		NPlanes:        1,
-		BiasMultiplier: 2.0,
-		Dims:           3,
-	}
-	mean := []float64{0.0, 0.0, 0.0}
-	std := []float64{0.0, 0.0, 0.0}
-	hasherAngular, err := getNewHasher(config, mean, std)
-	if err != nil {
-		t.Fatalf("Smth went wrong with planes generation: %v", err)
-	}
-	inpVec := []float64{0.0, 0.0, 0.0}
-	hashes := hasherAngular.getHashes(inpVec)
-	for _, v := range hashes {
-		if v != 1 {
-			t.Fatal("Hash should always be 1 at this case")
-		}
-	}
-}
-
 func TestCosineSim(t *testing.T) {
 	cosine := NewCosine()
-	distanceThrsh := 0.2
 	dist := cosine.GetDist(
 		[]float64{0.0, 0.0, 0.0},
 		[]float64{0.0, 1.0, 0.0},
@@ -124,7 +97,7 @@ func TestCosineSim(t *testing.T) {
 		[]float64{0.0, 0.0, 2.0},
 		[]float64{0.0, 1.0, 0.0},
 	)
-	if dist <= distanceThrsh {
+	if math.Abs(dist-1.0) > tol {
 		t.Fatal("Measured dist must be larger than the threshold")
 	}
 
@@ -132,7 +105,7 @@ func TestCosineSim(t *testing.T) {
 		[]float64{0.0, 1.0},
 		[]float64{0.0, 1.0},
 	)
-	if dist > tol {
+	if math.Abs(dist-0.0) > tol {
 		t.Error("Cosine similarity must be 0.0 for equal vectors")
 	}
 	dist = cosine.GetDist(
@@ -179,9 +152,7 @@ func TestDumpHasher(t *testing.T) {
 		BiasMultiplier: 2.0,
 		Dims:           3,
 	}
-	mean := []float64{0.0, 0.0, 0.0}
-	std := []float64{0.2, 0.3, 0.15}
-	hasher, err := getNewHasher(config, mean, std)
+	hasher, err := getNewHasher(config)
 	if err != nil {
 		t.Fatalf("Smth went wrong with planes generation: %v", err)
 	}
@@ -231,27 +202,27 @@ func TestIsZeroVec(t *testing.T) {
 func TestStats(t *testing.T) {
 	t.Parallel()
 	rand.Seed(time.Now().UnixNano())
-	vecs := []Record{
-		Record{Vec: []float64{0.0, 1.0}},
-		Record{Vec: []float64{0.0, 0.0}},
-		Record{Vec: []float64{0.0, 1.0}},
-		Record{Vec: []float64{0.0, 0.0}},
-		Record{Vec: []float64{0.0, 1.0}},
-		Record{Vec: []float64{0.0, 0.0}},
-		Record{Vec: []float64{0.0, 1.0}},
-		Record{Vec: []float64{0.0, 0.0}},
-		Record{Vec: []float64{0.0, 1.0}},
-		Record{Vec: []float64{0.0, 0.0}},
-		Record{Vec: []float64{0.0, 1.0}},
-		Record{Vec: []float64{0.0, 0.0}},
-		Record{Vec: []float64{0.0, 1.0}},
-		Record{Vec: []float64{0.0, 0.0}},
-		Record{Vec: []float64{0.0, 1.0}},
-		Record{Vec: []float64{0.0, 0.0}},
-		Record{Vec: []float64{0.0, 1.0}},
-		Record{Vec: []float64{0.0, 0.0}},
-		Record{Vec: []float64{0.0, 1.0}},
-		Record{Vec: []float64{0.0, 0.0}},
+	vecs := [][]float64{
+		[]float64{0.0, 1.0},
+		[]float64{0.0, 0.0},
+		[]float64{0.0, 1.0},
+		[]float64{0.0, 0.0},
+		[]float64{0.0, 1.0},
+		[]float64{0.0, 0.0},
+		[]float64{0.0, 1.0},
+		[]float64{0.0, 0.0},
+		[]float64{0.0, 1.0},
+		[]float64{0.0, 0.0},
+		[]float64{0.0, 1.0},
+		[]float64{0.0, 0.0},
+		[]float64{0.0, 1.0},
+		[]float64{0.0, 0.0},
+		[]float64{0.0, 1.0},
+		[]float64{0.0, 0.0},
+		[]float64{0.0, 1.0},
+		[]float64{0.0, 0.0},
+		[]float64{0.0, 1.0},
+		[]float64{0.0, 0.0},
 	}
 	trueStat := []float64{0.0, 0.5}
 	statTol := 0.05
@@ -259,7 +230,7 @@ func TestStats(t *testing.T) {
 	means := make([][]float64, N)
 	stds := make([][]float64, N)
 	for i := 0; i < N; i++ {
-		mean, std, err := GetMeanStd(vecs, 10)
+		mean, std, err := GetMeanStdSampled(vecs, 10)
 		if err != nil {
 			t.Error(err)
 		}
@@ -292,37 +263,50 @@ func TestStats(t *testing.T) {
 	t.Log(means[N/2], stds[N/2])
 }
 
-func TestLshCosine(t *testing.T) {
-	t.Parallel()
-	config := Config{
-		LshConfig: LshConfig{
-			DistanceThrsh: 0.8,
-			MaxNN:         4,
-			BatchSize:     2,
-		},
-		HasherConfig: HasherConfig{
-			NPermutes:      10,
-			NPlanes:        10,
-			BiasMultiplier: 1.0,
-			Dims:           2,
-		},
+func TestScaler(t *testing.T) {
+	scaler := NewStandartScaler([]float64{1.0, 1.0}, []float64{0.5, 0.5})
+	vec := []float64{1.5, 1.5}
+	scaled := scaler.Scale(vec)
+	if len(scaled) != len(vec) {
+		t.Fatal("Vectors length differs")
 	}
-	config.Mean = []float64{0.0, 0.0}
-	config.Std = []float64{0.0, 0.0}
+	scaledSum := NewVec(scaled)
+	if blas64.Asum(scaledSum)-2 > tol {
+		t.Errorf("Scaled vector sum should be ~2.0, got %v", scaledSum)
+	}
+}
+
+func testLSH(metric Metric, config Config, t *testing.T) Indexer {
 	s := kv.NewKVStore()
-	metric := NewCosine()
 	lsh, err := NewLsh(config, s, metric)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	trainSet := []Record{
-		Record{ID: guuid.NewString(), Vec: []float64{0.1, 0.1}},
-		Record{ID: guuid.NewString(), Vec: []float64{0.1, 0.08}},
-		Record{ID: guuid.NewString(), Vec: []float64{0.11, 0.09}},
-		Record{ID: guuid.NewString(), Vec: []float64{0.09, 0.11}},
-		Record{ID: guuid.NewString(), Vec: []float64{-0.1, 0.1}},
-		Record{ID: guuid.NewString(), Vec: []float64{-0.1, 0.08}},
+	inpVecs := [][]float64{
+		[]float64{0.1, 0.1},
+		[]float64{0.1, 0.08},
+		[]float64{0.11, 0.09},
+		[]float64{0.09, 0.11},
+		[]float64{-0.1, 0.1},
+		[]float64{-0.1, 0.08},
+	}
+
+	mean, std, err := GetMeanStdSampled(inpVecs, len(inpVecs))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	std = []float64{1.0, 1.0} // don't scale, only shift
+	t.Log(mean, std)
+	scaler := NewStandartScaler(mean, std)
+
+	trainSet := make([]Record, len(inpVecs))
+	for i, vec := range inpVecs {
+		trainSet[i] = Record{
+			ID:  guuid.NewString(),
+			Vec: scaler.Scale(vec),
+		}
 	}
 
 	t.Run("LshTrain", func(t *testing.T) {
@@ -338,9 +322,29 @@ func TestLshCosine(t *testing.T) {
 			t.Fatal(err)
 		}
 		if len(nns) < 3 || len(nns) > 4 {
-			t.Errorf("Query point must have 2 neighbors, got %v", len(nns))
+			t.Errorf("Query point must have 3-4 neighbors, got %v", len(nns))
 		}
 	})
+	return lsh
+}
+
+func TestLshCosine(t *testing.T) {
+	t.Parallel()
+	config := Config{
+		LshConfig: LshConfig{
+			DistanceThrsh: 0.2,
+			MaxNN:         4,
+			BatchSize:     2,
+		},
+		HasherConfig: HasherConfig{
+			NPermutes:      10,
+			NPlanes:        5,
+			BiasMultiplier: 1.0,
+			Dims:           2,
+		},
+	}
+	metric := NewCosine()
+	lsh := testLSH(metric, config, t)
 
 	t.Run("LshSearchConcurrent", func(t *testing.T) {
 		q := []float64{0.08, 0.1}
@@ -385,38 +389,6 @@ func TestLshL2(t *testing.T) {
 			Dims:           2,
 		},
 	}
-	config.Mean = []float64{0.0, 0.0}
-	config.Std = []float64{0.01, 0.01}
-	s := kv.NewKVStore()
 	metric := NewL2()
-	lsh, err := NewLsh(config, s, metric)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	trainSet := []Record{
-		Record{ID: guuid.NewString(), Vec: []float64{0.1, 0.1}},
-		Record{ID: guuid.NewString(), Vec: []float64{0.1, 0.08}},
-		Record{ID: guuid.NewString(), Vec: []float64{0.11, 0.09}},
-		Record{ID: guuid.NewString(), Vec: []float64{0.09, 0.11}},
-		Record{ID: guuid.NewString(), Vec: []float64{-0.1, 0.1}},
-		Record{ID: guuid.NewString(), Vec: []float64{-0.1, 0.08}},
-	}
-
-	t.Run("LshTrain", func(t *testing.T) {
-		err := lsh.Train(trainSet)
-		if err != nil {
-			t.Fatal(err)
-		}
-	})
-
-	t.Run("LshSearch", func(t *testing.T) {
-		nns, err := lsh.Search(trainSet[0].Vec)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if len(nns) < 3 || len(nns) > 4 {
-			t.Errorf("Query point must have 2 neighbors, got %v", len(nns))
-		}
-	})
+	_ = testLSH(metric, config, t)
 }

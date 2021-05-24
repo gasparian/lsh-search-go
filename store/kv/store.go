@@ -2,6 +2,7 @@ package kv
 
 import (
 	"errors"
+	"fmt"
 	"github.com/gasparian/lsh-search-go/store"
 	guuid "github.com/google/uuid"
 	"sync"
@@ -33,7 +34,7 @@ func (it *KeysIterator) Next() (string, bool) {
 }
 
 func getBucketName(perm int, hash uint64) string {
-	return string(perm) + "_" + string(hash)
+	return fmt.Sprintf("%v", perm) + "_" + fmt.Sprintf("%v", hash)
 }
 
 func (s *KVStore) SetVector(id string, vec []float64) error {

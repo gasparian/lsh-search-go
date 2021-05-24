@@ -28,16 +28,13 @@ type HasherInstance struct {
 }
 
 // GetHash calculates LSH code
-func (lshInstance *HasherInstance) getHash(inpVec, meanVec blas64.Vector) uint64 {
-	shiftedVec := NewVec(make([]float64, inpVec.N))
-	blas64.Copy(inpVec, shiftedVec)
-	blas64.Axpy(-1.0, meanVec, shiftedVec)
+func (lshInstance *HasherInstance) getHash(inpVec blas64.Vector) uint64 {
 	vec := NewVec(make([]float64, inpVec.N))
 	var dp float64
 	var dpSign bool
 	var hash uint64
 	for i, plane := range lshInstance.Planes {
-		blas64.Copy(shiftedVec, vec)
+		blas64.Copy(inpVec, vec)
 		dp = blas64.Dot(vec, plane.Coefs) - plane.D
 		dpSign = math.Signbit(dp)
 		if !dpSign {
@@ -59,8 +56,6 @@ type Hasher struct {
 	mutex     sync.RWMutex
 	Config    HasherConfig
 	Instances []HasherInstance
-	Bias      float64
-	MeanVec   blas64.Vector
 }
 
 func NewHasher(config HasherConfig) *Hasher {
@@ -82,7 +77,7 @@ func (hasher *Hasher) getRandomPlane() blas64.Vector {
 	for i := 0; i < hasher.Config.Dims; i++ {
 		coefs[i] = -1.0 + rand.Float64()*2
 	}
-	coefs[len(coefs)-1] = -1.0*hasher.Bias + rand.Float64()*hasher.Bias*2
+	coefs[len(coefs)-1] = -1.0*hasher.Config.BiasMultiplier + rand.Float64()*hasher.Config.BiasMultiplier*2
 	return NewVec(coefs)
 }
 
@@ -105,20 +100,10 @@ func (hasher *Hasher) newHasherInstance() (HasherInstance, error) {
 }
 
 // Generate method creates the lsh instances
-func (hasher *Hasher) generate(mean, std []float64) error {
+func (hasher *Hasher) generate() error {
 	hasher.mutex.Lock()
 	defer hasher.mutex.Unlock()
 
-	if len(mean) == 0 {
-		mean = make([]float64, hasher.Config.Dims)
-	}
-	if len(std) == 0 {
-		std = make([]float64, hasher.Config.Dims)
-	}
-	convMean := NewVec(mean)
-	convStd := NewVec(std)
-	hasher.MeanVec = convMean
-	hasher.Bias = blas64.Nrm2(convStd) * hasher.Config.BiasMultiplier
 	var tmpLsh HasherInstance
 	var err error
 	for i := 0; i < hasher.Config.NPermutes; i++ {
@@ -132,11 +117,10 @@ func (hasher *Hasher) generate(mean, std []float64) error {
 }
 
 // GetHashes returns map of calculated lsh values for a given vector
-func (hasher *Hasher) getHashes(vec []float64) map[int]uint64 {
+func (hasher *Hasher) getHashes(vec blas64.Vector) map[int]uint64 {
 	hasher.mutex.RLock()
 	defer hasher.mutex.RUnlock()
 
-	blasVec := NewVec(vec)
 	hashes := &safeHashesHolder{v: make(map[int]uint64)}
 	wg := sync.WaitGroup{}
 	wg.Add(len(hasher.Instances))
@@ -144,7 +128,7 @@ func (hasher *Hasher) getHashes(vec []float64) map[int]uint64 {
 		go func(i int, hsh HasherInstance, hashes *safeHashesHolder) {
 			defer wg.Done()
 			hashes.Lock()
-			hashes.v[i] = hsh.getHash(blasVec, hasher.MeanVec)
+			hashes.v[i] = hsh.getHash(vec)
 			hashes.Unlock()
 		}(i, hsh, hashes)
 	}

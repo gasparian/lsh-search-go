@@ -3,6 +3,7 @@ package lsh
 import (
 	"errors"
 	"github.com/gasparian/lsh-search-go/store"
+	"gonum.org/v1/gonum/blas/blas64"
 	"sync"
 )
 
@@ -21,20 +22,28 @@ type Metric interface {
 	GetDist(l, r []float64) float64
 }
 
+// Indexer holds implementation of NN search index
+type Indexer interface {
+	Train(records []Record) error
+	Search(query []float64) ([]Record, error)
+}
+
 // LshConfig ...
 type LshConfig struct {
 	mx            *sync.RWMutex
 	DistanceThrsh float64
 	MaxNN         int
 	BatchSize     int
+	MeanVec       []float64
+
+	dims    int
+	meanVec blas64.Vector
 }
 
 // Config holds all needed constants for creating the Hasher instance
 type Config struct {
 	LshConfig
 	HasherConfig
-	Mean []float64
-	Std  []float64
 }
 
 // LSHIndex holds buckets with vectors and hasher instance
@@ -45,16 +54,27 @@ type LSHIndex struct {
 	distanceMetric Metric
 }
 
+func checkConvertVec(inp []float64, dims int) blas64.Vector {
+	meanVecInternal := NewVec(make([]float64, dims))
+	if inp != nil && len(inp) == dims {
+		meanVecInternal.Data = inp
+		copy(meanVecInternal.Data, inp)
+	}
+	return meanVecInternal
+}
+
 // New creates new instance of hasher and index, where generated hashes will be stored
 func NewLsh(config Config, store store.Store, metric Metric) (*LSHIndex, error) {
 	hasher := NewHasher(
 		config.HasherConfig,
 	)
-	err := hasher.generate(config.Mean, config.Std)
+	err := hasher.generate()
 	if err != nil {
 		return nil, err
 	}
 	config.LshConfig.mx = new(sync.RWMutex)
+	config.LshConfig.dims = config.HasherConfig.Dims
+	config.LshConfig.meanVec = checkConvertVec(config.MeanVec, config.LshConfig.dims)
 	return &LSHIndex{
 		config:         config.LshConfig,
 		hasher:         hasher,
@@ -71,6 +91,7 @@ func (lsh *LSHIndex) Train(records []Record) error {
 	}
 	lsh.config.mx.RLock()
 	batchSize := lsh.config.BatchSize
+	meanVec := lsh.config.meanVec
 	lsh.config.mx.RUnlock()
 
 	wg := sync.WaitGroup{}
@@ -80,16 +101,19 @@ func (lsh *LSHIndex) Train(records []Record) error {
 		if end > len(records) {
 			end = len(records)
 		}
-		go func(batch []Record, wg *sync.WaitGroup) {
+		go func(batch []Record, meanVec blas64.Vector, wg *sync.WaitGroup) {
 			defer wg.Done()
+			shifted := NewVec(make([]float64, meanVec.N))
 			for _, rec := range batch {
-				hashes := lsh.hasher.getHashes(rec.Vec)
+				copy(shifted.Data, rec.Vec)
+				blas64.Axpy(-1.0, meanVec, shifted)
+				hashes := lsh.hasher.getHashes(shifted)
 				lsh.index.SetVector(rec.ID, rec.Vec)
 				for perm, hash := range hashes {
 					lsh.index.SetHash(perm, hash, rec.ID)
 				}
 			}
-		}(records[i:end], &wg)
+		}(records[i:end], meanVec, &wg)
 	}
 	wg.Wait()
 	return nil
@@ -97,10 +121,13 @@ func (lsh *LSHIndex) Train(records []Record) error {
 
 // Search returns NNs for the query point
 func (lsh *LSHIndex) Search(query []float64) ([]Record, error) {
-	hashes := lsh.hasher.getHashes(query)
 	lsh.config.mx.RLock()
 	config := lsh.config
+	shiftedQuery := NewVec(make([]float64, len(query)))
+	copy(shiftedQuery.Data, query)
+	blas64.Axpy(-1.0, config.meanVec, shiftedQuery)
 	lsh.config.mx.RUnlock()
+	hashes := lsh.hasher.getHashes(shiftedQuery)
 
 	closestSet := make(map[string]bool)
 	closest := make([]Record, 0)

@@ -3,6 +3,7 @@ package lsh
 import (
 	"errors"
 	"gonum.org/v1/gonum/blas/blas64"
+	"gonum.org/v1/gonum/mat"
 	"math"
 	"math/rand"
 	"sync"
@@ -10,6 +11,11 @@ import (
 
 const (
 	tol = 1e-6
+)
+
+var (
+	dataSliceEmptyErr = errors.New("Data slice is empty")
+	sampleSizeErr     = errors.New("Sample size must be > 0")
 )
 
 // ConvertTo64 __
@@ -34,39 +40,84 @@ func ConvertToInt(ar []int32) []int {
 	return newar
 }
 
-func generateRandomInt(min, max int) int {
+func GenerateRandomInt(min, max int) int {
 	return rand.Intn(max-min) + min
 }
 
 // GetMeanStd returns mean and std based on incoming NxM matrix
-func GetMeanStd(data []Record, sampleSize int) ([]float64, []float64, error) {
+func GetMeanStdSampled(data [][]float64, sampleSize int) ([]float64, []float64, error) {
 	if len(data) == 0 {
-		return nil, nil, errors.New("Data slice is empty")
+		return nil, nil, dataSliceEmptyErr
 	}
 	if sampleSize <= 0 {
-		return nil, nil, errors.New("sampleSize must be > 0")
-	}
-	if len(data) <= sampleSize {
-		sampleSize = len(data)
+		return nil, nil, sampleSizeErr
 	}
 	sample := make([]int, sampleSize)
-	sampleSizeF := float64(sampleSize)
-	for i := 0; i < sampleSize; i++ {
-		sample[i] = generateRandomInt(0, len(data))
-	}
-	mean := make([]float64, len(data[0].Vec))
-	for _, idx := range sample {
-		for j, val := range data[idx].Vec {
-			mean[j] += val / sampleSizeF
+	if len(data) <= sampleSize {
+		sampleSize = len(data)
+		for i := 0; i < sampleSize; i++ {
+			sample[i] = i
+		}
+	} else {
+		for i := 0; i < sampleSize; i++ {
+			sample[i] = GenerateRandomInt(0, len(data))
 		}
 	}
+	sampleSizeF := float64(sampleSize)
+	vecLen := len(data[0])
+	mean := mat.NewVecDense(vecLen, nil)
+	for _, idx := range sample {
+		mean.AddVec(mean, mat.NewVecDense(vecLen, data[idx]))
+	}
+	mean.ScaleVec(1/sampleSizeF, mean)
+	std := make([]float64, len(data[0]))
+	for _, idx := range sample {
+		for j, val := range data[idx] {
+			shifted := val - mean.AtVec(j)
+			std[j] += math.Sqrt(shifted * shifted)
+		}
+	}
+	stdVec := mat.NewVecDense(vecLen, std)
+	stdVec.ScaleVec(1/sampleSizeF, stdVec)
+	return mean.RawVector().Data, stdVec.RawVector().Data, nil
+}
+
+// GetMeanStdSampledRecords duplucate of GetMeanStdSample but for the Record data type, must be refactored later
+func GetMeanStdSampledRecords(data []Record, sampleSize int) ([]float64, []float64, error) {
+	if len(data) == 0 {
+		return nil, nil, dataSliceEmptyErr
+	}
+	if sampleSize <= 0 {
+		return nil, nil, sampleSizeErr
+	}
+	sample := make([]int, sampleSize)
+	if len(data) <= sampleSize {
+		sampleSize = len(data)
+		for i := 0; i < sampleSize; i++ {
+			sample[i] = i
+		}
+	} else {
+		for i := 0; i < sampleSize; i++ {
+			sample[i] = GenerateRandomInt(0, len(data))
+		}
+	}
+	sampleSizeF := float64(sampleSize)
+	vecLen := len(data[0].Vec)
+	mean := mat.NewVecDense(vecLen, nil)
+	for _, idx := range sample {
+		mean.AddVec(mean, mat.NewVecDense(vecLen, data[idx].Vec))
+	}
+	mean.ScaleVec(1/sampleSizeF, mean)
 	std := make([]float64, len(data[0].Vec))
 	for _, idx := range sample {
 		for j, val := range data[idx].Vec {
-			std[j] += math.Sqrt((val-mean[j])*(val-mean[j])) / sampleSizeF
+			shifted := val - mean.AtVec(j)
+			std[j] += math.Sqrt(shifted * shifted)
 		}
 	}
-	return mean, std, nil
+	stdVec := mat.NewVecDense(vecLen, std)
+	stdVec.ScaleVec(1/sampleSizeF, stdVec)
+	return mean.RawVector().Data, stdVec.RawVector().Data, nil
 }
 
 // NewVec creates new blas vector
@@ -94,6 +145,29 @@ func (l2 L2) GetDist(l, r []float64) float64 {
 	blas64.Copy(rBlas, res)
 	blas64.Axpy(-1.0, lBlas, res)
 	return blas64.Nrm2(res)
+}
+
+// StandartScaler ...
+type StandartScaler struct {
+	sync.RWMutex
+	mean *mat.VecDense
+	std  *mat.VecDense
+}
+
+func NewStandartScaler(mean, std []float64) *StandartScaler {
+	return &StandartScaler{
+		mean: mat.NewVecDense(len(mean), mean),
+		std:  mat.NewVecDense(len(mean), std),
+	}
+}
+
+func (s *StandartScaler) Scale(vec []float64) []float64 {
+	s.RLock()
+	defer s.RUnlock()
+	res := mat.NewVecDense(len(vec), nil)
+	res.AddScaledVec(mat.NewVecDense(len(vec), vec), -1.0, s.mean)
+	res.DivElemVec(res, s.std)
+	return res.RawVector().Data
 }
 
 // IsZeroVectorBlas returns true if the sum of vectors' elements close to 0.0
