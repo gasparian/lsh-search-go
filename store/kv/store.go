@@ -8,6 +8,11 @@ import (
 	"sync"
 )
 
+var (
+	bucketNotFoundErr = errors.New("Bucket not found")
+	keyNotFoundErr    = errors.New("Key not found")
+)
+
 type KVStore struct {
 	mx sync.RWMutex
 	m  map[string]map[string]interface{}
@@ -50,7 +55,10 @@ func (s *KVStore) SetVector(id string, vec []float64) error {
 func (s *KVStore) GetVector(id string) ([]float64, error) {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
-	vecTmp := s.m["vec"][id]
+	vecTmp, ok := s.m["vec"][id]
+	if !ok {
+		return nil, keyNotFoundErr
+	}
 	vec := vecTmp.([]float64)
 	return vec, nil
 }
@@ -74,7 +82,7 @@ func (s *KVStore) GetHashIterator(permutation int, hash uint64) (store.Iterator,
 	bucketName := getBucketName(permutation, hash)
 	val, ok := s.m[bucketName]
 	if !ok {
-		return nil, errors.New("Bucket not found")
+		return nil, bucketNotFoundErr
 	}
 	i := 0
 	vecIds := make([]string, len(val))

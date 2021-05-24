@@ -44,10 +44,10 @@ func getNewHasher(config HasherConfig) (*Hasher, error) {
 
 func TestGenerateAngular(t *testing.T) {
 	config := HasherConfig{
-		NPermutes:      2,
-		NPlanes:        1,
-		BiasMultiplier: 2.0,
-		Dims:           3,
+		NPermutes:           2,
+		NPlanes:             1,
+		PlaneBiasMultiplier: 2.0,
+		Dims:                3,
 	}
 	hasherAngular, err := getNewHasher(config)
 	if err != nil {
@@ -63,10 +63,10 @@ func TestGenerateAngular(t *testing.T) {
 
 func TestGenerateL2(t *testing.T) {
 	config := HasherConfig{
-		NPermutes:      2,
-		NPlanes:        2,
-		BiasMultiplier: 1.0,
-		Dims:           3,
+		NPermutes:           2,
+		NPlanes:             2,
+		PlaneBiasMultiplier: 1.0,
+		Dims:                3,
 	}
 	hasher, err := getNewHasher(config)
 	if err != nil {
@@ -147,10 +147,10 @@ func TestL2(t *testing.T) {
 
 func TestDumpHasher(t *testing.T) {
 	config := HasherConfig{
-		NPermutes:      2,
-		NPlanes:        1,
-		BiasMultiplier: 2.0,
-		Dims:           3,
+		NPermutes:           2,
+		NPlanes:             1,
+		PlaneBiasMultiplier: 2.0,
+		Dims:                3,
 	}
 	hasher, err := getNewHasher(config)
 	if err != nil {
@@ -276,7 +276,7 @@ func TestScaler(t *testing.T) {
 	}
 }
 
-func testLSH(metric Metric, config Config, t *testing.T) Indexer {
+func testLSH(metric Metric, config Config, maxNN int, distanceThrsh float64, t *testing.T) Indexer {
 	s := kv.NewKVStore()
 	lsh, err := NewLsh(config, s, metric)
 	if err != nil {
@@ -317,7 +317,7 @@ func testLSH(metric Metric, config Config, t *testing.T) Indexer {
 	})
 
 	t.Run("LshSearch", func(t *testing.T) {
-		nns, err := lsh.Search(trainSet[0].Vec)
+		nns, err := lsh.Search(trainSet[0].Vec, maxNN, distanceThrsh)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -330,21 +330,23 @@ func testLSH(metric Metric, config Config, t *testing.T) Indexer {
 
 func TestLshCosine(t *testing.T) {
 	t.Parallel()
+	const (
+		distanceThrsh = 0.2
+		maxNN         = 4
+	)
 	config := Config{
 		LshConfig: LshConfig{
-			DistanceThrsh: 0.2,
-			MaxNN:         4,
-			BatchSize:     2,
+			BatchSize: 2,
 		},
 		HasherConfig: HasherConfig{
-			NPermutes:      10,
-			NPlanes:        5,
-			BiasMultiplier: 1.0,
-			Dims:           2,
+			NPermutes:           10,
+			NPlanes:             5,
+			PlaneBiasMultiplier: 1.0,
+			Dims:                2,
 		},
 	}
 	metric := NewCosine()
-	lsh := testLSH(metric, config, t)
+	lsh := testLSH(metric, config, maxNN, distanceThrsh, t)
 
 	t.Run("LshSearchConcurrent", func(t *testing.T) {
 		q := []float64{0.08, 0.1}
@@ -353,11 +355,11 @@ func TestLshCosine(t *testing.T) {
 		wg := sync.WaitGroup{}
 		wg.Add(N)
 		for i := 0; i < N; i++ {
-			go func() {
+			go func(maxNN int, distanceThrsh float64) {
 				defer wg.Done()
-				_, err := lsh.Search(q)
+				_, err := lsh.Search(q, maxNN, distanceThrsh)
 				errs <- err
-			}()
+			}(maxNN, distanceThrsh)
 		}
 		wg.Wait()
 		close(errs)
@@ -376,19 +378,21 @@ func TestLshCosine(t *testing.T) {
 
 func TestLshL2(t *testing.T) {
 	t.Parallel()
+	const (
+		distanceThrsh = 0.02
+		maxNN         = 4
+	)
 	config := Config{
 		LshConfig: LshConfig{
-			DistanceThrsh: 0.02,
-			MaxNN:         4,
-			BatchSize:     2,
+			BatchSize: 2,
 		},
 		HasherConfig: HasherConfig{
-			NPermutes:      10,
-			NPlanes:        10,
-			BiasMultiplier: 1.0,
-			Dims:           2,
+			NPermutes:           10,
+			NPlanes:             10,
+			PlaneBiasMultiplier: 1.0,
+			Dims:                2,
 		},
 	}
 	metric := NewL2()
-	_ = testLSH(metric, config, t)
+	_ = testLSH(metric, config, maxNN, distanceThrsh, t)
 }

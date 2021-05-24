@@ -1,17 +1,19 @@
 ![lsh tests](https://github.com/gasparian/lsh-search-go/actions/workflows/test.yml/badge.svg?branch=master)
 ## lsh-search-go  
 
-One of the most important things in the field of search and recommender systems is a problem of fast search in high-dimensional vector spaces.  
+Here is my take on implementing approximate nearest neighbors search algorithm from scratch.  
 The simplest possible search algorithm would be just NN search with linear space and time complexity. But in practice we want to perform search in << O(N) time.  
-So there is exist a set of algorithms called "approximate nearest neighbors" (aka "ANN"). And we can divide it into two subsets:  
- - [locality-sensitive hashing](https://en.wikipedia.org/wiki/Locality-sensitive_hashing) (space partitioning methods);  
- - [graph-based approaches](https://en.wikipedia.org/wiki/Small-world_network) - like local search over proximity graphs, for example [hierarchical navigatable small world graphs](https://arxiv.org/pdf/1603.09320.pdf);  
+So there is exist a set of algorithms called "approximate nearest neighbors" (aka "ANN", here is cool [presentation](https://www.youtube.com/watch?v=cn15P8vgB1A&ab_channel=RioICM2018) by on of the key researches in that field). And we can divide it into two subsets:  
+ - [locality-sensitive hashing](https://www.cs.princeton.edu/courses/archive/spring13/cos598C/Gionis.pdf), ([presentation](https://www.youtube.com/watch?v=t_8SpFV0l7A&ab_channel=MicrosoftResearch));  
+ - [graph-based approaches](https://en.wikipedia.org/wiki/Small-world_network) - like local search over proximity graphs, for example [hierarchical navigatable small world graphs](https://arxiv.org/pdf/1603.09320.pdf) (great [presentation](https://www.youtube.com/watch?v=m8YfUnwJ1qw&t=313s&ab_channel=ODSAIRu) by Yandex Research);  
 
 I've decided to go with the LSH algorithm first, since:  
   1. It's pretty simple to understand and implement it.  
   2. At some cases LSH can be more suitable for production usage, since it's index can be easily stored in any database.  
+  The largest downside I see here - is that LSH needs too much memory to store the index.  
 
 So this repo contains library that has the functionality to create LSH index and perform search by given query vector.  
+And kudos to https://github.com/erikbern, who popularized the topic of ANN search in recent time, with [annoy](https://github.com/spotify/annoy) and [ann-benchmarks](https://github.com/erikbern/ann-benchmarks).  
 
 ### Local sensitive hashing short reference   
 
@@ -42,41 +44,44 @@ You need to implement only two interfaces:
 LSH index object has a super-simple interface:  
  - `NewLsh` is for creating the new instance of index by given config;  
  - `Train(records []lsh.Record) error` for filling search index with vectors (each `lsh.Record` must contain unique id and `[]float64` vector itself);  
- - `Search(query []float64) ([]lsh.Record, error)` to find `MaxNN` nearest neighbors to the query vector;  
+ - `Search(query []float64, maxNN int, distanceThrsh float64) ([]lsh.Record, error)` to find `MaxNN` nearest neighbors to the query vector;  
 
 Here is the usage example:  
 ```go
 ...
 import (
     "log"
-	lsh "github.com/gasparian/lsh-search-go/lsh"
-	"github.com/gasparian/lsh-search-go/store/kv"
+    lsh "github.com/gasparian/lsh-search-go/lsh"
+    "github.com/gasparian/lsh-search-go/store/kv"
 )
 
 // Create train dataset as a pair of unique id and vector
 var trainData []lsh.Record = ...
-sampleSize := 100000
+sampleSize := 20000
 mean, std, _ := lsh.GetMeanStdSampledRecords(trainData, sampleSize)
 var queryPoint []float64 = ...
+
+const (
+    distanceThrsh = 3000 // Distance threshold in non-normilized space
+    maxNN         = 100  // Maximum number of nearest neighbors to find
+)
 
 // Define search parameters
 lshConfig := lsh.Config{
 	LshConfig: lsh.LshConfig{
-		DistanceThrsh: 3000, // Distance threshold in non-normilized space
-		MaxNN:         100,  // Maximum number of nearest neighbors to find
-		BatchSize:     250,  // How much points to process in a single goroutine 
-		                     // during the training phase
-		MeanVec:       mean, // Optionally, you can use some bias vector, 
-		                     // to "shift" the data before
-		                     // hash calculation on train and search 
-		                     // (you can pass nil or the empty slice here)
-	},
+        BatchSize: 250,  // How much points to process in a single goroutine 
+                         // during the training phase
+        Bias:      mean, // Optionally, you can use some bias vector, 
+                         // to "shift" the data points before
+                         // hash calculation on train and search 
+                         // (you can pass nil or the empty slice here)
+    },
 	HasherConfig: lsh.HasherConfig{
-		NPermutes:      10,  // Number of planes permutations to generate
-		NPlanes:        12,  // Number of planes in a single permutation to generate
-		BiasMultiplier: 1.0, // Sets how far from each other will planes be generated
-		Dims:           784, // Space dimensionality
-	},
+        NPermutes:           10,       // Number of planes permutations to generate
+        NPlanes:             12,       // Number of planes in a single permutation to generate
+        PlaneBiasMultiplier: 1.0, // Sets how far from each other will planes be generated
+        Dims:                784,      // Space dimensionality
+    },
 }
 // Store implementation, you can use yours
 s := kv.NewKVStore()
@@ -84,29 +89,29 @@ s := kv.NewKVStore()
 metric := lsh.NewL2()
 lshIndex, err := lsh.NewLsh(lshConfig, s, metric)
 if err != nil {
-	log.Fatal(err)
+    log.Fatal(err)
 }
 
 // Create search index; It will take some significant amount of time
 lshIndex.Train(trainData)
 
 // Perform search
-closest, err := lshIndex.Search(queryPoint)
+closest, err := lshIndex.Search(queryPoint, maxNN, distanceThrsh)
 if err != nil {
-	log.Fatal(err)
+    log.Fatal(err)
 }
 // Example of closest neighbors for 2D:
 /*
 [
-	{096389f9-8d59-4799-a479-d8ec6d9de435 [0.07666666666666666 -0.003333333333333327]}
-	{703eed19-cacc-47cf-8cf3-797b2576441f [0.06666666666666667 0.006666666666666682]}
-	{1a447147-6576-41ef-8c2e-20fab35a9fc6 [0.05666666666666666 0.016666666666666677]}
-	{b5c64ce0-0e32-4fa6-9180-1d04fdc553d1 [0.06666666666666667 -0.013333333333333322]}
+    {096389f9-8d59-4799-a479-d8ec6d9de435 [0.07666666666666666 -0.003333333333333327]}
+    {703eed19-cacc-47cf-8cf3-797b2576441f [0.06666666666666667 0.006666666666666682]}
+    {1a447147-6576-41ef-8c2e-20fab35a9fc6 [0.05666666666666666 0.016666666666666677]}
+    {b5c64ce0-0e32-4fa6-9180-1d04fdc553d1 [0.06666666666666667 -0.013333333333333322]}
 ]
 */
 ```  
 
-### Building, testing and running benchmark  
+### Testing  
 
 To perform regular unit-tests, first install go deps:  
 ```
@@ -124,3 +129,14 @@ And just run go test:
 ```
 make annbench
 ```  
+It can take up to several hours to coimplete and will consume a lot of RAM.  
+
+Search parameters that you can find [here](https://github.com/gasparian/lsh-search-go/blob/master/annbench/annbench_test.go) were selected empirically, based on precision and recall metrics measured on validation dataset. So don't rack your brains too much ;)  
+
+### Results  
+
+// TODO: add here benchmarks results, comparing lsh with the exact nearest neighbors algorithm with several datasets  
+
+### Known problems  
+  - still I couldn't find the best way to find parameter `PlaneBiasMultiplier`, which is used to generate plane *D* coefficient;  
+  - maybe parameter `bias` is not even needed, but I thought that it's better to "shift" vectors before calculating hashes, since I generate plane coefs randomly, around center of coordinates using only `PlaneBiasMultiplier` term to define how far generated plane will be from that center (symmetrically);  
