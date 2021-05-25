@@ -30,7 +30,7 @@ Here is visual example of space partitioning:
 <p align="center"> <img src="https://github.com/gasparian/lsh-search-go/blob/master/pics/biased.jpg" height=400/> </p>  
 
 I prefer to use simple rules while tuning the algorithm:  
-  - more planes permutations you create --> more space you use, but more accurate the model could become;  
+  - more planes permutations you create --> more space you use, more time for creating search index you need, but more accurate the model could become;  
   - more planes you generate --> more "buckets" with less points you get --> search becomes faster, but can be less accurate (more false negative errors, potentially);  
   - larger distance threshold you make --> more "candidate" points you will have during the search phase, so you can satisfy the "max. nearest neighbors" condition faster, but decrease accuracy.  
 
@@ -80,10 +80,13 @@ lshConfig := lsh.Config{
                          // (you can pass nil or the empty slice)
     },
 	HasherConfig: lsh.HasherConfig{
-        NPermutes:           10,       // Number of planes permutations to generate
-        NPlanes:             12,       // Number of planes in a single permutation to generate
-        PlaneBiasMultiplier: 1.0, // Sets how far from each other will planes be generated
-        Dims:                784,      // Space dimensionality
+        NPermutes:           10,  // Number of planes permutations to generate
+        NPlanes:             12,  // Number of planes in a single permutation to generate
+        PlaneBiasMultiplier: 1.0, // Sets how far from each other will planes be generated.
+                                  // For instance, if you're using angular metric - it's 
+                                  // better to use 0.0 - so all generated planes will 
+                                  // intersect center of coordinates
+        Dims:                784, // Space dimensionality
     },
 }
 // Store implementation, you can use yours
@@ -137,13 +140,13 @@ Search parameters that you can find [here](https://github.com/gasparian/lsh-sear
 
 ### Results  
 
-I used 16 core/60Gb RAM machine for tests.  
+I used 16 core/60Gb RAM machine for tests and in-memory store implementation (`kv.KVStore`).  
 During experiments I used the following datasets:  
 
-| Dataset           | N dimensions |  Train examples | Test examples |
-|-------------------|:------------:|----------------:|:--------------|
-| Fashion MNIST     |      784     |      60000      |     10000     |
-| NY times          |      256     |     290000      |     10000     |
+| Dataset           | N dimensions |  Train examples | Test examples |   Metric  |
+|-------------------|:------------:|----------------:|:-------------:|:----------|
+| Fashion MNIST     |      784     |      60000      |     10000     | Euclidean |
+| NY times          |      256     |     290000      |     10000     | Cosine    |
 
 [Fashion MNIST](https://github.com/zalandoresearch/fashion-mnist):  
 | Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
@@ -155,11 +158,8 @@ During experiments I used the following datasets:
 | Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
 |-------------------------|:---------------:|---------------------:|:----------:|:-------|
 | Exact nearest neighbors |       4.3       |        2826.9        |    0.989    | 0.989 |
-| LSH                     |      420.7      |         165          |    0.989    | 0.989 |  
+| LSH                     |      420.7      |        233.3         |    0.989    | 0.987 |  
 
 As you may see - even on such small dataset, we get >10x advantage in search speed.  
 I picked parameters manually, to get the best tradeoff between speed and accuracy.  
 **TODO:** Add gaphs on parameters tuning  
-
-### Known problems  
-  - still I can't come up with the best way to find parameter `PlaneBiasMultiplier`, which is used to generate planes;  
