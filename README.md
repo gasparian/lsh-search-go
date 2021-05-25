@@ -132,7 +132,6 @@ And just run go test:
 ```
 make annbench
 ```  
-It can take up to several hours to coimplete and will consume a lot of RAM.  
 
 Search parameters that you can find [here](https://github.com/gasparian/lsh-search-go/blob/master/annbench/annbench_test.go) were selected empirically, based on precision and recall metrics measured on validation dataset. So don't rack your brains too much ;)  
 
