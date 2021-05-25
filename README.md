@@ -39,7 +39,7 @@ I prefer to use simple rules while tuning the algorithm:
 The storage and hashing parts are **decoupled** from each other.  
 You need to implement only two interfaces:  
   1. [store](https://github.com/gasparian/lsh-search-go/blob/master/store/store.go), in order to use any storage you prefer.  
-  2. [metric](https://github.com/gasparian/lsh-search-go/blob/master/lsh/lsh.go), to use your custom distance metric.  
+  2. [metric](https://github.com/gasparian/lsh-search-go/blob/3c0ff021e3cff741ff726d52d44861c39e434376/lsh/lsh.go#L20), to use your custom distance metric.  
 
 LSH index object has a super-simple interface:  
  - `NewLsh` is for creating the new instance of index by given config;  
@@ -160,6 +160,6 @@ During experiments I used the following datasets:
 | Exact nearest neighbors |       4.3       |        2826.9        |    0.989    | 0.989 |
 | LSH                     |      420.7      |        233.3         |    0.989    | 0.987 |  
 
-As you may see - even on such small dataset, we get >10x advantage in search speed.  
+As you may see - even on such small datasets, we get >10x advantage in search speed.  
 I picked parameters manually, to get the best tradeoff between speed and accuracy.  
 **TODO:** Add gaphs on parameters tuning  
