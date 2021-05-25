@@ -152,7 +152,7 @@ During experiments I used the following datasets:
 | Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
 |-------------------------|:---------------:|---------------------:|:----------:|:-------|
 | Exact nearest neighbors |       0.9       |         588.7        |    0.990    | 0.990 |
-| LSH                     |      36.8       |         53.55        |    0.991    | 0.989 |  
+| LSH                     |      36.8       |         53.5         |    0.991    | 0.989 |  
 
 [NY times](https://archive.ics.uci.edu/ml/datasets/bag+of+words):  
 | Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
