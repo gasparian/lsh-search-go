@@ -16,9 +16,3 @@ Neighbors dtype: int32, other data - float32. Test sets consists of "query point
     - dimensions - 256;  
     - train size - 290000;  
     - test size - 10000;  
-  - SIFT features:  
-    - distance metric - euclidean;  
-    - N neighbors - 100;  
-    - dimensions - 128;  
-    - train size - 1000000;  
-    - test size - 10000;  

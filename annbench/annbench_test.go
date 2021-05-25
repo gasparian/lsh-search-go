@@ -184,7 +184,8 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *benchData, maxNN int, 
 	t.Logf("Training finished in %v", time.Since(start))
 
 	t.Log("Predicting...")
-	N := 1000 // TODO: for debug only
+	start = time.Now()
+	N := 10000 // NOTE: for debug it's convenient to change this to lower value in sake of speed up
 	batchSize := 100
 	var elapsedTimeMs int64
 	predCh := make(chan prediction, N)
@@ -222,6 +223,7 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *benchData, maxNN int, 
 		precision += p
 		recall += r
 	}
+	overallElapsedTime := time.Since(start)
 
 	testDataLen := float64(len(data.test[:N]))
 
@@ -230,7 +232,7 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *benchData, maxNN int, 
 	avgPredTime := float64(elapsedTimeMs) / testDataLen
 
 	t.Log("Done! Precision: ", precision, "Recall: ", recall)
-	t.Logf("Prediction finished in %v s", elapsedTimeMs/1000)
+	t.Logf("Concurrent prediction finished in %v", overallElapsedTime)
 	t.Logf("Average prediction time is %v ms", avgPredTime)
 }
 
@@ -277,91 +279,50 @@ func getFloat64Range(data [][]float64) (float64, float64) {
 	return min, max
 }
 
-// func TestEuclideanFashionMnist(t *testing.T) {
-// 	dataConfig := &benchDataConfig{
-// 		datasetPath:  "../test-data/fashion-mnist-784-euclidean.hdf5",
-// 		sampleSize:   60000,
-// 		trainDim:     784,
-// 		neighborsDim: 100,
-// 	}
-// 	data, err := prepHdf5BenchDataset(dataConfig)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-
-// 	minStd, maxStd := getFloat64Range([][]float64{data.std})
-// 	t.Log("Dimensions std's range: ", minStd, maxStd)
-
-// 	config := &searchConfig{
-// 		lshBiasMultiplier: maxStd,
-// 		metric:            lsh.NewL2(),
-// 		nDims:             784,
-// 		batchSize:         250,
-// 		nPlanes:           12,
-// 		nPermutes:         10,
-// 		maxNN:             100,
-// 		maxDist:           3000,
-// 		// bias:           data.mean,
-// 		bias: nil,
-// 	}
-
-// 	// NOTE: look at the ground truth distances values
-// 	minDist, maxDist := getFloat64Range(data.distances)
-// 	t.Log("Ground truth distances range: ", minDist, maxDist)
-
-// 	t.Run("NN", func(t *testing.T) {
-// 		testNearestNeighbors(t, config, data)
-// 	})
-// 	t.Run("LSH", func(t *testing.T) {
-// 		testLSH(t, config, data)
-// 	})
-// }
-
-// func TestAngularNYTimes(t *testing.T) {
-// 	dataConfig := &benchDataConfig{
-// 		datasetPath:  "../test-data/nytimes-256-angular.hdf5",
-// 		sampleSize:   60000,
-// 		trainDim:     256,
-// 		neighborsDim: 100,
-// 	}
-// 	data, err := prepHdf5BenchDataset(dataConfig)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	minStd, maxStd := getFloat64Range([][]float64{data.std})
-// 	t.Log("Dimensions std's range: ", minStd, maxStd)
-
-// 	// NOTE: look at the ground truth distances values
-// 	minDist, maxDist := getFloat64Range(data.distances)
-// 	t.Log("Ground truth distances range: ", minDist, maxDist)
-
-// 	config := &searchConfig{
-// 		lshBiasMultiplier: 4.0,
-// 		metric:            lsh.NewCosine(),
-// 		nDims:             256,
-// 		batchSize:         250,
-// 		nPlanes:           50,
-// 		nPermutes:         10,
-// 		maxNN:             100,
-// 		maxDist:           0.9,
-// 		bias:           data.mean,
-// 		// bias: nil,
-// 	}
-
-// 	t.Run("NN", func(t *testing.T) {
-// 		testNearestNeighbors(t, config, data)
-// 	})
-// 	t.Run("LSH", func(t *testing.T) {
-// 		testLSH(t, config, data)
-// 	})
-// }
-
-// NOTE: warning - it will consume a LOT of RAM
-func TestEuclideanSift(t *testing.T) {
+func TestEuclideanFashionMnist(t *testing.T) {
 	dataConfig := &benchDataConfig{
-		datasetPath:  "../test-data/sift-128-euclidean.hdf5",
-		sampleSize:   200000,
-		trainDim:     128,
+		datasetPath:  "../test-data/fashion-mnist-784-euclidean.hdf5",
+		sampleSize:   30000,
+		trainDim:     784,
+		neighborsDim: 100,
+	}
+	data, err := prepHdf5BenchDataset(dataConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	minStd, maxStd := getFloat64Range([][]float64{data.std})
+	t.Log("Dimensions std's range: ", minStd, maxStd)
+
+	config := &searchConfig{
+		lshBiasMultiplier: 1.0,
+		metric:            lsh.NewL2(),
+		nDims:             784,
+		batchSize:         250,
+		nPlanes:           12,
+		nPermutes:         10,
+		maxNN:             100,
+		maxDist:           3000,
+		bias:              data.mean,
+	}
+
+	// NOTE: look at the ground truth distances values
+	minDist, maxDist := getFloat64Range(data.distances)
+	t.Log("Ground truth distances range: ", minDist, maxDist)
+
+	t.Run("NN", func(t *testing.T) {
+		testNearestNeighbors(t, config, data)
+	})
+	t.Run("LSH", func(t *testing.T) {
+		testLSH(t, config, data)
+	})
+}
+
+func TestAngularNYTimes(t *testing.T) {
+	dataConfig := &benchDataConfig{
+		datasetPath:  "../test-data/nytimes-256-angular.hdf5",
+		sampleSize:   60000,
+		trainDim:     256,
 		neighborsDim: 100,
 	}
 	data, err := prepHdf5BenchDataset(dataConfig)
@@ -370,27 +331,28 @@ func TestEuclideanSift(t *testing.T) {
 	}
 	minStd, maxStd := getFloat64Range([][]float64{data.std})
 	t.Log("Dimensions std's range: ", minStd, maxStd)
+	minMean, maxMean := getFloat64Range([][]float64{data.mean})
+	t.Log("Dimensions mean's range: ", minMean, maxMean)
 
 	// NOTE: look at the ground truth distances values
 	minDist, maxDist := getFloat64Range(data.distances)
-	t.Log("Ground truth distances range:", minDist, maxDist)
+	t.Log("Ground truth distances range: ", minDist, maxDist)
 
 	config := &searchConfig{
-		lshBiasMultiplier: 1.0,
-		metric:            lsh.NewL2(),
-		nDims:             128,
-		batchSize:         1000,
+		lshBiasMultiplier: 4.0,
+		metric:            lsh.NewCosine(),
+		nDims:             256,
+		batchSize:         250,
 		nPlanes:           50,
 		nPermutes:         10,
 		maxNN:             100,
-		maxDist:           400,
+		maxDist:           0.9,
 		bias:              data.mean,
-		// bias: nil,
 	}
 
-	// t.Run("NN", func(t *testing.T) {
-	// 	testNearestNeighbors(t, config, data)
-	// })
+	t.Run("NN", func(t *testing.T) {
+		testNearestNeighbors(t, config, data)
+	})
 	t.Run("LSH", func(t *testing.T) {
 		testLSH(t, config, data)
 	})

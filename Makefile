@@ -10,8 +10,6 @@ download-annbench-data:
 	$(call DOWNLOAD,$(ANNBENCH_DATA),http://ann-benchmarks.com/fashion-mnist-784-euclidean.hdf5)
 	echo "=== Downloading NY times dataset... ==="
 	$(call DOWNLOAD,$(ANNBENCH_DATA),http://ann-benchmarks.com/nytimes-256-angular.hdf5)
-	echo "=== Downloading SIFT vectors dataset... ==="
-	$(call DOWNLOAD,$(ANNBENCH_DATA),http://ann-benchmarks.com/sift-128-euclidean.hdf5)
 	echo "=== Downloading complete ==="	
 
 .ONESHELL:

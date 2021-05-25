@@ -72,9 +72,12 @@ lshConfig := lsh.Config{
         BatchSize: 250,  // How much points to process in a single goroutine 
                          // during the training phase
         Bias:      mean, // Optionally, you can use some bias vector, 
-                         // to "shift" the data points before
-                         // hash calculation on train and search 
-                         // (you can pass nil or the empty slice here)
+                         // to "center" the data points before the
+                         // hash calculation on train and search, 
+                         // since planes are generated near the 
+                         // center of coordinates.
+                         // Usually I use mean vector here.
+                         // (you can pass nil or the empty slice)
     },
 	HasherConfig: lsh.HasherConfig{
         NPermutes:           10,       // Number of planes permutations to generate
@@ -135,8 +138,29 @@ Search parameters that you can find [here](https://github.com/gasparian/lsh-sear
 
 ### Results  
 
-// TODO: add here benchmarks results, comparing lsh with the exact nearest neighbors algorithm with several datasets  
+I used 16 core/60Gb RAM machine for tests.  
+During experiments I used the following datasets:  
+
+| Dataset           | N dimensions |  Train examples | Test examples |
+|-------------------|:------------:|----------------:|:--------------|
+| Fashion MNIST     |      784     |      60000      |     10000     |
+| NY times          |      256     |     290000      |     10000     |
+
+[Fashion MNIST](https://github.com/zalandoresearch/fashion-mnist):  
+| Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
+|-------------------------|:---------------:|---------------------:|:----------:|:-------|
+| Exact nearest neighbors |       0.9       |         588.7        |    0.990    | 0.990 |
+| LSH                     |      36.8       |         53.55        |    0.991    | 0.989 |  
+
+[NY times](https://archive.ics.uci.edu/ml/datasets/bag+of+words):  
+| Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
+|-------------------------|:---------------:|---------------------:|:----------:|:-------|
+| Exact nearest neighbors |       4.3       |        2826.9        |    0.989    | 0.989 |
+| LSH                     |      420.7      |         165          |    0.989    | 0.989 |  
+
+As you may see - even on such small dataset, we get >10x advantage in search speed.  
+I picked parameters manually, to get the best tradeoff between speed and accuracy.  
+**TODO:** Add gaphs on parameters tuning  
 
 ### Known problems  
-  - still I couldn't find the best way to find parameter `PlaneBiasMultiplier`, which is used to generate plane *D* coefficient;  
-  - maybe parameter `bias` is not even needed, but I thought that it's better to "shift" vectors before calculating hashes, since I generate plane coefs randomly, around center of coordinates using only `PlaneBiasMultiplier` term to define how far generated plane will be from that center (symmetrically);  
+  - still I can't come up with the best way to find parameter `PlaneBiasMultiplier`, which is used to generate planes;  
