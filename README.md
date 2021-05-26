@@ -136,7 +136,7 @@ And just run go test:
 make annbench
 ```  
 
-Search parameters that you can find [here](https://github.com/gasparian/lsh-search-go/blob/master/annbench/annbench_test.go) were selected empirically, based on precision and recall metrics measured on validation dataset. So don't rack your brains too much ;)  
+Search parameters that you can find [here](https://github.com/gasparian/lsh-search-go/blob/master/annbench/annbench_test.go) has been selected empirically, based on precision and recall metrics measured on validation dataset. So don't rack your brains too much ;)  
 
 ### Results  
 
