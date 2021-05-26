@@ -15,8 +15,9 @@ I've decided to go with the LSH algorithm first, since:
 So this repo contains library that has the functionality to create LSH index and perform search by given query vector.  
 And kudos to https://github.com/erikbern, who popularized the topic of ANN search in recent time, with [annoy](https://github.com/spotify/annoy) and [ann-benchmarks](https://github.com/erikbern/ann-benchmarks).  
 
-### Local sensitive hashing short reference   
+### Locality sensitive hashing short reference   
 
+LSH implies space partitioning with random hyperplanes and search across "buckets" formed by intersections of those planes.  
 Recipe for creating LSH search index:  
   1. Generate *k* random hyper planes.  
   2. Calculate bit hash for each point in a dataset, relying on it's position relative to the each generated plane. Store points with the same hash in a separate hash table.  
