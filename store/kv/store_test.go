@@ -16,12 +16,18 @@ var (
 
 func TestKvStore(t *testing.T) {
 	store := NewKVStore()
+	vecIds := map[string]bool{
+		"0": true,
+		"1": true,
+	}
+	vec := []float64{1, 2}
 
 	t.Run("SetVector", func(t *testing.T) {
-		vec := []float64{1, 2}
-		err := store.SetVector("0", vec)
-		if err != nil {
-			t.Fatal(err)
+		for k := range vecIds {
+			err := store.SetVector(k, vec)
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
 		vecReturned, err := store.GetVector("0")
 		if err != nil {
@@ -30,34 +36,31 @@ func TestKvStore(t *testing.T) {
 		if !reflect.DeepEqual(vec, vecReturned) {
 			t.Error(vectorsAreNotEqualErr)
 		}
-		err = store.SetVector("1", vec)
-		if err != nil {
-			t.Fatal(err)
-		}
 	})
 
 	t.Run("SetHash", func(t *testing.T) {
-		err := store.SetHash(0, 0, "0")
-		if err != nil {
-			t.Fatal(err)
+		for k := range vecIds {
+			err := store.SetHash(0, 0, k)
+			if err != nil {
+				t.Fatal(err)
+			}
 		}
-		store.SetHash(0, 0, "1")
+
 		it, err := store.GetHashIterator(0, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
-		id, ok := it.Next()
-		if !ok {
-			t.Error(cantFindVecKey)
+
+		for range vecIds {
+			id, ok := it.Next()
+			if !ok {
+				t.Error(cantFindVecKey)
+			}
+			if !vecIds[id] {
+				t.Error(wrongKeyErr)
+			}
 		}
-		if id != "0" {
-			t.Error(wrongKeyErr)
-		}
-		id, _ = it.Next()
-		if id != "1" {
-			t.Error(wrongKeyErr)
-		}
-		_, ok = it.Next()
+		_, ok := it.Next()
 		if ok {
 			t.Error(iteratorNotClosedErr)
 		}
