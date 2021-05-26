@@ -39,9 +39,9 @@ I prefer to use simple rules while tuning the algorithm:
 The storage and hashing parts are **decoupled** from each other.  
 You need to implement only two interfaces:  
   1. [store](https://github.com/gasparian/lsh-search-go/blob/master/store/store.go), in order to use any storage you prefer.  
-  2. [metric](https://github.com/gasparian/lsh-search-go/blob/3c0ff021e3cff741ff726d52d44861c39e434376/lsh/lsh.go#L20), to use your custom distance metric.  
+  2. [metric](https://github.com/gasparian/lsh-search-go/blob/d32f31c39cdb89cc8132901ddcdd7090a7454264/lsh/lsh.go#L20), to use your custom distance metric.  
 
-LSH index object has a super-simple interface:  
+LSH index object has a super-simple [interface](https://github.com/gasparian/lsh-search-go/blob/d32f31c39cdb89cc8132901ddcdd7090a7454264/lsh/lsh.go#L25):  
  - `NewLsh(config lsh.Config) (*LSHIndex, error)` is for creating the new instance of index by given config;  
  - `Train(records []lsh.Record) error` for filling search index with vectors (each `lsh.Record` must contain unique id and `[]float64` vector itself);  
  - `Search(query []float64, maxNN int, distanceThrsh float64) ([]lsh.Record, error)` to find `MaxNN` nearest neighbors to the query vector;  
