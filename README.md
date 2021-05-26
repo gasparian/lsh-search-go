@@ -42,7 +42,7 @@ You need to implement only two interfaces:
   2. [metric](https://github.com/gasparian/lsh-search-go/blob/3c0ff021e3cff741ff726d52d44861c39e434376/lsh/lsh.go#L20), to use your custom distance metric.  
 
 LSH index object has a super-simple interface:  
- - `NewLsh` is for creating the new instance of index by given config;  
+ - `NewLsh(config lsh.Config) (*LSHIndex, error)` is for creating the new instance of index by given config;  
  - `Train(records []lsh.Record) error` for filling search index with vectors (each `lsh.Record` must contain unique id and `[]float64` vector itself);  
  - `Search(query []float64, maxNN int, distanceThrsh float64) ([]lsh.Record, error)` to find `MaxNN` nearest neighbors to the query vector;  
 
@@ -68,7 +68,7 @@ const (
 
 // Define search parameters
 lshConfig := lsh.Config{
-	LshConfig: lsh.LshConfig{
+    IndexConfig: lsh.IndexConfig{
         BatchSize: 250,  // How much points to process in a single goroutine 
                          // during the training phase
         Bias:      mean, // Optionally, you can use some bias vector, 
@@ -79,7 +79,7 @@ lshConfig := lsh.Config{
                          // Usually I use mean vector here.
                          // (you can pass nil or the empty slice)
     },
-	HasherConfig: lsh.HasherConfig{
+    HasherConfig: lsh.HasherConfig{
         NPermutes:           10,  // Number of planes permutations to generate
         NPlanes:             12,  // Number of planes in a single permutation to generate
         PlaneBiasMultiplier: 1.0, // Sets how far from each other will planes be generated.

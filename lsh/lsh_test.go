@@ -335,7 +335,7 @@ func TestLshCosine(t *testing.T) {
 		maxNN         = 4
 	)
 	config := Config{
-		LshConfig: LshConfig{
+		IndexConfig: IndexConfig{
 			BatchSize: 2,
 		},
 		HasherConfig: HasherConfig{
@@ -383,7 +383,7 @@ func TestLshL2(t *testing.T) {
 		maxNN         = 4
 	)
 	config := Config{
-		LshConfig: LshConfig{
+		IndexConfig: IndexConfig{
 			BatchSize: 2,
 		},
 		HasherConfig: HasherConfig{

@@ -78,7 +78,7 @@ func testNearestNeighbors(t *testing.T, config *bench.SearchConfig, data *bench.
 
 func testLSH(t *testing.T, config *bench.SearchConfig, data *bench.BenchData) {
 	lshConfig := lsh.Config{
-		LshConfig: lsh.LshConfig{
+		IndexConfig: lsh.IndexConfig{
 			BatchSize: config.BatchSize,
 			Bias:      config.Bias,
 		},

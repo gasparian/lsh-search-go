@@ -28,8 +28,8 @@ type Indexer interface {
 	Search(query []float64, maxNN int, distanceThrsh float64) ([]Record, error)
 }
 
-// LshConfig ...
-type LshConfig struct {
+// IndexConfig ...
+type IndexConfig struct {
 	mx        *sync.RWMutex
 	BatchSize int
 	Bias      []float64
@@ -40,13 +40,13 @@ type LshConfig struct {
 
 // Config holds all needed constants for creating the Hasher instance
 type Config struct {
-	LshConfig
+	IndexConfig
 	HasherConfig
 }
 
 // LSHIndex holds buckets with vectors and hasher instance
 type LSHIndex struct {
-	config         LshConfig
+	config         IndexConfig
 	index          store.Store
 	hasher         *Hasher
 	distanceMetric Metric
@@ -70,11 +70,11 @@ func NewLsh(config Config, store store.Store, metric Metric) (*LSHIndex, error) 
 	if err != nil {
 		return nil, err
 	}
-	config.LshConfig.mx = new(sync.RWMutex)
-	config.LshConfig.dims = config.HasherConfig.Dims
-	config.LshConfig.bias = checkConvertVec(config.Bias, config.LshConfig.dims)
+	config.IndexConfig.mx = new(sync.RWMutex)
+	config.IndexConfig.dims = config.HasherConfig.Dims
+	config.IndexConfig.bias = checkConvertVec(config.Bias, config.IndexConfig.dims)
 	return &LSHIndex{
-		config:         config.LshConfig,
+		config:         config.IndexConfig,
 		hasher:         hasher,
 		index:          store,
 		distanceMetric: metric,
