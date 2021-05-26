@@ -39,7 +39,7 @@ func (it *KeysIterator) Next() (string, bool) {
 }
 
 func getBucketName(perm int, hash uint64) string {
-	return fmt.Sprintf("%v", perm) + "_" + fmt.Sprintf("%v", hash)
+	return fmt.Sprintf("%v_%v", perm, hash)
 }
 
 func (s *KVStore) SetVector(id string, vec []float64) error {
