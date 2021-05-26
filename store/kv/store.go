@@ -25,16 +25,14 @@ func NewKVStore() *KVStore {
 }
 
 type KeysIterator struct {
-	idx    int
-	vecIds []string
+	vecIds chan string
 }
 
 func (it *KeysIterator) Next() (string, bool) {
-	if it.idx > len(it.vecIds)-1 {
+	vecId, opened := <-it.vecIds
+	if !opened {
 		return "", false
 	}
-	vecId := it.vecIds[it.idx]
-	it.idx++
 	return vecId, true
 }
 
@@ -80,19 +78,19 @@ func (s *KVStore) GetHashIterator(permutation int, hash uint64) (store.Iterator,
 	defer s.mx.RUnlock()
 
 	bucketName := getBucketName(permutation, hash)
-	val, ok := s.m[bucketName]
+	bucket, ok := s.m[bucketName]
 	if !ok {
 		return nil, bucketNotFoundErr
 	}
-	i := 0
-	vecIds := make([]string, len(val))
-	for _, v := range val {
-		vecIds[i] = v.(string)
-		i++
-	}
+	hashCh := make(chan string)
+	go func() {
+		for _, v := range bucket {
+			hashCh <- v.(string)
+		}
+		close(hashCh)
+	}()
 	it := &KeysIterator{
-		idx:    0,
-		vecIds: vecIds,
+		vecIds: hashCh,
 	}
 	return it, nil
 }

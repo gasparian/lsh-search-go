@@ -30,6 +30,10 @@ func TestKvStore(t *testing.T) {
 		if !reflect.DeepEqual(vec, vecReturned) {
 			t.Error(vectorsAreNotEqualErr)
 		}
+		err = store.SetVector("1", vec)
+		if err != nil {
+			t.Fatal(err)
+		}
 	})
 
 	t.Run("SetHash", func(t *testing.T) {
@@ -37,6 +41,7 @@ func TestKvStore(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		store.SetHash(0, 0, "1")
 		it, err := store.GetHashIterator(0, 0)
 		if err != nil {
 			t.Fatal(err)
@@ -46,6 +51,10 @@ func TestKvStore(t *testing.T) {
 			t.Error(cantFindVecKey)
 		}
 		if id != "0" {
+			t.Error(wrongKeyErr)
+		}
+		id, _ = it.Next()
+		if id != "1" {
 			t.Error(wrongKeyErr)
 		}
 		_, ok = it.Next()
