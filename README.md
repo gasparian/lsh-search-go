@@ -141,6 +141,8 @@ Search parameters that you can find [here](https://github.com/gasparian/lsh-sear
 
 ### Results  
 
+*TODO: fill tables with new measurements and datasets*  
+
 I used 16 core/60Gb RAM machine for tests and in-memory store implementation (`kv.KVStore`).  
 During experiments I used the following datasets:  
 
@@ -152,15 +154,14 @@ During experiments I used the following datasets:
 [Fashion MNIST](https://github.com/zalandoresearch/fashion-mnist):  
 | Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
 |-------------------------|:---------------:|---------------------:|:----------:|:-------|
-| Exact nearest neighbors |       0.9       |         588.7        |    0.990    | 0.990 |
-| LSH                     |      36.8       |         53.5         |    0.991    | 0.989 |  
+| Exact nearest neighbors |       0.9       |         XXX        |    0.990    | 0.990 |
+| LSH                     |      36.8       |         XXX         |    0.991    | 0.989 |  
 
 [NY times](https://archive.ics.uci.edu/ml/datasets/bag+of+words):  
 | Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
 |-------------------------|:---------------:|---------------------:|:----------:|:-------|
-| Exact nearest neighbors |       4.3       |        2826.9        |    0.989    | 0.989 |
-| LSH                     |      420.7      |        233.3         |    0.989    | 0.987 |  
+| Exact nearest neighbors |       4.3       |        XXX        |    0.989    | 0.989 |
+| LSH                     |      420.7      |        XXX         |    0.989    | 0.987 |  
 
 As you may see - even on such small datasets, we get >10x advantage in search speed.  
 I picked parameters manually, to get the best tradeoff between speed and accuracy.  
-**TODO:** Add gaphs on parameters tuning  
