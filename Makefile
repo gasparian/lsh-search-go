@@ -1,6 +1,6 @@
 DOWNLOAD=wget -P $(1) -nc $(2)
 ANNBENCH_DATA=./test-data
-TEST=go test -v -cover -race -count=1 -timeout=24h $(1)
+TEST=go test -v -cover $(1) -count=1 -timeout=24h $(2)
 
 .SILENT:
 
@@ -16,12 +16,12 @@ download-annbench-data:
 .SHELLFLAGS=-e -c
 
 test:
-	$(call TEST,./lsh)
-	$(call TEST,./store/...)
+	$(call TEST,-race,./lsh)
+	$(call TEST,-race,./store/...)
 
 .PHONY: annbench
 annbench:
-	$(call TEST,./annbench)
+	$(call TEST,,./annbench)
 
 install-hdf5:
 	sudo apt-get install libhdf5-serial-dev
