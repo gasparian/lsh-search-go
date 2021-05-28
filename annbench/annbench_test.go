@@ -24,8 +24,8 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN
 	var elapsedTimeMs int64
 	predCh := make(chan bench.Prediction, N)
 	wg := sync.WaitGroup{}
-	wg.Add(len(data.Test[:N])/batchSize + len(data.Test[:N])%batchSize)
 	for i := 0; i < len(data.Test[:N]); i += batchSize {
+		wg.Add(1)
 		end := i + batchSize
 		if end > len(data.Test[:N]) {
 			end = len(data.Test[:N])

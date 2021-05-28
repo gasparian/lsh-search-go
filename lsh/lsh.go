@@ -93,8 +93,8 @@ func (lsh *LSHIndex) Train(records []Record) error {
 	lsh.config.mx.RUnlock()
 
 	wg := sync.WaitGroup{}
-	wg.Add(len(records)/batchSize + len(records)%batchSize)
 	for i := 0; i < len(records); i += batchSize {
+		wg.Add(1)
 		end := i + batchSize
 		if end > len(records) {
 			end = len(records)

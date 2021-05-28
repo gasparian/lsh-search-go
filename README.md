@@ -150,18 +150,32 @@ During experiments I used the following datasets:
 |-------------------|:------------:|----------------:|:-------------:|:----------|
 | Fashion MNIST     |      784     |      60000      |     10000     | Euclidean |
 | NY times          |      256     |     290000      |     10000     | Cosine    |
+| SIFT              |      128     |     1000000     |     10000     | Euclidean |
+| GloVe             |      200     |     1183514     |     10000     | Cosine    |
 
 [Fashion MNIST](https://github.com/zalandoresearch/fashion-mnist):  
 | Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
 |-------------------------|:---------------:|---------------------:|:----------:|:-------|
-| Exact nearest neighbors |       0.9       |         XXX        |    0.990    | 0.990 |
-| LSH                     |      36.8       |         XXX         |    0.991    | 0.989 |  
+| Exact nearest neighbors |       XXX       |         XXXXX        |    0.990    | 0.990 |
+| LSH                     |      XXXXX      |         XXXX         |    0.991    | 0.989 |  
 
 [NY times](https://archive.ics.uci.edu/ml/datasets/bag+of+words):  
 | Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
 |-------------------------|:---------------:|---------------------:|:----------:|:-------|
-| Exact nearest neighbors |       4.3       |        XXX        |    0.989    | 0.989 |
-| LSH                     |      420.7      |        XXX         |    0.989    | 0.987 |  
+| Exact nearest neighbors |       XXX       |        XXXXXX        |    0.989    | 0.989 |
+| LSH                     |      XXXXX      |        XXXXX         |    0.989    | 0.987 |  
 
-As you may see - even on such small datasets, we get >10x advantage in search speed.  
+
+[SIFT](https://corpus-texmex.irisa.fr/):  
+| Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
+|-------------------------|:---------------:|---------------------:|:----------:|:-------|
+| Exact nearest neighbors |       XXX       |        XXXXXX        |    0.989    | 0.989 |
+| LSH                     |      XXXXX      |        XXXXX         |    0.989    | 0.987 |  
+
+[GloVe](http://nlp.stanford.edu/projects/glove/):  
+| Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
+|-------------------------|:---------------:|---------------------:|:----------:|:-------|
+| Exact nearest neighbors |       XXX       |        XXXXXX        |    0.989    | 0.989 |
+| LSH                     |      XXXXX      |        XXXXX         |    0.989    | 0.987 |  
+
 I picked parameters manually, to get the best tradeoff between speed and accuracy.  
