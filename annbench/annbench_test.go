@@ -4,7 +4,6 @@ import (
 	bench "github.com/gasparian/lsh-search-go/annbench"
 	lsh "github.com/gasparian/lsh-search-go/lsh"
 	"github.com/gasparian/lsh-search-go/store/kv"
-	"sort"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -52,7 +51,6 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN
 		for _, cl := range pred.Records {
 			closestPointsArr = append(closestPointsArr, data.TrainIndices[cl.ID])
 		}
-		sort.Ints(closestPointsArr)
 		p, r := bench.PrecisionRecall(closestPointsArr, data.Neighbors[pred.Idx])
 		precision += p
 		recall += r
@@ -72,21 +70,22 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN
 
 func testNearestNeighbors(t *testing.T, config *bench.SearchConfig, data *bench.BenchData) {
 	s := kv.NewKVStore()
-	nn := bench.NewNNMock(s, config.Metric)
+	nn := bench.NewNNMock(config.MaxCandidates, s, config.Metric)
 	testIndexer(t, nn, data, config.MaxNN, config.MaxDist)
 }
 
 func testLSH(t *testing.T, config *bench.SearchConfig, data *bench.BenchData) {
 	lshConfig := lsh.Config{
 		IndexConfig: lsh.IndexConfig{
-			BatchSize: config.BatchSize,
-			Bias:      config.Bias,
+			BatchSize:     config.BatchSize,
+			Bias:          data.Mean,
+			Std:           data.Std,
+			MaxCandidates: config.MaxCandidates,
 		},
 		HasherConfig: lsh.HasherConfig{
-			NPermutes:           config.NPermutes,
-			NPlanes:             config.NPlanes,
-			PlaneBiasMultiplier: config.LshPlaneBiasMultiplier,
-			Dims:                config.NDims,
+			NPermutes: config.NPermutes,
+			NPlanes:   config.NPlanes,
+			Dims:      config.NDims,
 		},
 	}
 	s := kv.NewKVStore()
@@ -112,146 +111,153 @@ func TestEuclideanFashionMnist(t *testing.T) {
 	minStd, maxStd := bench.GetFloat64Range([][]float64{data.Std})
 	t.Log("Dimensions std's range: ", minStd, maxStd)
 
-	config := &bench.SearchConfig{
-		LshPlaneBiasMultiplier: 1.0,
-		Metric:                 lsh.NewL2(),
-		NDims:                  784,
-		BatchSize:              250,
-		NPlanes:                12,
-		NPermutes:              10,
-		MaxNN:                  100,
-		MaxDist:                3000,
-		Bias:                   data.Mean,
-	}
-
-	// NOTE: look at the ground truth distances values
-	minDist, maxDist := bench.GetFloat64Range(data.Distances)
-	t.Log("Ground truth distances range: ", minDist, maxDist)
-
-	t.Run("NN", func(t *testing.T) {
-		testNearestNeighbors(t, config, data)
-	})
-	t.Run("LSH", func(t *testing.T) {
-		testLSH(t, config, data)
-	})
-}
-
-func TestAngularNYTimes(t *testing.T) {
-	dataConfig := &bench.BenchDataConfig{
-		DatasetPath:  "../test-data/nytimes-256-angular.hdf5",
-		SampleSize:   60000,
-		TrainDim:     256,
-		NeighborsDim: 100,
-	}
-	data, err := bench.PrepHdf5BenchDataset(dataConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-	minStd, maxStd := bench.GetFloat64Range([][]float64{data.Std})
-	t.Log("Dimensions std's range: ", minStd, maxStd)
-	minMean, maxMean := bench.GetFloat64Range([][]float64{data.Mean})
-	t.Log("Dimensions mean's range: ", minMean, maxMean)
-
 	// NOTE: look at the ground truth distances values
 	minDist, maxDist := bench.GetFloat64Range(data.Distances)
 	t.Log("Ground truth distances range: ", minDist, maxDist)
 
 	config := &bench.SearchConfig{
-		LshPlaneBiasMultiplier: 0.0,
-		Metric:                 lsh.NewCosine(),
-		NDims:                  256,
-		BatchSize:              250,
-		NPlanes:                12,
-		NPermutes:              12,
-		MaxNN:                  100,
-		MaxDist:                0.9,
-		Bias:                   data.Mean,
+		Metric:        lsh.NewL2(),
+		MaxNN:         100,
+		MaxDist:       2800,
+		MaxCandidates: 60000,
 	}
 
 	t.Run("NN", func(t *testing.T) {
 		testNearestNeighbors(t, config, data)
 	})
+
+	config = &bench.SearchConfig{
+		NDims:         784,
+		BatchSize:     250,
+		NPlanes:       15,
+		NPermutes:     10,
+		Metric:        lsh.NewL2(),
+		MaxNN:         100,
+		MaxDist:       2800,
+		MaxCandidates: 1000,
+	}
+
 	t.Run("LSH", func(t *testing.T) {
 		testLSH(t, config, data)
 	})
 }
 
-func TestEuclideanSift(t *testing.T) {
-	dataConfig := &bench.BenchDataConfig{
-		DatasetPath:  "../test-data/sift-128-euclidean.hdf5",
-		SampleSize:   200000,
-		TrainDim:     128,
-		NeighborsDim: 100,
-	}
-	data, err := bench.PrepHdf5BenchDataset(dataConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-	minStd, maxStd := bench.GetFloat64Range([][]float64{data.Std})
-	t.Log("Dimensions std's range: ", minStd, maxStd)
-	minMean, maxMean := bench.GetFloat64Range([][]float64{data.Mean})
-	t.Log("Dimensions mean's range: ", minMean, maxMean)
+// func TestAngularNYTimes(t *testing.T) {
+// 	dataConfig := &bench.BenchDataConfig{
+// 		DatasetPath:  "../test-data/nytimes-256-angular.hdf5",
+// 		SampleSize:   60000,
+// 		TrainDim:     256,
+// 		NeighborsDim: 100,
+// 	}
+// 	data, err := bench.PrepHdf5BenchDataset(dataConfig)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	minStd, maxStd := bench.GetFloat64Range([][]float64{data.Std})
+// 	t.Log("Dimensions std's range: ", minStd, maxStd)
+// 	minMean, maxMean := bench.GetFloat64Range([][]float64{data.Mean})
+// 	t.Log("Dimensions mean's range: ", minMean, maxMean)
 
-	// NOTE: look at the ground truth distances values
-	minDist, maxDist := bench.GetFloat64Range(data.Distances)
-	t.Log("Ground truth distances range: ", minDist, maxDist)
+// 	// NOTE: look at the ground truth distances values
+// 	minDist, maxDist := bench.GetFloat64Range(data.Distances)
+// 	t.Log("Ground truth distances range: ", minDist, maxDist)
 
-	config := &bench.SearchConfig{
-		LshPlaneBiasMultiplier: 1.0,
-		Metric:                 lsh.NewL2(),
-		NDims:                  128,
-		BatchSize:              500,
-		NPlanes:                20,
-		NPermutes:              10,
-		MaxNN:                  100,
-		MaxDist:                400,
-		Bias:                   data.Mean,
-	}
+// 	config := &bench.SearchConfig{
+// 		LshPlaneBiasMultiplier: 0.0,
+// 		Metric:                 lsh.NewCosine(),
+// 		NDims:                  256,
+// 		BatchSize:              250,
+// 		NPlanes:                12,
+// 		NPermutes:              12,
+// 		MaxNN:                  100,
+// 		MaxDist:                0.9,
+// 		Bias:                   data.Mean,
+// 	}
 
-	t.Run("NN", func(t *testing.T) {
-		testNearestNeighbors(t, config, data)
-	})
-	t.Run("LSH", func(t *testing.T) {
-		testLSH(t, config, data)
-	})
-}
+// 	t.Run("NN", func(t *testing.T) {
+// 		testNearestNeighbors(t, config, data)
+// 	})
+// 	t.Run("LSH", func(t *testing.T) {
+// 		testLSH(t, config, data)
+// 	})
+// }
 
-func TestAngularGlove(t *testing.T) {
-	dataConfig := &bench.BenchDataConfig{
-		DatasetPath:  "../test-data/glove-200-angular.hdf5",
-		SampleSize:   200000,
-		TrainDim:     200,
-		NeighborsDim: 100,
-	}
-	data, err := bench.PrepHdf5BenchDataset(dataConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-	minStd, maxStd := bench.GetFloat64Range([][]float64{data.Std})
-	t.Log("Dimensions std's range: ", minStd, maxStd)
-	minMean, maxMean := bench.GetFloat64Range([][]float64{data.Mean})
-	t.Log("Dimensions mean's range: ", minMean, maxMean)
+// func TestEuclideanSift(t *testing.T) {
+// 	dataConfig := &bench.BenchDataConfig{
+// 		DatasetPath:  "../test-data/sift-128-euclidean.hdf5",
+// 		SampleSize:   200000,
+// 		TrainDim:     128,
+// 		NeighborsDim: 100,
+// 	}
+// 	data, err := bench.PrepHdf5BenchDataset(dataConfig)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	minStd, maxStd := bench.GetFloat64Range([][]float64{data.Std})
+// 	t.Log("Dimensions std's range: ", minStd, maxStd)
+// 	minMean, maxMean := bench.GetFloat64Range([][]float64{data.Mean})
+// 	t.Log("Dimensions mean's range: ", minMean, maxMean)
 
-	// NOTE: look at the ground truth distances values
-	minDist, maxDist := bench.GetFloat64Range(data.Distances)
-	t.Log("Ground truth distances range: ", minDist, maxDist)
+// 	// NOTE: look at the ground truth distances values
+// 	minDist, maxDist := bench.GetFloat64Range(data.Distances)
+// 	t.Log("Ground truth distances range: ", minDist, maxDist)
 
-	config := &bench.SearchConfig{
-		LshPlaneBiasMultiplier: 0.0,
-		Metric:                 lsh.NewCosine(),
-		NDims:                  200,
-		BatchSize:              500,
-		NPlanes:                20,
-		NPermutes:              10,
-		MaxNN:                  100,
-		MaxDist:                0.9,
-		Bias:                   data.Mean,
-	}
+// 	config := &bench.SearchConfig{
+// 		LshPlaneBiasMultiplier: 1.0,
+// 		Metric:                 lsh.NewL2(),
+// 		NDims:                  128,
+// 		BatchSize:              500,
+// 		NPlanes:                20,
+// 		NPermutes:              10,
+// 		MaxNN:                  100,
+// 		MaxDist:                400,
+// 		Bias:                   data.Mean,
+// 	}
 
-	t.Run("NN", func(t *testing.T) {
-		testNearestNeighbors(t, config, data)
-	})
-	t.Run("LSH", func(t *testing.T) {
-		testLSH(t, config, data)
-	})
-}
+// 	t.Run("NN", func(t *testing.T) {
+// 		testNearestNeighbors(t, config, data)
+// 	})
+// 	t.Run("LSH", func(t *testing.T) {
+// 		testLSH(t, config, data)
+// 	})
+// }
+
+// func TestAngularGlove(t *testing.T) {
+// 	dataConfig := &bench.BenchDataConfig{
+// 		DatasetPath:  "../test-data/glove-200-angular.hdf5",
+// 		SampleSize:   200000,
+// 		TrainDim:     200,
+// 		NeighborsDim: 100,
+// 	}
+// 	data, err := bench.PrepHdf5BenchDataset(dataConfig)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	minStd, maxStd := bench.GetFloat64Range([][]float64{data.Std})
+// 	t.Log("Dimensions std's range: ", minStd, maxStd)
+// 	minMean, maxMean := bench.GetFloat64Range([][]float64{data.Mean})
+// 	t.Log("Dimensions mean's range: ", minMean, maxMean)
+
+// 	// NOTE: look at the ground truth distances values
+// 	minDist, maxDist := bench.GetFloat64Range(data.Distances)
+// 	t.Log("Ground truth distances range: ", minDist, maxDist)
+
+// 	config := &bench.SearchConfig{
+// 		LshPlaneBiasMultiplier: 0.0,
+// 		Metric:                 lsh.NewCosine(),
+// 		NDims:                  200,
+// 		BatchSize:              500,
+// 		NPlanes:                20,
+// 		NPermutes:              10,
+// 		MaxNN:                  100,
+// 		MaxDist:                0.9,
+// 		Bias:                   data.Mean,
+// 	}
+
+// 	t.Run("NN", func(t *testing.T) {
+// 		testNearestNeighbors(t, config, data)
+// 	})
+// 	t.Run("LSH", func(t *testing.T) {
+// 		testLSH(t, config, data)
+// 	})
+// }

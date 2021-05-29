@@ -156,26 +156,26 @@ During experiments I used the following datasets:
 [Fashion MNIST](https://github.com/zalandoresearch/fashion-mnist):  
 | Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
 |-------------------------|:---------------:|---------------------:|:----------:|:-------|
-| Exact nearest neighbors |       XXX       |         XXXXX        |    0.990    | 0.990 |
-| LSH                     |      XXXXX      |         XXXX         |    0.991    | 0.989 |  
+| Exact nearest neighbors |       XXX       |         XXXXX        |     1      |   1    |
+| LSH                     |      XXXXX      |         XXXX         |    XXXX    |  XXXX  |  
 
 [NY times](https://archive.ics.uci.edu/ml/datasets/bag+of+words):  
 | Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
 |-------------------------|:---------------:|---------------------:|:----------:|:-------|
-| Exact nearest neighbors |       XXX       |        XXXXXX        |    0.989    | 0.989 |
-| LSH                     |      XXXXX      |        XXXXX         |    0.989    | 0.987 |  
+| Exact nearest neighbors |       XXX       |        XXXXXX        |     1      |   1    |
+| LSH                     |      XXXXX      |        XXXXX         |    XXXX    |  XXXX  |  
 
 
 [SIFT](https://corpus-texmex.irisa.fr/):  
 | Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
 |-------------------------|:---------------:|---------------------:|:----------:|:-------|
-| Exact nearest neighbors |       XXX       |        XXXXXX        |    0.989    | 0.989 |
-| LSH                     |      XXXXX      |        XXXXX         |    0.989    | 0.987 |  
+| Exact nearest neighbors |       XXX       |        XXXXXX        |     1      |   1    |
+| LSH                     |      XXXXX      |        XXXXX         |    XXXX    |  XXXX  |  
 
 [GloVe](http://nlp.stanford.edu/projects/glove/):  
 | Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
 |-------------------------|:---------------:|---------------------:|:----------:|:-------|
-| Exact nearest neighbors |       XXX       |        XXXXXX        |    0.989    | 0.989 |
-| LSH                     |      XXXXX      |        XXXXX         |    0.989    | 0.987 |  
+| Exact nearest neighbors |       XXX       |        XXXXXX        |     1      |   1    |
+| LSH                     |      XXXXX      |        XXXXX         |    XXXX    |  XXXX  |  
 
 I picked parameters manually, to get the best tradeoff between speed and accuracy.  

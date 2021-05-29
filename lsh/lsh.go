@@ -1,9 +1,9 @@
 package lsh
 
 import (
+	"container/heap"
 	"errors"
 	"github.com/gasparian/lsh-search-go/store"
-	"gonum.org/v1/gonum/blas/blas64"
 	"sync"
 )
 
@@ -17,6 +17,37 @@ type Record struct {
 	Vec []float64
 }
 
+// Neighbor represent neighbor vector with distance to the query vector
+type Neighbor struct {
+	Record
+	Dist float64
+}
+
+type FloatMinHeap []Neighbor
+
+func (h FloatMinHeap) Len() int {
+	return len(h)
+}
+
+func (h FloatMinHeap) Less(i, j int) bool {
+	return h[i].Dist < h[j].Dist
+}
+
+func (h FloatMinHeap) Swap(i, j int) {
+	h[i], h[j] = h[j], h[i]
+}
+
+func (h *FloatMinHeap) Push(x interface{}) {
+	*h = append(*h, x.(Neighbor))
+}
+
+func (h *FloatMinHeap) Pop() interface{} {
+	tailIndex := h.Len() - 1
+	tail := (*h)[tailIndex]
+	*h = (*h)[:tailIndex]
+	return tail
+}
+
 // Metric holds implementation of needed distance metric
 type Metric interface {
 	GetDist(l, r []float64) float64
@@ -25,17 +56,16 @@ type Metric interface {
 // Indexer holds implementation of NN search index
 type Indexer interface {
 	Train(records []Record) error
-	Search(query []float64, maxNN int, distanceThrsh float64) ([]Record, error)
+	Search(query []float64, maxNN int, distanceThrsh float64) ([]Neighbor, error)
 }
 
 // IndexConfig ...
 type IndexConfig struct {
-	mx        *sync.RWMutex
-	BatchSize int
-	Bias      []float64
-
-	dims int
-	bias blas64.Vector
+	mx            *sync.RWMutex
+	BatchSize     int
+	Bias          []float64
+	Std           []float64
+	MaxCandidates int
 }
 
 // Config holds all needed constants for creating the Hasher instance
@@ -49,16 +79,8 @@ type LSHIndex struct {
 	config         IndexConfig
 	index          store.Store
 	hasher         *Hasher
+	scaler         *StandartScaler
 	distanceMetric Metric
-}
-
-func checkConvertVec(inp []float64, dims int) blas64.Vector {
-	inpVecInternal := NewVec(make([]float64, dims))
-	if inp != nil && len(inp) == dims {
-		inpVecInternal.Data = inp
-		copy(inpVecInternal.Data, inp)
-	}
-	return inpVecInternal
 }
 
 // New creates new instance of hasher and index, where generated hashes will be stored
@@ -71,13 +93,12 @@ func NewLsh(config Config, store store.Store, metric Metric) (*LSHIndex, error) 
 		return nil, err
 	}
 	config.IndexConfig.mx = new(sync.RWMutex)
-	config.IndexConfig.dims = config.HasherConfig.Dims
-	config.IndexConfig.bias = checkConvertVec(config.Bias, config.IndexConfig.dims)
 	return &LSHIndex{
 		config:         config.IndexConfig,
 		hasher:         hasher,
 		index:          store,
 		distanceMetric: metric,
+		scaler:         NewStandartScaler(config.Bias, config.Std, config.HasherConfig.Dims),
 	}, nil
 }
 
@@ -89,7 +110,6 @@ func (lsh *LSHIndex) Train(records []Record) error {
 	}
 	lsh.config.mx.RLock()
 	batchSize := lsh.config.BatchSize
-	bias := lsh.config.bias
 	lsh.config.mx.RUnlock()
 
 	wg := sync.WaitGroup{}
@@ -99,38 +119,34 @@ func (lsh *LSHIndex) Train(records []Record) error {
 		if end > len(records) {
 			end = len(records)
 		}
-		go func(batch []Record, bias blas64.Vector, wg *sync.WaitGroup) {
+		go func(batch []Record, wg *sync.WaitGroup) {
 			defer wg.Done()
-			shifted := NewVec(make([]float64, bias.N))
 			for _, rec := range batch {
-				copy(shifted.Data, rec.Vec)
-				blas64.Axpy(-1.0, bias, shifted)
-				hashes := lsh.hasher.getHashes(shifted)
+				scaled := lsh.scaler.Scale(rec.Vec)
+				hashes := lsh.hasher.getHashes(scaled)
 				lsh.index.SetVector(rec.ID, rec.Vec)
 				for perm, hash := range hashes {
 					lsh.index.SetHash(perm, hash, rec.ID)
 				}
 			}
-		}(records[i:end], bias, &wg)
+		}(records[i:end], &wg)
 	}
 	wg.Wait()
 	return nil
 }
 
 // Search returns NNs for the query point
-func (lsh *LSHIndex) Search(query []float64, maxNN int, distanceThrsh float64) ([]Record, error) {
+func (lsh *LSHIndex) Search(query []float64, maxNN int, distanceThrsh float64) ([]Neighbor, error) {
 	lsh.config.mx.RLock()
-	config := lsh.config
-	shiftedQuery := NewVec(make([]float64, len(query)))
-	copy(shiftedQuery.Data, query)
-	blas64.Axpy(-1.0, config.bias, shiftedQuery)
+	maxCandidates := lsh.config.MaxCandidates
 	lsh.config.mx.RUnlock()
-	hashes := lsh.hasher.getHashes(shiftedQuery)
+	scaledQuery := lsh.scaler.Scale(query)
+	hashes := lsh.hasher.getHashes(scaledQuery)
 
 	closestSet := make(map[string]bool)
-	closest := make([]Record, 0)
+	minHeap := new(FloatMinHeap)
 	for perm, hash := range hashes {
-		if len(closest) >= maxNN {
+		if minHeap.Len() >= maxCandidates {
 			break
 		}
 		iter, err := lsh.index.GetHashIterator(perm, hash)
@@ -138,14 +154,13 @@ func (lsh *LSHIndex) Search(query []float64, maxNN int, distanceThrsh float64) (
 			continue // NOTE: it's normal when we couldn't find bucket for the query point
 		}
 		for {
-			if len(closest) >= maxNN {
+			if minHeap.Len() >= maxCandidates {
 				break
 			}
 			id, opened := iter.Next()
 			if !opened {
 				break
 			}
-
 			if closestSet[id] {
 				continue
 			}
@@ -156,9 +171,19 @@ func (lsh *LSHIndex) Search(query []float64, maxNN int, distanceThrsh float64) (
 			dist := lsh.distanceMetric.GetDist(vec, query)
 			if dist <= distanceThrsh {
 				closestSet[id] = true
-				closest = append(closest, Record{ID: id, Vec: vec})
+				heap.Push(
+					minHeap,
+					Neighbor{
+						Record: Record{ID: id, Vec: vec},
+						Dist:   dist,
+					},
+				)
 			}
 		}
+	}
+	closest := make([]Neighbor, 0)
+	for i := 0; i < maxNN && minHeap.Len() > 0; i++ {
+		closest = append(closest, heap.Pop(minHeap).(Neighbor))
 	}
 	return closest, nil
 }

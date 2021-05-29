@@ -1,6 +1,7 @@
 package annbench
 
 import (
+	"container/heap"
 	lsh "github.com/gasparian/lsh-search-go/lsh"
 	"github.com/gasparian/lsh-search-go/store"
 	guuid "github.com/google/uuid"
@@ -19,15 +20,14 @@ type BenchDataConfig struct {
 }
 
 type SearchConfig struct {
-	Metric                 lsh.Metric
-	MaxDist                float64
-	LshPlaneBiasMultiplier float64
-	NDims                  int
-	NPlanes                int
-	NPermutes              int
-	MaxNN                  int
-	BatchSize              int
-	Bias                   []float64
+	Metric        lsh.Metric
+	MaxDist       float64
+	NDims         int
+	NPlanes       int
+	NPermutes     int
+	MaxNN         int
+	MaxCandidates int
+	BatchSize     int
 }
 
 type BenchData struct {
@@ -41,7 +41,7 @@ type BenchData struct {
 }
 
 type Prediction struct {
-	Records []lsh.Record
+	Records []lsh.Neighbor
 	Idx     int
 }
 
@@ -49,12 +49,14 @@ type NNMock struct {
 	mx             sync.RWMutex
 	index          store.Store
 	distanceMetric lsh.Metric
+	MaxCandidates  int
 }
 
-func NewNNMock(store store.Store, metric lsh.Metric) *NNMock {
+func NewNNMock(maxCandidates int, store store.Store, metric lsh.Metric) *NNMock {
 	return &NNMock{
 		index:          store,
 		distanceMetric: metric,
+		MaxCandidates:  maxCandidates,
 	}
 }
 
@@ -70,20 +72,23 @@ func (nn *NNMock) Train(records []lsh.Record) error {
 	return nil
 }
 
-func (nn *NNMock) Search(query []float64, maxNN int, distanceThrsh float64) ([]lsh.Record, error) {
+func (nn *NNMock) Search(query []float64, maxNN int, distanceThrsh float64) ([]lsh.Neighbor, error) {
+	nn.mx.RLock()
+	maxCandidates := nn.MaxCandidates
+	nn.mx.RUnlock()
+
 	closestSet := make(map[string]bool)
-	closest := make([]lsh.Record, 0)
+	minHeap := new(lsh.FloatMinHeap)
 
 	iter, _ := nn.index.GetHashIterator(0, 0)
 	for {
-		if len(closest) >= maxNN {
+		if minHeap.Len() >= maxCandidates {
 			break
 		}
 		id, opened := iter.Next()
 		if !opened {
 			break
 		}
-
 		if closestSet[id] {
 			continue
 		}
@@ -94,8 +99,18 @@ func (nn *NNMock) Search(query []float64, maxNN int, distanceThrsh float64) ([]l
 		dist := nn.distanceMetric.GetDist(vec, query)
 		if dist <= distanceThrsh {
 			closestSet[id] = true
-			closest = append(closest, lsh.Record{ID: id, Vec: vec})
+			heap.Push(
+				minHeap,
+				lsh.Neighbor{
+					Record: lsh.Record{ID: id, Vec: vec},
+					Dist:   dist,
+				},
+			)
 		}
+	}
+	closest := make([]lsh.Neighbor, 0)
+	for i := 0; i < maxNN && minHeap.Len() > 0; i++ {
+		closest = append(closest, heap.Pop(minHeap).(lsh.Neighbor))
 	}
 	return closest, nil
 }
@@ -117,20 +132,23 @@ func GetFloat64Range(data [][]float64) (float64, float64) {
 }
 
 // Recall returns ratio of relevant predictions over the all true relevant items
-// both arrays MUST BE SORTED
 func PrecisionRecall(prediction, groundTruth []int) (float64, float64) {
+	gtSet := make(map[int]bool)
+	for _, gt := range groundTruth {
+		gtSet[gt] = true
+	}
 	valid := 0
 	for _, val := range prediction {
-		idx := sort.SearchInts(groundTruth, val)
-		if idx < len(groundTruth) {
+		if gtSet[val] {
 			valid++
 		}
 	}
+	validFloat := float64(valid)
 	precision := 0.0
 	if len(prediction) > 0 {
-		precision = float64(valid) / float64(len(prediction))
+		precision = validFloat / float64(len(prediction))
 	}
-	recall := float64(valid) / float64(len(groundTruth))
+	recall := validFloat / float64(len(groundTruth))
 	return precision, recall
 }
 
@@ -189,6 +207,11 @@ func PrepHdf5BenchDataset(config *BenchDataConfig) (*BenchData, error) {
 	}
 	train = nil
 
+	data.TrainIndices = make(map[string]int)
+	for i := range data.Train {
+		data.TrainIndices[data.Train[i].ID] = i
+	}
+
 	data.Mean, data.Std, err = lsh.GetMeanStdSampledRecords(data.Train, config.SampleSize)
 	if err != nil {
 		return nil, err
@@ -212,16 +235,9 @@ func PrepHdf5BenchDataset(config *BenchDataConfig) (*BenchData, error) {
 	}
 	data.Neighbors = make([][]int, len(neighbors)/config.NeighborsDim)
 	for i := 0; i <= len(neighbors)-config.NeighborsDim; i = i + config.NeighborsDim {
-		arr := lsh.ConvertToInt(neighbors[i : i+config.NeighborsDim])
-		sort.Ints(arr)
-		data.Neighbors[i/config.NeighborsDim] = arr
+		data.Neighbors[i/config.NeighborsDim] = lsh.ConvertToInt(neighbors[i : i+config.NeighborsDim])
 	}
 	neighbors = nil
-
-	data.TrainIndices = make(map[string]int)
-	for i := range data.Train {
-		data.TrainIndices[data.Train[i].ID] = i
-	}
 
 	distances := []float32{}
 	err = GetVectorsFromHDF5(f, "distances", &distances)
@@ -233,7 +249,6 @@ func PrepHdf5BenchDataset(config *BenchDataConfig) (*BenchData, error) {
 		data.Distances[i/config.NeighborsDim] = lsh.ConvertTo64(distances[i : i+config.NeighborsDim])
 	}
 	distances = nil
-	// data.distances = make([][]float64, 0)
 
 	return data, nil
 }

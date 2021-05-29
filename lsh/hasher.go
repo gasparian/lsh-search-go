@@ -45,10 +45,9 @@ func (lshInstance *HasherInstance) getHash(inpVec blas64.Vector) uint64 {
 }
 
 type HasherConfig struct {
-	NPermutes           int
-	NPlanes             int
-	PlaneBiasMultiplier float64
-	Dims                int
+	NPermutes int
+	NPlanes   int
+	Dims      int
 }
 
 // Hasher holds N_PERMUTS number of HasherInstance instances
@@ -77,7 +76,7 @@ func (hasher *Hasher) getRandomPlane() blas64.Vector {
 	for i := 0; i < hasher.Config.Dims; i++ {
 		coefs[i] = -1.0 + rand.Float64()*2
 	}
-	coefs[len(coefs)-1] = -1.0*hasher.Config.PlaneBiasMultiplier + rand.Float64()*hasher.Config.PlaneBiasMultiplier*2
+	coefs[len(coefs)-1] = -1.0 + rand.Float64()*2
 	return NewVec(coefs)
 }
 

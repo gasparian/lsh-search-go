@@ -154,20 +154,39 @@ type StandartScaler struct {
 	std  *mat.VecDense
 }
 
-func NewStandartScaler(mean, std []float64) *StandartScaler {
-	return &StandartScaler{
-		mean: mat.NewVecDense(len(mean), mean),
-		std:  mat.NewVecDense(len(mean), std),
+func checkConvertVec(inp []float64, fill float64, nDims int) blas64.Vector {
+	inpVecInternal := NewVec(make([]float64, nDims))
+	if inp != nil && len(inp) == nDims {
+		inpVecInternal.Data = inp
+		copy(inpVecInternal.Data, inp)
+		return inpVecInternal
 	}
+	if fill > 0 {
+		for i := range inpVecInternal.Data {
+			inpVecInternal.Data[i] = fill
+		}
+	}
+	return inpVecInternal
 }
 
-func (s *StandartScaler) Scale(vec []float64) []float64 {
+func NewStandartScaler(mean, std []float64, nDims int) *StandartScaler {
+	scaler := &StandartScaler{}
+	scaler.mean = mat.NewVecDense(len(mean), nil)
+	scaler.mean.SetRawVector(checkConvertVec(mean, 0.0, nDims))
+	scaler.std = mat.NewVecDense(len(mean), nil)
+	scaler.std.SetRawVector(checkConvertVec(std, 1.0, nDims))
+	return scaler
+}
+
+func (s *StandartScaler) Scale(vec []float64) blas64.Vector {
 	s.RLock()
 	defer s.RUnlock()
-	res := mat.NewVecDense(len(vec), nil)
-	res.AddScaledVec(mat.NewVecDense(len(vec), vec), -1.0, s.mean)
+	cpy := make([]float64, len(vec))
+	copy(cpy, vec)
+	res := mat.NewVecDense(len(cpy), cpy)
+	res.AddScaledVec(res, -1.0, s.mean)
 	res.DivElemVec(res, s.std)
-	return res.RawVector().Data
+	return res.RawVector()
 }
 
 // IsZeroVectorBlas returns true if the sum of vectors' elements close to 0.0
