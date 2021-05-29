@@ -70,24 +70,24 @@ const (
 // Define search parameters
 lshConfig := lsh.Config{
     IndexConfig: lsh.IndexConfig{
-        BatchSize: 250,  // How much points to process in a single goroutine 
-                         // during the training phase
-        Bias:      mean, // Optionally, you can use some bias vector, 
-                         // to "center" the data points before the
-                         // hash calculation on train and search, 
-                         // since planes are generated near the 
-                         // center of coordinates.
-                         // Usually I use mean vector here.
-                         // (you can pass nil or the empty slice)
+        BatchSize:     250,  // How much points to process in a single goroutine 
+                             // during the training phase
+        Bias:          mean, // Optionally, you can use some bias vector, 
+                             // to "center" the data points before the
+                             // hash calculation on train and search, 
+                             // since planes are generated near the 
+                             // center of coordinates.
+                             // Usually I use mean vector here.
+                             // (you can pass nil or the empty slice)
+        Std:           std,  // Std used for standart scaling, can be nil or empty slice
+                             // usually applied with euclidean distance metric
+        MaxCandidates: 1000, // Maximum number of points that will be stored
+                             // in a min heap, where we then get MaxNN vectors
     },
     HasherConfig: lsh.HasherConfig{
-        NPermutes:           10,  // Number of planes permutations to generate
-        NPlanes:             12,  // Number of planes in a single permutation to generate
-        PlaneBiasMultiplier: 1.0, // Sets how far from each other will planes be generated.
-                                  // For instance, if you're using angular metric - it's 
-                                  // better to use 0.0 - so all generated planes will 
-                                  // intersect center of coordinates
-        Dims:                784, // Space dimensionality
+        NPermutes: 10,  // Number of planes permutations to generate
+        NPlanes:   12,  // Number of planes in a single permutation to generate
+        Dims:      784, // Space dimensionality
     },
 }
 // Store implementation, you can use yours
