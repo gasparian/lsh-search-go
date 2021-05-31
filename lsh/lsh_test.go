@@ -16,15 +16,20 @@ func TestGetHash(t *testing.T) {
 	hasherInstance := HasherInstance{
 		Planes: []Plane{
 			Plane{
-				Coefs: NewVec([]float64{1.0, 1.0, 1.0}),
-				D:     5,
+				N: NewVec([]float64{1.0, 1.0, 1.0}),
+				D: 5,
 			},
 		},
 	}
-	inpVec := NewVec([]float64{5.0, 1.0, 1.0})
+	inpVec := NewVec([]float64{-5.0, -1.0, -1.0})
 	hash := hasherInstance.getHash(inpVec)
 	if hash != 1 {
 		t.Fatal("Wrong hash value, must be 1")
+	}
+	inpVec = NewVec([]float64{-5.0, -1.0, 1.0})
+	hash = hasherInstance.getHash(inpVec)
+	if hash != 0 {
+		t.Fatal("Wrong hash value, must be 0")
 	}
 	inpVec = NewVec([]float64{1.0, 1.0, 1.0})
 	hash = hasherInstance.getHash(inpVec)
@@ -53,34 +58,11 @@ func TestGenerateAngular(t *testing.T) {
 		t.Fatalf("Smth went wrong with planes generation: %v", err)
 	}
 
-	isHasherEmpty := IsZeroVectorBlas(hasherAngular.Instances[0].Planes[0].Coefs) ||
-		IsZeroVectorBlas(hasherAngular.Instances[0].Planes[0].Coefs)
+	isHasherEmpty := IsZeroVectorBlas(hasherAngular.Instances[0].Planes[0].N) ||
+		IsZeroVectorBlas(hasherAngular.Instances[0].Planes[0].N)
 	if isHasherEmpty {
 		t.Fatal("One of the hasher instances is empty")
 	}
-}
-
-// TODO: flaky test, fix later
-func TestGenerate(t *testing.T) {
-	// config := HasherConfig{
-	// 	NPermutes: 2,
-	// 	NPlanes:   2,
-	// 	Dims:      3,
-	// }
-	// hasher, err := getNewHasher(config)
-	// if err != nil {
-	// 	t.Fatalf("Smth went wrong with planes generation: %v", err)
-	// }
-	// var distToOrigin float64
-	// maxDist := 3.0
-	// for _, hasherInstance := range hasher.Instances {
-	// 	for _, plane := range hasherInstance.Planes {
-	// 		distToOrigin = math.Abs(plane.D) / blas64.Nrm2(plane.Coefs)
-	// 		if distToOrigin > maxDist {
-	// 			t.Fatalf("Generated plane is out of bounds defined by hasher config [%v, %v]", distToOrigin, maxDist)
-	// 		}
-	// 	}
-	// }
 }
 
 func TestCosineSim(t *testing.T) {

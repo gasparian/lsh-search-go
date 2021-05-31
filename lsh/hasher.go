@@ -18,8 +18,8 @@ var (
 
 // Plane struct holds data needed to work with plane
 type Plane struct {
-	Coefs blas64.Vector
-	D     float64
+	N blas64.Vector
+	D float64
 }
 
 // HasherInstance holds data for local sensetive hashing algorithm
@@ -35,9 +35,9 @@ func (lshInstance *HasherInstance) getHash(inpVec blas64.Vector) uint64 {
 	var hash uint64
 	for i, plane := range lshInstance.Planes {
 		blas64.Copy(inpVec, vec)
-		dp = blas64.Dot(vec, plane.Coefs) - plane.D
-		dpSign = math.Signbit(dp)
-		if !dpSign {
+		dp = blas64.Dot(vec, plane.N) + plane.D
+		dpSign = math.Signbit(dp) // NOTE: returns true if dp < 0
+		if dpSign {
 			hash |= (1 << i)
 		}
 	}
@@ -45,9 +45,10 @@ func (lshInstance *HasherInstance) getHash(inpVec blas64.Vector) uint64 {
 }
 
 type HasherConfig struct {
-	NPermutes int
-	NPlanes   int
-	Dims      int
+	NPermutes     int
+	NPlanes       int
+	Dims          int
+	isCrossOrigin bool
 }
 
 // Hasher holds N_PERMUTS number of HasherInstance instances
@@ -71,13 +72,17 @@ type safeHashesHolder struct {
 }
 
 // GetRandomPlane generates random coefficients of a plane
-func (hasher *Hasher) getRandomPlane() blas64.Vector {
-	coefs := make([]float64, hasher.Config.Dims+1)
+func (hasher *Hasher) getRandomPlane() Plane {
+	plane := Plane{N: NewVec(make([]float64, hasher.Config.Dims))}
 	for i := 0; i < hasher.Config.Dims; i++ {
-		coefs[i] = -1.0 + rand.Float64()*2
+		plane.N.Data[i] = -1.0 + rand.Float64()*2
 	}
-	coefs[len(coefs)-1] = -1.0 + rand.Float64()*2
-	return NewVec(coefs)
+	maxD := 0.0
+	if !hasher.Config.isCrossOrigin {
+		maxD = 2.0 * blas64.Nrm2(plane.N) // NOTE: 2sigma max dist
+	}
+	plane.D = -1.0 * (-1.0*maxD + rand.Float64()*maxD*2)
+	return plane
 }
 
 // newHasherInstance creates set of planes which will be used to calculate hash
@@ -87,13 +92,9 @@ func (hasher *Hasher) newHasherInstance() (HasherInstance, error) {
 	}
 	rand.Seed(time.Now().UnixNano())
 	lshInstance := HasherInstance{}
-	var coefs blas64.Vector
 	for i := 0; i < hasher.Config.NPlanes; i++ {
-		coefs = hasher.getRandomPlane()
-		lshInstance.Planes = append(lshInstance.Planes, Plane{
-			Coefs: NewVec(coefs.Data[:coefs.N-1]),
-			D:     coefs.Data[coefs.N-1],
-		})
+		plane := hasher.getRandomPlane()
+		lshInstance.Planes = append(lshInstance.Planes, plane)
 	}
 	return lshInstance, nil
 }

@@ -80,7 +80,7 @@ lshConfig := lsh.Config{
                              // Usually I use mean vector here.
                              // (you can pass nil or the empty slice)
         Std:           std,  // Std used for standart scaling, can be nil or empty slice
-                             // usually applied with euclidean distance metric
+                             // (e.g. when you use angular metrics)
         MaxCandidates: 1000, // Maximum number of points that will be stored
                              // in a min heap, where we then get MaxNN vectors
     },
