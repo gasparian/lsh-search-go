@@ -99,7 +99,7 @@ func (hasher *Hasher) newHasherInstance() (HasherInstance, error) {
 	return lshInstance, nil
 }
 
-// Generate method creates the lsh instances
+// Generate method creates the hasher instances
 func (hasher *Hasher) generate() error {
 	hasher.mutex.Lock()
 	defer hasher.mutex.Unlock()

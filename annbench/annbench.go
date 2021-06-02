@@ -41,8 +41,8 @@ type BenchData struct {
 }
 
 type Prediction struct {
-	Records []lsh.Neighbor
-	Idx     int
+	Neighbors []lsh.Neighbor
+	Idx       int
 }
 
 type NNMock struct {
@@ -152,13 +152,37 @@ func PrecisionRecall(prediction, groundTruth []int) (float64, float64) {
 	return precision, recall
 }
 
+// DistanceBasedPrecisionRecall https://arxiv.org/pdf/1807.05614.pdf
+func DistanceBasedPrecisionRecall(predIdxs, gtIdxs []int, prediction []lsh.Neighbor, groundTruth []float64, epsilon float64) (float64, float64) {
+	gtSet := make(map[int]bool)
+	for _, gt := range gtIdxs {
+		gtSet[gt] = true
+	}
+	valid := 0
+	length := len(groundTruth)
+	if len(prediction) < length {
+		length = len(prediction)
+	}
+	for i := 0; i < length; i++ {
+		if gtSet[predIdxs[i]] && (prediction[i].Dist <= ((1 + epsilon) * groundTruth[i])) {
+			valid++
+		}
+	}
+	validFloat := float64(valid)
+	precision := 0.0
+	if len(prediction) > 0 {
+		precision = validFloat / float64(len(prediction))
+	}
+	recall := validFloat / float64(len(groundTruth))
+	return precision, recall
+}
+
+// GetVectorsFromHDF5 returns slice of feature vectors, from the hdf5 table
 // Objects inside the hdf5:
 // train
 // test
 // distances
 // neighbors
-
-// GetVectorsFromHDF5 returns slice of feature vectors, from the hdf5 table
 func GetVectorsFromHDF5(table *hdf5.File, datasetName string, vecs interface{}) error {
 	dataset, err := table.OpenDataset(datasetName)
 	if err != nil {

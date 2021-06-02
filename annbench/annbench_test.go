@@ -37,8 +37,8 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN
 				if err != nil {
 					panic(err)
 				}
-				predCh <- bench.Prediction{Records: closest, Idx: startIdx + j}
 				atomic.AddInt64(&elapsedTimeMs, int64(time.Since(start)/time.Millisecond))
+				predCh <- bench.Prediction{Neighbors: closest, Idx: startIdx + j}
 			}
 		}(data.Test[i:end], i, &wg)
 	}
@@ -48,10 +48,16 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN
 	precision, recall := 0.0, 0.0
 	for pred := range predCh {
 		closestPointsArr := make([]int, 0)
-		for _, cl := range pred.Records {
+		for _, cl := range pred.Neighbors {
 			closestPointsArr = append(closestPointsArr, data.TrainIndices[cl.ID])
 		}
-		p, r := bench.PrecisionRecall(closestPointsArr, data.Neighbors[pred.Idx])
+		p, r := bench.DistanceBasedPrecisionRecall(
+			closestPointsArr,
+			data.Neighbors[pred.Idx][:maxNN],
+			pred.Neighbors,
+			data.Distances[pred.Idx][:maxNN],
+			0.2,
+		)
 		precision += p
 		recall += r
 	}
@@ -117,24 +123,24 @@ func TestEuclideanFashionMnist(t *testing.T) {
 
 	config := &bench.SearchConfig{
 		Metric:        lsh.NewL2(),
-		MaxNN:         100,
-		MaxDist:       2800,
-		MaxCandidates: 60000,
+		MaxNN:         10,
+		MaxDist:       2200,
+		MaxCandidates: 30000,
 	}
 
-	t.Run("NN", func(t *testing.T) {
-		testNearestNeighbors(t, config, data)
-	})
+	// t.Run("NN", func(t *testing.T) {
+	// 	testNearestNeighbors(t, config, data)
+	// })
 
 	config = &bench.SearchConfig{
 		NDims:         784,
 		BatchSize:     250,
-		NPlanes:       15,
-		NPermutes:     10,
+		NPlanes:       12,
+		NPermutes:     30,
 		Metric:        lsh.NewL2(),
-		MaxNN:         100,
-		MaxDist:       2800,
-		MaxCandidates: 1000,
+		MaxNN:         10,
+		MaxDist:       2000,
+		MaxCandidates: 3000,
 	}
 
 	t.Run("LSH", func(t *testing.T) {

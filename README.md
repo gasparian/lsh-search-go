@@ -63,7 +63,7 @@ mean, std, _ := lsh.GetMeanStdSampledRecords(trainData, sampleSize)
 var queryPoint []float64 = ...
 
 const (
-    distanceThrsh = 3000 // Distance threshold in non-normilized space
+    distanceThrsh = 2400 // Distance threshold in non-normilized space
     maxNN         = 100  // Maximum number of nearest neighbors to find
 )
 
@@ -147,35 +147,35 @@ I used 16 core/60Gb RAM machine for tests and in-memory store implementation (`k
 During experiments I used the following datasets:  
 
 | Dataset           | N dimensions |  Train examples | Test examples |   Metric  |
-|-------------------|:------------:|----------------:|:-------------:|:----------|
+|-------------------|:------------:|:---------------:|:-------------:|:----------|
 | Fashion MNIST     |      784     |      60000      |     10000     | Euclidean |
 | NY times          |      256     |     290000      |     10000     | Cosine    |
 | SIFT              |      128     |     1000000     |     10000     | Euclidean |
 | GloVe             |      200     |     1183514     |     10000     | Cosine    |
 
 [Fashion MNIST](https://github.com/zalandoresearch/fashion-mnist):  
-| Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
-|-------------------------|:---------------:|---------------------:|:----------:|:-------|
-| Exact nearest neighbors |       XXX       |         XXXXX        |     1      |   1    |
-| LSH                     |      XXXXX      |         XXXX         |    XXXX    |  XXXX  |  
+| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision | Recall |
+|-------------------------|:---------------:|:--------------------:|:--------------:|:----------:|:-------|
+| Exact nearest neighbors |       0.37      |         764          |     30000      |     1      | 0.997  |
+| LSH                     |      XXXXX      |         XXXX         |      XXXX      |    XXXX    |  XXXX  |  
 
 [NY times](https://archive.ics.uci.edu/ml/datasets/bag+of+words):  
-| Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
-|-------------------------|:---------------:|---------------------:|:----------:|:-------|
-| Exact nearest neighbors |       XXX       |        XXXXXX        |     1      |   1    |
-| LSH                     |      XXXXX      |        XXXXX         |    XXXX    |  XXXX  |  
+| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision | Recall |
+|-------------------------|:---------------:|:--------------------:|:--------------:|:----------:|:-------|
+| Exact nearest neighbors |       XXX       |        XXXXXX        |     XXXXX      |    XXX     |  XXX   |
+| LSH                     |      XXXXX      |        XXXXX         |      XXXX      |    XXXX    |  XXXX  |  
 
 
 [SIFT](https://corpus-texmex.irisa.fr/):  
-| Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
-|-------------------------|:---------------:|---------------------:|:----------:|:-------|
-| Exact nearest neighbors |       XXX       |        XXXXXX        |     1      |   1    |
-| LSH                     |      XXXXX      |        XXXXX         |    XXXX    |  XXXX  |  
+| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision | Recall |
+|-------------------------|:---------------:|:--------------------:|:--------------:|:----------:|:-------|
+| Exact nearest neighbors |       XXX       |        XXXXXX        |     XXXXX      |    XXX     |  XXX   |
+| LSH                     |      XXXXX      |        XXXXX         |      XXXX      |    XXXX    |  XXXX  |  
 
 [GloVe](http://nlp.stanford.edu/projects/glove/):  
-| Approach                | Traning time, s | Avg. search time, ms |  Precision | Recall |
-|-------------------------|:---------------:|---------------------:|:----------:|:-------|
-| Exact nearest neighbors |       XXX       |        XXXXXX        |     1      |   1    |
-| LSH                     |      XXXXX      |        XXXXX         |    XXXX    |  XXXX  |  
+| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision | Recall |
+|-------------------------|:---------------:|:--------------------:|:--------------:|:----------:|:-------|
+| Exact nearest neighbors |       XXX       |        XXXXXX        |     XXXXX      |    XXX     |  XXX   |
+| LSH                     |      XXXXX      |        XXXXX         |      XXXX      |    XXXX    |  XXXX  |  
 
 I picked parameters manually, to get the best tradeoff between speed and accuracy.  
