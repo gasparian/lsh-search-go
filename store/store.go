@@ -12,7 +12,7 @@ type Iterator interface {
 type Store interface {
 	SetVector(id string, vec []float64) error
 	GetVector(id string) ([]float64, error)
-	SetHash(permutation int, hash uint64, vecId string) error
-	GetHashIterator(permutation int, hash uint64) (Iterator, error)
+	SetHash(bucketName, vecId string) error
+	GetHashIterator(bucketName string) (Iterator, error)
 	Clear() error
 }

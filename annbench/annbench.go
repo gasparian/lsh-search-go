@@ -28,6 +28,8 @@ type SearchConfig struct {
 	MaxNN         int
 	MaxCandidates int
 	BatchSize     int
+	Mean          []float64
+	Std           []float64
 }
 
 type BenchData struct {
@@ -67,7 +69,7 @@ func (nn *NNMock) Train(records []lsh.Record) error {
 	}
 	for _, rec := range records {
 		nn.index.SetVector(rec.ID, rec.Vec)
-		nn.index.SetHash(0, 0, rec.ID)
+		nn.index.SetHash("0", rec.ID)
 	}
 	return nil
 }
@@ -80,7 +82,7 @@ func (nn *NNMock) Search(query []float64, maxNN int, distanceThrsh float64) ([]l
 	closestSet := make(map[string]bool)
 	minHeap := new(lsh.FloatMinHeap)
 
-	iter, _ := nn.index.GetHashIterator(0, 0)
+	iter, _ := nn.index.GetHashIterator("0")
 	for {
 		if minHeap.Len() >= maxCandidates {
 			break

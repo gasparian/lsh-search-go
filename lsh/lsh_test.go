@@ -276,7 +276,7 @@ func testLSH(metric Metric, config Config, maxNN int, distanceThrsh float64, tra
 			t.Fatal(err)
 		}
 		t.Log("LSH nearest neighbors: ", nns)
-		if len(nns) < 3 || len(nns) > 4 {
+		if len(nns) < 2 || len(nns) > 4 {
 			t.Errorf("Query point must have 3-4 neighbors, got %v", len(nns))
 		}
 	})

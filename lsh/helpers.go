@@ -2,6 +2,7 @@ package lsh
 
 import (
 	"errors"
+	"fmt"
 	"gonum.org/v1/gonum/blas/blas64"
 	"gonum.org/v1/gonum/mat"
 	"math"
@@ -238,4 +239,8 @@ func (s *StringSet) Remove(key string) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
 	delete(s.Items, key)
+}
+
+func getBucketName(perm int, hash uint64) string {
+	return fmt.Sprintf("%v_%v", perm, hash)
 }

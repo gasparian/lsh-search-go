@@ -79,7 +79,7 @@ func (hasher *Hasher) getRandomPlane() Plane {
 	}
 	maxD := 0.0
 	if !hasher.Config.isCrossOrigin {
-		maxD = 2.0 * blas64.Nrm2(plane.N) // NOTE: 2sigma max dist
+		maxD = 1.0 * blas64.Nrm2(plane.N) // NOTE: 1sigma max dist
 	}
 	plane.D = -1.0 * (-1.0*maxD + rand.Float64()*maxD*2)
 	return plane

@@ -40,13 +40,13 @@ func TestKvStore(t *testing.T) {
 
 	t.Run("SetHash", func(t *testing.T) {
 		for k := range vecIds {
-			err := store.SetHash(0, 0, k)
+			err := store.SetHash("0", k)
 			if err != nil {
 				t.Fatal(err)
 			}
 		}
 
-		it, err := store.GetHashIterator(0, 0)
+		it, err := store.GetHashIterator("0")
 		if err != nil {
 			t.Fatal(err)
 		}

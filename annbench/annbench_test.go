@@ -84,8 +84,8 @@ func testLSH(t *testing.T, config *bench.SearchConfig, data *bench.BenchData) {
 	lshConfig := lsh.Config{
 		IndexConfig: lsh.IndexConfig{
 			BatchSize:     config.BatchSize,
-			Bias:          data.Mean,
-			Std:           data.Std,
+			Bias:          config.Mean,
+			Std:           config.Std,
 			MaxCandidates: config.MaxCandidates,
 		},
 		HasherConfig: lsh.HasherConfig{
@@ -135,12 +135,14 @@ func TestEuclideanFashionMnist(t *testing.T) {
 	config = &bench.SearchConfig{
 		NDims:         784,
 		BatchSize:     250,
-		NPlanes:       12,
-		NPermutes:     30,
+		NPlanes:       10,
+		NPermutes:     20,
 		Metric:        lsh.NewL2(),
 		MaxNN:         10,
-		MaxDist:       2000,
-		MaxCandidates: 3000,
+		MaxDist:       2200,
+		MaxCandidates: 5000,
+		Mean:          data.Mean,
+		Std:           nil, // data.Std
 	}
 
 	t.Run("LSH", func(t *testing.T) {

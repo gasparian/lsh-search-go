@@ -63,8 +63,8 @@ mean, std, _ := lsh.GetMeanStdSampledRecords(trainData, sampleSize)
 var queryPoint []float64 = ...
 
 const (
-    distanceThrsh = 2400 // Distance threshold in non-normilized space
-    maxNN         = 100  // Maximum number of nearest neighbors to find
+    distanceThrsh = 2200 // Distance threshold in non-normilized space
+    maxNN         = 10   // Maximum number of nearest neighbors to find
 )
 
 // Define search parameters
@@ -81,12 +81,12 @@ lshConfig := lsh.Config{
                              // (you can pass nil or the empty slice)
         Std:           std,  // Std used for standart scaling, can be nil or empty slice
                              // (e.g. when you use angular metrics)
-        MaxCandidates: 1000, // Maximum number of points that will be stored
+        MaxCandidates: 5000, // Maximum number of points that will be stored
                              // in a min heap, where we then get MaxNN vectors
     },
     HasherConfig: lsh.HasherConfig{
         NPermutes: 10,  // Number of planes permutations to generate
-        NPlanes:   12,  // Number of planes in a single permutation to generate
+        NPlanes:   20,  // Number of planes in a single permutation to generate
         Dims:      784, // Space dimensionality
     },
 }

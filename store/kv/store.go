@@ -61,10 +61,9 @@ func (s *KVStore) GetVector(id string) ([]float64, error) {
 	return vec, nil
 }
 
-func (s *KVStore) SetHash(permutation int, hash uint64, vecId string) error {
+func (s *KVStore) SetHash(bucketName, vecId string) error {
 	s.mx.Lock()
 	defer s.mx.Unlock()
-	bucketName := getBucketName(permutation, hash)
 	if _, ok := s.m[bucketName]; !ok {
 		s.m[bucketName] = make(map[string]interface{})
 	}
@@ -73,11 +72,10 @@ func (s *KVStore) SetHash(permutation int, hash uint64, vecId string) error {
 	return nil
 }
 
-func (s *KVStore) GetHashIterator(permutation int, hash uint64) (store.Iterator, error) {
+func (s *KVStore) GetHashIterator(bucketName string) (store.Iterator, error) {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
 
-	bucketName := getBucketName(permutation, hash)
 	bucket, ok := s.m[bucketName]
 	if !ok {
 		return nil, bucketNotFoundErr

@@ -130,7 +130,8 @@ func (lsh *LSHIndex) Train(records []Record) error {
 				hashes := lsh.hasher.getHashes(scaled)
 				lsh.index.SetVector(rec.ID, rec.Vec)
 				for perm, hash := range hashes {
-					lsh.index.SetHash(perm, hash, rec.ID)
+					bucketName := getBucketName(perm, hash)
+					lsh.index.SetHash(bucketName, rec.ID)
 				}
 			}
 		}(records[i:end], &wg)
@@ -153,7 +154,8 @@ func (lsh *LSHIndex) Search(query []float64, maxNN int, distanceThrsh float64) (
 		if minHeap.Len() >= maxCandidates {
 			break
 		}
-		iter, err := lsh.index.GetHashIterator(perm, hash)
+		bucketName := getBucketName(perm, hash)
+		iter, err := lsh.index.GetHashIterator(bucketName)
 		if err != nil {
 			continue // NOTE: it's normal when we couldn't find bucket for the query point
 		}
