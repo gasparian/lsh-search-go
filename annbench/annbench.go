@@ -20,16 +20,17 @@ type BenchDataConfig struct {
 }
 
 type SearchConfig struct {
-	Metric        lsh.Metric
-	MaxDist       float64
-	NDims         int
-	NPlanes       int
-	NPermutes     int
-	MaxNN         int
-	MaxCandidates int
-	BatchSize     int
-	Mean          []float64
-	Std           []float64
+	Metric                    lsh.Metric
+	MaxDist                   float64
+	NDims                     int
+	NPlanes                   int
+	NPermutes                 int
+	MaxNN                     int
+	MaxCandidates             int
+	BatchSize                 int
+	Mean                      []float64
+	Std                       []float64
+	PlaneOriginDistMultiplier float64
 }
 
 type BenchData struct {

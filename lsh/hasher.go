@@ -45,10 +45,10 @@ func (lshInstance *HasherInstance) getHash(inpVec blas64.Vector) uint64 {
 }
 
 type HasherConfig struct {
-	NPermutes     int
-	NPlanes       int
-	Dims          int
-	isCrossOrigin bool
+	NPermutes                 int
+	NPlanes                   int
+	Dims                      int
+	PlaneOriginDistMultiplier float64
 }
 
 // Hasher holds N_PERMUTS number of HasherInstance instances
@@ -77,10 +77,7 @@ func (hasher *Hasher) getRandomPlane() Plane {
 	for i := 0; i < hasher.Config.Dims; i++ {
 		plane.N.Data[i] = -1.0 + rand.Float64()*2
 	}
-	maxD := 0.0
-	if !hasher.Config.isCrossOrigin {
-		maxD = 1.0 * blas64.Nrm2(plane.N) // NOTE: 1sigma max dist
-	}
+	maxD := hasher.Config.PlaneOriginDistMultiplier * blas64.Nrm2(plane.N)
 	plane.D = -1.0 * (-1.0*maxD + rand.Float64()*maxD*2)
 	return plane
 }

@@ -19,7 +19,7 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN
 	t.Log("Predicting...")
 	start = time.Now()
 	N := 10000 // NOTE: for debug it's convenient to change this to lower value in sake of speed up
-	batchSize := 100
+	batchSize := 250
 	var elapsedTimeMs int64
 	predCh := make(chan bench.Prediction, N)
 	wg := sync.WaitGroup{}
@@ -89,9 +89,10 @@ func testLSH(t *testing.T, config *bench.SearchConfig, data *bench.BenchData) {
 			MaxCandidates: config.MaxCandidates,
 		},
 		HasherConfig: lsh.HasherConfig{
-			NPermutes: config.NPermutes,
-			NPlanes:   config.NPlanes,
-			Dims:      config.NDims,
+			NPermutes:                 config.NPermutes,
+			NPlanes:                   config.NPlanes,
+			Dims:                      config.NDims,
+			PlaneOriginDistMultiplier: config.PlaneOriginDistMultiplier,
 		},
 	}
 	s := kv.NewKVStore()
@@ -133,16 +134,17 @@ func TestEuclideanFashionMnist(t *testing.T) {
 	// })
 
 	config = &bench.SearchConfig{
-		NDims:         784,
-		BatchSize:     250,
-		NPlanes:       10,
-		NPermutes:     20,
-		Metric:        lsh.NewL2(),
-		MaxNN:         10,
-		MaxDist:       2200,
-		MaxCandidates: 5000,
-		Mean:          data.Mean,
-		Std:           nil, // data.Std
+		NDims:                     784,
+		BatchSize:                 250,
+		NPlanes:                   10,
+		NPermutes:                 20,
+		Metric:                    lsh.NewL2(),
+		MaxNN:                     10,
+		MaxDist:                   2200,
+		MaxCandidates:             5000,
+		Mean:                      data.Mean,
+		Std:                       nil, // data.Std
+		PlaneOriginDistMultiplier: 0.0,
 	}
 
 	t.Run("LSH", func(t *testing.T) {

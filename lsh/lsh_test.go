@@ -276,7 +276,7 @@ func testLSH(metric Metric, config Config, maxNN int, distanceThrsh float64, tra
 			t.Fatal(err)
 		}
 		t.Log("LSH nearest neighbors: ", nns)
-		if len(nns) < 2 || len(nns) > 4 {
+		if len(nns) < 3 || len(nns) > 4 {
 			t.Errorf("Query point must have 3-4 neighbors, got %v", len(nns))
 		}
 	})
@@ -317,9 +317,10 @@ func TestLshCosine(t *testing.T) {
 			Std:           nil,
 		},
 		HasherConfig: HasherConfig{
-			NPermutes: 10,
-			NPlanes:   5,
-			Dims:      2,
+			NPermutes:                 10,
+			NPlanes:                   5,
+			Dims:                      2,
+			PlaneOriginDistMultiplier: 0.0,
 		},
 	}
 	metric := NewCosine()
@@ -387,9 +388,10 @@ func TestLshL2(t *testing.T) {
 			Std:           std,
 		},
 		HasherConfig: HasherConfig{
-			NPermutes: 10,
-			NPlanes:   5,
-			Dims:      2,
+			NPermutes:                 10,
+			NPlanes:                   5,
+			Dims:                      2,
+			PlaneOriginDistMultiplier: 2.0,
 		},
 	}
 	metric := NewL2()

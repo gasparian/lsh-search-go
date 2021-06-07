@@ -4,7 +4,6 @@ import (
 	"container/heap"
 	"errors"
 	"github.com/gasparian/lsh-search-go/store"
-	"gonum.org/v1/gonum/blas/blas64"
 	"sync"
 )
 
@@ -86,9 +85,6 @@ type LSHIndex struct {
 
 // New creates new instance of hasher and index, where generated hashes will be stored
 func NewLsh(config Config, store store.Store, metric Metric) (*LSHIndex, error) {
-	if config.Std == nil || len(config.Std) == 0 || blas64.Asum(NewVec(config.Std)) < tol {
-		config.HasherConfig.isCrossOrigin = true
-	}
 	hasher := NewHasher(
 		config.HasherConfig,
 	)
