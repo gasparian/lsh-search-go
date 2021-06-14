@@ -154,7 +154,7 @@ The following datasets has been used:
 
 I end up using **10 closest** nearest neighbors to calculate the metrics.   
 Both precision and recall has been calculated using distance-based definition of these metrics, like in the [ANN-Benchmarks](https://arxiv.org/pdf/1807.05614.pdf) paper. See the example of "approximate" recall:  
-<p align="center"> <img src="https://github.com/gasparian/lsh-search-go/blob/master/pics/recall_metric.png" height=250/> </p>  
+<p align="center"> <img src="https://github.com/gasparian/lsh-search-go/blob/master/pics/recall_metric.png" width=400/> </p>  
 
 In all experiments ε=0.1.  
 Don't pay too much attention to the absolute time values in the tables, since it highly depends on the test algorithm itself - it's better to keep in mind only the relative difference between search times.  
