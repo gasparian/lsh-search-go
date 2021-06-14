@@ -27,4 +27,4 @@ Neighbors dtype: int32, other data - float32. Test sets consists of "query point
     - N neighbors - 100; 
     - dimensions - 200;  
     - train size - 1183514;  
-    - test size - 10000;  
+    - test size - 10000;

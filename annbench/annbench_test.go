@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN int, maxDist float64) {
+func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN int, maxDist, epsilon float64) {
 	start := time.Now()
 	t.Log("Creating search index...")
 	indexer.Train(data.Train)
@@ -19,7 +19,7 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN
 	t.Log("Predicting...")
 	start = time.Now()
 	N := 10000 // NOTE: for debug it's convenient to change this to lower value in sake of speed up
-	batchSize := 250
+	batchSize := 1000
 	var elapsedTimeMs int64
 	predCh := make(chan bench.Prediction, N)
 	wg := sync.WaitGroup{}
@@ -56,7 +56,7 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN
 			data.Neighbors[pred.Idx][:maxNN],
 			pred.Neighbors,
 			data.Distances[pred.Idx][:maxNN],
-			0.2,
+			epsilon,
 		)
 		precision += p
 		recall += r
@@ -77,7 +77,7 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN
 func testNearestNeighbors(t *testing.T, config *bench.SearchConfig, data *bench.BenchData) {
 	s := kv.NewKVStore()
 	nn := bench.NewNNMock(config.MaxCandidates, s, config.Metric)
-	testIndexer(t, nn, data, config.MaxNN, config.MaxDist)
+	testIndexer(t, nn, data, config.MaxNN, config.MaxDist, config.Epsilon)
 }
 
 func testLSH(t *testing.T, config *bench.SearchConfig, data *bench.BenchData) {
@@ -100,7 +100,7 @@ func testLSH(t *testing.T, config *bench.SearchConfig, data *bench.BenchData) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testIndexer(t, lshIndex, data, config.MaxNN, config.MaxDist)
+	testIndexer(t, lshIndex, data, config.MaxNN, config.MaxDist, config.Epsilon)
 }
 
 func TestEuclideanFashionMnist(t *testing.T) {
@@ -127,11 +127,11 @@ func TestEuclideanFashionMnist(t *testing.T) {
 		MaxNN:         10,
 		MaxDist:       2200,
 		MaxCandidates: 30000,
+		Epsilon:       0.2,
 	}
-
-	// t.Run("NN", func(t *testing.T) {
-	// 	testNearestNeighbors(t, config, data)
-	// })
+	t.Run("NN", func(t *testing.T) {
+		testNearestNeighbors(t, config, data)
+	})
 
 	config = &bench.SearchConfig{
 		NDims:                     784,
@@ -140,13 +140,13 @@ func TestEuclideanFashionMnist(t *testing.T) {
 		NPermutes:                 20,
 		Metric:                    lsh.NewL2(),
 		MaxNN:                     10,
+		Epsilon:                   0.2,
 		MaxDist:                   2200,
 		MaxCandidates:             5000,
 		Mean:                      data.Mean,
-		Std:                       nil, // data.Std
+		Std:                       nil,
 		PlaneOriginDistMultiplier: 0.0,
 	}
-
 	t.Run("LSH", func(t *testing.T) {
 		testLSH(t, config, data)
 	})
@@ -173,20 +173,28 @@ func TestEuclideanFashionMnist(t *testing.T) {
 // 	t.Log("Ground truth distances range: ", minDist, maxDist)
 
 // 	config := &bench.SearchConfig{
-// 		LshPlaneBiasMultiplier: 0.0,
-// 		Metric:                 lsh.NewCosine(),
-// 		NDims:                  256,
-// 		BatchSize:              250,
-// 		NPlanes:                12,
-// 		NPermutes:              12,
-// 		MaxNN:                  100,
-// 		MaxDist:                0.9,
-// 		Bias:                   data.Mean,
+// 		Metric:        lsh.NewCosine(),
+// 		MaxNN:         10,
+// 		MaxDist:       0.9,
+// 		MaxCandidates: 30000,
 // 	}
-
 // 	t.Run("NN", func(t *testing.T) {
 // 		testNearestNeighbors(t, config, data)
 // 	})
+
+// 	config = &bench.SearchConfig{
+// 		Metric:                    lsh.NewCosine(),
+// 		NDims:                     256,
+// 		BatchSize:                 250,
+// 		NPlanes:                   10,
+// 		NPermutes:                 20,
+// 		MaxNN:                     10,
+// 		MaxDist:                   0.9,
+// 		MaxCandidates:             5000,
+// 		Mean:                      data.Mean,
+// 		Std:                       nil,
+// 		PlaneOriginDistMultiplier: 0.0,
+// 	}
 // 	t.Run("LSH", func(t *testing.T) {
 // 		testLSH(t, config, data)
 // 	})

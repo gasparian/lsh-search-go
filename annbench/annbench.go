@@ -26,6 +26,7 @@ type SearchConfig struct {
 	NPlanes                   int
 	NPermutes                 int
 	MaxNN                     int
+	Epsilon                   float64
 	MaxCandidates             int
 	BatchSize                 int
 	Mean                      []float64

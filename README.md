@@ -85,9 +85,10 @@ lshConfig := lsh.Config{
                              // in a min heap, where we then get MaxNN vectors
     },
     HasherConfig: lsh.HasherConfig{
-        NPermutes: 10,  // Number of planes permutations to generate
-        NPlanes:   20,  // Number of planes in a single permutation to generate
-        Dims:      784, // Space dimensionality
+        NPermutes: 10,                  // Number of planes permutations to generate
+        NPlanes:   20,                  // Number of planes in a single permutation to generate
+        Dims:      784,                 // Space dimensionality
+        PlaneOriginDistMultiplier: 1.0, // Defines how far from origin planes will be generated
     },
 }
 // Store implementation, you can use yours
@@ -137,45 +138,54 @@ And just run go test:
 make annbench
 ```  
 
-Search parameters that you can find [here](https://github.com/gasparian/lsh-search-go/blob/master/annbench/annbench_test.go) has been selected empirically, based on precision and recall metrics measured on validation dataset. So don't rack your brains too much ;)  
+Search parameters that you can find [here](https://github.com/gasparian/lsh-search-go/blob/master/annbench/annbench_test.go) has been selected "empirically", based on precision and recall metrics measured on validation dataset.  
 
 ### Results  
 
-*TODO: fill tables with new measurements and datasets*  
-
 I used 16 core/60Gb RAM machine for tests and in-memory store implementation (`kv.KVStore`).  
-During experiments I used the following datasets:  
+The following datasets has been used:  
 
 | Dataset           | N dimensions |  Train examples | Test examples |   Metric  |
 |-------------------|:------------:|:---------------:|:-------------:|:----------|
-| Fashion MNIST     |      784     |      60000      |     10000     | Euclidean |
+| Fashion MNIST     |      784     |     60000       |     10000     | Euclidean |
 | NY times          |      256     |     290000      |     10000     | Cosine    |
 | SIFT              |      128     |     1000000     |     10000     | Euclidean |
-| GloVe             |      200     |     1183514     |     10000     | Cosine    |
+| GloVe             |      200     |     1183514     |     10000     | Cosine    |  
+
+I end up using **10 closest** nearest neighbors to calculate the metrics.   
+Both precision and recall has been calculated using distance-based definition of these metrics, like in the [ANN-Benchmarks](https://arxiv.org/pdf/1807.05614.pdf) paper. See the example of "approximate" recall:  
+<p align="center"> <img src="https://github.com/gasparian/lsh-search-go/blob/master/pics/recall_metric.png" height=250/> </p>  
+
+In all experiments ε=0.1.  
+Don't pay too much attention to the absolute time values in the tables, since it highly depends on the test algorithm itself - it's better to keep in mind only the relative difference between search times.  
 
 [Fashion MNIST](https://github.com/zalandoresearch/fashion-mnist):  
-| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision | Recall |
-|-------------------------|:---------------:|:--------------------:|:--------------:|:----------:|:-------|
-| Exact nearest neighbors |       0.37      |         764          |     30000      |     1      | 0.997  |
-| LSH                     |      XXXXX      |         XXXX         |      XXXX      |    XXXX    |  XXXX  |  
+| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision  |  Recall  |
+|-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
+| Exact nearest neighbors |       0.37      |         767          |     30000      |    0.999    |  0.998   |
+| LSH                     |      12.69      |         90           |     5000       |    0.925    |  0.924   |  
 
 [NY times](https://archive.ics.uci.edu/ml/datasets/bag+of+words):  
-| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision | Recall |
-|-------------------------|:---------------:|:--------------------:|:--------------:|:----------:|:-------|
-| Exact nearest neighbors |       XXX       |        XXXXXX        |     XXXXX      |    XXX     |  XXX   |
-| LSH                     |      XXXXX      |        XXXXX         |      XXXX      |    XXXX    |  XXXX  |  
+| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision* |  Recall* |
+|-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
+| Exact nearest neighbors |       1.79      |        1222          |     100000     |    0.958    |  0.957   |
+| LSH                     |      XXXXX      |        XXXXX         |      5000      |    XXXXX    |  XXXXX   |  
 
+*such low metric values even in case of exact nearest neighbors may be related to the fact that dataset contains zero vectors, which can corrupt angular metric calculation, depending on how handled such corner-cases  
 
 [SIFT](https://corpus-texmex.irisa.fr/):  
-| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision | Recall |
-|-------------------------|:---------------:|:--------------------:|:--------------:|:----------:|:-------|
-| Exact nearest neighbors |       XXX       |        XXXXXX        |     XXXXX      |    XXX     |  XXX   |
-| LSH                     |      XXXXX      |        XXXXX         |      XXXX      |    XXXX    |  XXXX  |  
+| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision  |  Recall  |
+|-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
+| Exact nearest neighbors |       6.38      |        4881          |     200000     |    0.990    |  0.990   |
+| LSH                     |      XXXXX      |        XXXXX         |      XXXX      |    XXXXX    |  XXXXX   |  
 
 [GloVe](http://nlp.stanford.edu/projects/glove/):  
-| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision | Recall |
-|-------------------------|:---------------:|:--------------------:|:--------------:|:----------:|:-------|
-| Exact nearest neighbors |       XXX       |        XXXXXX        |     XXXXX      |    XXX     |  XXX   |
-| LSH                     |      XXXXX      |        XXXXX         |      XXXX      |    XXXX    |  XXXX  |  
+| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision  |  Recall  |
+|-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
+| Exact nearest neighbors |       7.47      |        4782          |     100000     |    0.999    |   0.999  |
+| LSH                     |      XXXXX      |        XXXXX         |      XXXX      |    XXXX     |   XXXX   |  
 
 I picked parameters manually, to get the best tradeoff between speed and accuracy.  
+
+### Known problems  
+*TO DO*  
