@@ -169,7 +169,7 @@ Don't pay too much attention to the absolute time values in the tables, since it
 | Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision* |  Recall* |
 |-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
 | Exact nearest neighbors |       1.79      |        1222          |     100000     |    0.958    |  0.957   |
-| LSH                     |      XXXXX      |        XXXXX         |      5000      |    XXXXX    |  XXXXX   |  
+| LSH                     |       792       |        345           |      5000      |    0.866    |  0.866   |  
 
 *such low metric values even in case of exact nearest neighbors may be related to the fact that dataset contains zero vectors, which can corrupt angular metric calculation, depending on how handled such corner-cases  
 
