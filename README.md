@@ -1,4 +1,7 @@
 ![lsh tests](https://github.com/gasparian/lsh-search-go/actions/workflows/test.yml/badge.svg?branch=master)
+
+*TODO: rewrite planes generation algorithm - generate plane by randomly selecting two points*
+
 ## lsh-search-go  
 
 Here is my take on implementing approximate nearest neighbors search algorithm from scratch.  
@@ -169,7 +172,7 @@ Don't pay too much attention to the absolute time values in the tables, since it
 | Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision* |  Recall* |
 |-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
 | Exact nearest neighbors |       1.79      |        1222          |     100000     |    0.958    |  0.957   |
-| LSH                     |       792       |        345           |      5000      |    0.866    |  0.866   |  
+| LSH                     |       792       |        272           |      5000      |    0.825    |  0.825   |  
 
 *such low metric values even in case of exact nearest neighbors may be related to the fact that dataset contains zero vectors, which can corrupt angular metric calculation, depending on how handled such corner-cases  
 
