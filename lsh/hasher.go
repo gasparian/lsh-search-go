@@ -60,7 +60,7 @@ func (node *treeNode) getHash(inp []float64) uint64 {
 
 type HasherConfig struct {
 	NTrees   int
-	KMaxVecs int
+	KMinVecs int
 	Dims     int
 }
 
@@ -105,7 +105,7 @@ func getRandomPlane(a, b []float64) *plane {
 
 // growTree ...
 func growTree(vecs [][]float64, node *treeNode, depth, k int) {
-	if depth > 63 || len(vecs) <= 2 { // NOTE: depth <= 63 since we will use 8 byte int to store a hash
+	if depth > 63 || len(vecs) < 2 { // NOTE: depth <= 63 since we will use 8 byte int to store a hash
 		return
 	}
 	randIndeces := make(map[int]bool)
@@ -145,10 +145,10 @@ func growTree(vecs [][]float64, node *treeNode, depth, k int) {
 }
 
 // buildTree creates set of planes which will be used to calculate hash
-func (hasher *Hasher) buildTree(vecs [][]float64) *treeNode {
+func buildTree(vecs [][]float64, kmin int) *treeNode {
 	rand.Seed(time.Now().UnixNano())
 	tree := &treeNode{}
-	growTree(vecs, tree, 0, hasher.Config.KMaxVecs)
+	growTree(vecs, tree, 0, kmin)
 	return tree
 }
 
@@ -157,14 +157,14 @@ func (hasher *Hasher) build(vecs [][]float64) {
 	hasher.mutex.Lock()
 	defer hasher.mutex.Unlock()
 
-	var tmpTree *treeNode
 	trees := make([]*treeNode, hasher.Config.NTrees)
+	kmin := hasher.Config.KMinVecs
 	wg := sync.WaitGroup{}
 	wg.Add(len(trees))
 	for i := 0; i < hasher.Config.NTrees; i++ {
 		go func(i int, wg *sync.WaitGroup) {
 			defer wg.Done()
-			tmpTree = hasher.buildTree(vecs)
+			tmpTree := buildTree(vecs, kmin)
 			trees[i] = tmpTree
 		}(i, &wg)
 	}

@@ -1,7 +1,5 @@
 ![lsh tests](https://github.com/gasparian/lsh-search-go/actions/workflows/test.yml/badge.svg?branch=master)
 
-*TODO: rewrite planes generation algorithm - generate plane by randomly selecting two points*
-
 ## lsh-search-go  
 
 Here is my take on implementing approximate nearest neighbors search algorithm from scratch.  

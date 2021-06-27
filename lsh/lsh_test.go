@@ -12,56 +12,34 @@ import (
 	"time"
 )
 
-func TestGetHash(t *testing.T) {
-	hasherInstance := HasherInstance{
-		Planes: []Plane{
-			Plane{
-				N: NewVec([]float64{1.0, 1.0, 1.0}),
-				D: 5,
-			},
-		},
+func TestPlane(t *testing.T) {
+	p := plane{
+		n: NewVec([]float64{1.5, -1}),
+		d: 2,
 	}
-	inpVec := NewVec([]float64{-5.0, -1.0, -1.0})
-	hash := hasherInstance.getHash(inpVec)
+	inpVec := NewVec([]float64{0.0, 0.0})
+	if !p.getProductSign(inpVec) {
+		t.Error("Product sign must be negative")
+	}
+	inpVec.Data = []float64{4.0, 0.0}
+	if p.getProductSign(inpVec) {
+		t.Error("Product sign must be positive")
+	}
+}
+
+func TestGetHash(t *testing.T) {
+	vecs := [][]float64{
+		[]float64{-1.0, -1.0},
+		[]float64{2.0, -1.0},
+	}
+	hasherInstance := buildTree(vecs, 2)
+	hash := hasherInstance.getHash(vecs[0])
 	if hash != 1 {
 		t.Fatal("Wrong hash value, must be 1")
 	}
-	inpVec = NewVec([]float64{-5.0, -1.0, 1.0})
-	hash = hasherInstance.getHash(inpVec)
+	hash = hasherInstance.getHash(vecs[1])
 	if hash != 0 {
 		t.Fatal("Wrong hash value, must be 0")
-	}
-	inpVec = NewVec([]float64{1.0, 1.0, 1.0})
-	hash = hasherInstance.getHash(inpVec)
-	if hash != 0 {
-		t.Fatal("Wrong hash value, must be 0")
-	}
-}
-
-func getNewHasher(config HasherConfig) (*Hasher, error) {
-	hasher := NewHasher(config)
-	err := hasher.generate()
-	if err != nil {
-		return nil, err
-	}
-	return hasher, nil
-}
-
-func TestGenerateAngular(t *testing.T) {
-	config := HasherConfig{
-		NPermutes: 2,
-		NPlanes:   1,
-		Dims:      3,
-	}
-	hasherAngular, err := getNewHasher(config)
-	if err != nil {
-		t.Fatalf("Smth went wrong with planes generation: %v", err)
-	}
-
-	isHasherEmpty := IsZeroVectorBlas(hasherAngular.Instances[0].Planes[0].N) ||
-		IsZeroVectorBlas(hasherAngular.Instances[0].Planes[0].N)
-	if isHasherEmpty {
-		t.Fatal("One of the hasher instances is empty")
 	}
 }
 
@@ -128,15 +106,17 @@ func TestL2(t *testing.T) {
 
 func TestDumpHasher(t *testing.T) {
 	config := HasherConfig{
-		NPermutes: 2,
-		NPlanes:   1,
-		Dims:      3,
+		NTrees:   2,
+		KMinVecs: 2,
+		Dims:     2,
 	}
-	hasher, err := getNewHasher(config)
-	if err != nil {
-		t.Fatalf("Smth went wrong with planes generation: %v", err)
+	vecs := [][]float64{
+		[]float64{-1.0, -1.0},
+		[]float64{2.0, -1.0},
 	}
-	coefToTest := hasher.Instances[0].Planes[0].D
+	hasher := NewHasher(config)
+	hasher.build(vecs)
+	coefToTest := hasher.trees[0].plane.d
 	b, err := hasher.dump()
 	if err != nil {
 		t.Fatalf("Could not serialize hasher: %v", err)
@@ -149,7 +129,7 @@ func TestDumpHasher(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not deserialize hasher: %v", err)
 	}
-	if coefToTest != hasher.Instances[0].Planes[0].D {
+	if coefToTest != hasher.trees[0].plane.d {
 		t.Fatal("Seems like the deserialized hasher differs from the initial one")
 	}
 }
@@ -256,7 +236,7 @@ func TestScaler(t *testing.T) {
 	}
 }
 
-func testLSH(metric Metric, config Config, maxNN int, distanceThrsh float64, trainSet []Record, t *testing.T) Indexer {
+func testLSH(metric Metric, config Config, maxNN int, distanceThrsh float64, trainSet [][]float64, trainIds []string, t *testing.T) Indexer {
 	s := kv.NewKVStore()
 	lsh, err := NewLsh(config, s, metric)
 	if err != nil {
@@ -264,14 +244,14 @@ func testLSH(metric Metric, config Config, maxNN int, distanceThrsh float64, tra
 	}
 
 	t.Run("LshTrain", func(t *testing.T) {
-		err := lsh.Train(trainSet)
+		err := lsh.Train(trainSet, trainIds)
 		if err != nil {
 			t.Fatal(err)
 		}
 	})
 
 	t.Run("LshSearch", func(t *testing.T) {
-		nns, err := lsh.Search(trainSet[0].Vec, maxNN, distanceThrsh)
+		nns, err := lsh.Search(trainSet[0], maxNN, distanceThrsh)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -283,13 +263,8 @@ func testLSH(metric Metric, config Config, maxNN int, distanceThrsh float64, tra
 	return lsh
 }
 
-func TestLshCosine(t *testing.T) {
-	t.Parallel()
-	const (
-		distanceThrsh = 0.2
-		maxNN         = 4
-	)
-	inpVecs := [][]float64{
+func getTestLSHData() ([][]float64, []string) {
+	vecs := [][]float64{
 		[]float64{0.1, 0.1},
 		[]float64{0.1, 0.08},
 		[]float64{0.11, 0.09},
@@ -297,35 +272,35 @@ func TestLshCosine(t *testing.T) {
 		[]float64{-0.1, 0.1},
 		[]float64{-0.1, 0.08},
 	}
-	mean, _, err := GetMeanStdSampled(inpVecs, len(inpVecs))
-	if err != nil {
-		t.Fatal(err)
+	ids := make([]string, len(vecs))
+	for i := range vecs {
+		ids[i] = guuid.NewString()
 	}
-	trainSet := make([]Record, len(inpVecs))
-	for i := range inpVecs {
-		trainSet[i] = Record{
-			ID:  guuid.NewString(),
-			Vec: inpVecs[i],
-		}
-	}
+	return vecs, ids
+}
+
+func TestLshCosine(t *testing.T) {
+	t.Parallel()
+	const (
+		distanceThrsh = 0.2
+		maxNN         = 4
+	)
+	inpVecs, trainIds := getTestLSHData()
 
 	config := Config{
 		IndexConfig: IndexConfig{
 			BatchSize:     2,
 			MaxCandidates: 10,
-			Bias:          mean,
-			Std:           nil,
 		},
 		HasherConfig: HasherConfig{
-			NPermutes:                 10,
-			NPlanes:                   5,
-			Dims:                      2,
-			PlaneOriginDistMultiplier: 0.0,
+			NTrees:   10,
+			KMinVecs: 2,
+			Dims:     2,
 		},
 	}
 	metric := NewCosine()
 
-	lsh := testLSH(metric, config, maxNN, distanceThrsh, trainSet, t)
+	lsh := testLSH(metric, config, maxNN, distanceThrsh, inpVecs, trainIds, t)
 
 	t.Run("LshSearchConcurrent", func(t *testing.T) {
 		q := []float64{0.08, 0.1}
@@ -361,39 +336,18 @@ func TestLshL2(t *testing.T) {
 		distanceThrsh = 0.02
 		maxNN         = 4
 	)
-	inpVecs := [][]float64{
-		[]float64{0.1, 0.1},
-		[]float64{0.1, 0.08},
-		[]float64{0.11, 0.09},
-		[]float64{0.09, 0.11},
-		[]float64{-0.1, 0.1},
-		[]float64{-0.1, 0.08},
-	}
-	mean, std, err := GetMeanStdSampled(inpVecs, len(inpVecs))
-	if err != nil {
-		t.Fatal(err)
-	}
-	trainSet := make([]Record, len(inpVecs))
-	for i := range inpVecs {
-		trainSet[i] = Record{
-			ID:  guuid.NewString(),
-			Vec: inpVecs[i],
-		}
-	}
+	inpVecs, trainIds := getTestLSHData()
 	config := Config{
 		IndexConfig: IndexConfig{
 			BatchSize:     2,
 			MaxCandidates: 10,
-			Bias:          mean,
-			Std:           std,
 		},
 		HasherConfig: HasherConfig{
-			NPermutes:                 10,
-			NPlanes:                   5,
-			Dims:                      2,
-			PlaneOriginDistMultiplier: 2.0,
+			NTrees:   10,
+			KMinVecs: 2,
+			Dims:     2,
 		},
 	}
 	metric := NewL2()
-	_ = testLSH(metric, config, maxNN, distanceThrsh, trainSet, t)
+	_ = testLSH(metric, config, maxNN, distanceThrsh, inpVecs, trainIds, t)
 }

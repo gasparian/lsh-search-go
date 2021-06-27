@@ -146,8 +146,12 @@ func (lsh *LSHIndex) Search(query []float64, maxNN int, distanceThrsh float64) (
 		if minHeap.Len() >= maxCandidates {
 			break
 		}
-		neighborPos := int(math.Floor(math.Log2(float64(hash))))
-		neighborHash := hash ^ (1 << neighborPos) // NOTE: look in the neigbors' "bucket" too
+		// NOTE: look in the neigbors' "bucket" too
+		var neighborPos int = 0
+		if hash > 0 {
+			neighborPos = int(math.Floor(math.Log2(float64(hash))))
+		}
+		neighborHash := hash ^ (1 << neighborPos)
 		bucketsNames := []string{
 			getBucketName(perm, hash),
 			getBucketName(perm, neighborHash),
