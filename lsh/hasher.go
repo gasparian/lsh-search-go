@@ -36,7 +36,7 @@ type treeNode struct {
 	plane *plane
 }
 
-func (node *treeNode) traverse(hash uint64, inpVec blas64.Vector, depth int) uint64 {
+func traverse(node *treeNode, hash uint64, inpVec blas64.Vector, depth int) uint64 {
 	if node == nil {
 		return hash
 	}
@@ -44,18 +44,18 @@ func (node *treeNode) traverse(hash uint64, inpVec blas64.Vector, depth int) uin
 	blas64.Copy(inpVec, vec)
 	prodSign := node.plane.getProductSign(vec)
 	if !prodSign {
-		return node.right.traverse(hash, inpVec, depth+1)
+		return traverse(node.right, hash, inpVec, depth+1)
 
 	}
 	hash |= (1 << depth)
-	return node.left.traverse(hash, inpVec, depth+1)
+	return traverse(node.left, hash, inpVec, depth+1)
 }
 
 // getHash calculates LSH code
 func (node *treeNode) getHash(inp []float64) uint64 {
 	inpVec := NewVec(inp)
 	var hash uint64
-	return node.traverse(hash, inpVec, 0)
+	return traverse(node, hash, inpVec, 0)
 }
 
 type HasherConfig struct {
@@ -134,13 +134,13 @@ func growTree(vecs [][]float64, node *treeNode, depth, k int) {
 		l = append(l, v)
 	}
 	depth++
-	if len(l) > k {
-		node.left = &treeNode{}
-		growTree(l, node.left, depth, k)
-	}
 	if len(r) > k {
 		node.right = &treeNode{}
 		growTree(r, node.right, depth, k)
+	}
+	if len(l) > k {
+		node.left = &treeNode{}
+		growTree(l, node.left, depth, k)
 	}
 }
 

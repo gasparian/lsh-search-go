@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"errors"
 	"github.com/gasparian/lsh-search-go/store"
+	"math"
 	"sync"
 )
 
@@ -55,7 +56,7 @@ type Metric interface {
 
 // Indexer holds implementation of NN search index
 type Indexer interface {
-	Train(records []Record) error
+	Train(vecs [][]float64, ids []string) error
 	Search(query []float64, maxNN int, distanceThrsh float64) ([]Neighbor, error)
 }
 
@@ -94,9 +95,7 @@ type LSHIndex struct {
 
 // New creates new instance of hasher and index, where generated hashes will be stored
 func NewLsh(config Config, store store.Store, metric Metric) (*LSHIndex, error) {
-	hasher := NewHasher(
-		config.HasherConfig,
-	)
+	hasher := NewHasher(config.HasherConfig)
 	config.IndexConfig.mx = new(sync.RWMutex)
 	return &LSHIndex{
 		config:         config.IndexConfig,
@@ -138,7 +137,6 @@ func (lsh *LSHIndex) Train(vecs [][]float64, ids []string) error {
 }
 
 // Search returns NNs for the query point
-// TODO: search not only by two "neighbor hashes"
 func (lsh *LSHIndex) Search(query []float64, maxNN int, distanceThrsh float64) ([]Neighbor, error) {
 	maxCandidates := lsh.config.getMaxCandidates()
 	hashes := lsh.hasher.getHashes(query)
@@ -148,37 +146,45 @@ func (lsh *LSHIndex) Search(query []float64, maxNN int, distanceThrsh float64) (
 		if minHeap.Len() >= maxCandidates {
 			break
 		}
-		bucketName := getBucketName(perm, hash)
-		iter, err := lsh.index.GetHashIterator(bucketName)
-		if err != nil {
-			continue // NOTE: it's normal when we couldn't find bucket for the query point
+		neighborPos := int(math.Floor(math.Log2(float64(hash))))
+		neighborHash := hash ^ (1 << neighborPos) // NOTE: look in the neigbors' "bucket" too
+		bucketsNames := []string{
+			getBucketName(perm, hash),
+			getBucketName(perm, neighborHash),
 		}
-		for {
-			if minHeap.Len() >= maxCandidates {
-				break
-			}
-			id, opened := iter.Next()
-			if !opened {
-				break
-			}
-			if closestSet[id] {
-				continue
-			}
-			vec, err := lsh.index.GetVector(id)
+		for _, bucketName := range bucketsNames {
+			iter, err := lsh.index.GetHashIterator(bucketName)
 			if err != nil {
-				return nil, err
+				continue // NOTE: it's normal when we couldn't find bucket for the query point
 			}
-			dist := lsh.distanceMetric.GetDist(vec, query)
-			if dist <= distanceThrsh {
-				closestSet[id] = true
-				heap.Push(
-					minHeap,
-					Neighbor{
-						Record: Record{ID: id, Vec: vec},
-						Dist:   dist,
-					},
-				)
+			for {
+				if minHeap.Len() >= maxCandidates {
+					break
+				}
+				id, opened := iter.Next()
+				if !opened {
+					break
+				}
+				if closestSet[id] {
+					continue
+				}
+				vec, err := lsh.index.GetVector(id)
+				if err != nil {
+					return nil, err
+				}
+				dist := lsh.distanceMetric.GetDist(vec, query)
+				if dist <= distanceThrsh {
+					closestSet[id] = true
+					heap.Push(
+						minHeap,
+						Neighbor{
+							Record: Record{ID: id, Vec: vec},
+							Dist:   dist,
+						},
+					)
+				}
 			}
+
 		}
 	}
 	closest := make([]Neighbor, 0)
