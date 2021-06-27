@@ -63,9 +63,19 @@ type Indexer interface {
 type IndexConfig struct {
 	mx            *sync.RWMutex
 	BatchSize     int
-	Bias          []float64
-	Std           []float64
 	MaxCandidates int
+}
+
+func (c *IndexConfig) getBatchSize() int {
+	c.mx.RLock()
+	defer c.mx.RUnlock()
+	return c.BatchSize
+}
+
+func (c *IndexConfig) getMaxCandidates() int {
+	c.mx.RLock()
+	defer c.mx.RUnlock()
+	return c.MaxCandidates
 }
 
 // Config holds all needed constants for creating the Hasher instance
@@ -79,7 +89,6 @@ type LSHIndex struct {
 	config         IndexConfig
 	index          store.Store
 	hasher         *Hasher
-	scaler         *StandartScaler
 	distanceMetric Metric
 }
 
@@ -88,62 +97,51 @@ func NewLsh(config Config, store store.Store, metric Metric) (*LSHIndex, error) 
 	hasher := NewHasher(
 		config.HasherConfig,
 	)
-	err := hasher.generate()
-	if err != nil {
-		return nil, err
-	}
 	config.IndexConfig.mx = new(sync.RWMutex)
 	return &LSHIndex{
 		config:         config.IndexConfig,
 		hasher:         hasher,
 		index:          store,
 		distanceMetric: metric,
-		scaler:         NewStandartScaler(config.Bias, config.Std, config.HasherConfig.Dims),
 	}, nil
 }
 
 // Train fills new search index with vectors
-func (lsh *LSHIndex) Train(records []Record) error {
+func (lsh *LSHIndex) Train(vecs [][]float64, ids []string) error {
 	err := lsh.index.Clear()
 	if err != nil {
 		return err
 	}
-	lsh.config.mx.RLock()
-	batchSize := lsh.config.BatchSize
-	lsh.config.mx.RUnlock()
-
+	lsh.hasher.build(vecs)
+	batchSize := lsh.config.getBatchSize()
 	wg := sync.WaitGroup{}
-	for i := 0; i < len(records); i += batchSize {
+	for i := 0; i < len(vecs); i += batchSize {
 		wg.Add(1)
 		end := i + batchSize
-		if end > len(records) {
-			end = len(records)
+		if end > len(vecs) {
+			end = len(vecs)
 		}
-		go func(batch []Record, wg *sync.WaitGroup) {
+		go func(vecs [][]float64, ids []string, wg *sync.WaitGroup) {
 			defer wg.Done()
-			for _, rec := range batch {
-				scaled := lsh.scaler.Scale(rec.Vec)
-				hashes := lsh.hasher.getHashes(scaled)
-				lsh.index.SetVector(rec.ID, rec.Vec)
+			for i := range vecs {
+				hashes := lsh.hasher.getHashes(vecs[i])
+				lsh.index.SetVector(ids[i], vecs[i])
 				for perm, hash := range hashes {
 					bucketName := getBucketName(perm, hash)
-					lsh.index.SetHash(bucketName, rec.ID)
+					lsh.index.SetHash(bucketName, ids[i])
 				}
 			}
-		}(records[i:end], &wg)
+		}(vecs[i:end], ids[i:end], &wg)
 	}
 	wg.Wait()
 	return nil
 }
 
 // Search returns NNs for the query point
+// TODO: search not only by two "neighbor hashes"
 func (lsh *LSHIndex) Search(query []float64, maxNN int, distanceThrsh float64) ([]Neighbor, error) {
-	lsh.config.mx.RLock()
-	maxCandidates := lsh.config.MaxCandidates
-	lsh.config.mx.RUnlock()
-	scaledQuery := lsh.scaler.Scale(query)
-	hashes := lsh.hasher.getHashes(scaledQuery)
-
+	maxCandidates := lsh.config.getMaxCandidates()
+	hashes := lsh.hasher.getHashes(query)
 	closestSet := make(map[string]bool)
 	minHeap := new(FloatMinHeap)
 	for perm, hash := range hashes {
