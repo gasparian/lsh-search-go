@@ -166,7 +166,7 @@ Don't pay too much attention to the absolute time values in the tables, since it
 | Exact nearest neighbors |       0.37      |         767          |     30000      |    0.999    |  0.998   |
 | LSH                     |      12.29      |         24.6         |     5000       |    0.947    |  0.946   |  
 
-[NY times](https://archive.ics.uci.edu/ml/datasets/bag+of+words):  
+[NY times](https://archive.ics.uci.edu/ml/datasets/bag+of+words):  <<< try divide vectors by L2 norm as a prep. step
 | Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision* |  Recall* |
 |-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
 | Exact nearest neighbors |       1.79      |        1222          |     100000     |    0.958    |  0.957   |
@@ -178,9 +178,9 @@ Don't pay too much attention to the absolute time values in the tables, since it
 | Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision  |  Recall  |
 |-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
 | Exact nearest neighbors |       6.38      |        4881          |     200000     |    0.990    |  0.990   |
-| LSH                     |      XXXXX      |        XXXXX         |      XXXX      |    XXXXX    |  XXXXX   |  
+| LSH                     |       653       |        104           |     10000      |    0.940    |  0.935   |  
 
-[GloVe](http://nlp.stanford.edu/projects/glove/):  
+[GloVe](http://nlp.stanford.edu/projects/glove/):  ???
 | Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision  |  Recall  |
 |-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
 | Exact nearest neighbors |       7.47      |        4782          |     100000     |    0.999    |   0.999  |
