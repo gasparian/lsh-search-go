@@ -37,7 +37,7 @@ type treeNode struct {
 }
 
 func traverse(node *treeNode, hash uint64, inpVec blas64.Vector, depth int) uint64 {
-	if node == nil {
+	if node == nil || node.plane == nil {
 		return hash
 	}
 	vec := NewVec(make([]float64, inpVec.N))

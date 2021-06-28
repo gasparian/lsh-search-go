@@ -164,7 +164,7 @@ Don't pay too much attention to the absolute time values in the tables, since it
 | Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision  |  Recall  |
 |-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
 | Exact nearest neighbors |       0.37      |         767          |     30000      |    0.999    |  0.998   |
-| LSH                     |      12.69      |         90           |     5000       |    0.925    |  0.924   |  
+| LSH                     |      12.29      |         24.6         |     5000       |    0.947    |  0.946   |  
 
 [NY times](https://archive.ics.uci.edu/ml/datasets/bag+of+words):  
 | Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision* |  Recall* |

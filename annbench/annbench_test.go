@@ -126,17 +126,17 @@ func TestEuclideanFashionMnist(t *testing.T) {
 		MaxCandidates: 30000,
 		Epsilon:       0.05,
 	}
-	// t.Run("NN", func(t *testing.T) {
-	// 	testNearestNeighbors(t, config, data)
-	// })
+	t.Run("NN", func(t *testing.T) {
+		testNearestNeighbors(t, config, data)
+	})
 
 	config = &bench.SearchConfig{
 		NDims:         784,
-		BatchSize:     1000,
-		KMinVecs:      500,
+		BatchSize:     500,
+		KMinVecs:      200,
 		NTrees:        10,
 		Metric:        lsh.NewL2(),
-		MaxNN:         5,
+		MaxNN:         10,
 		Epsilon:       0.05,
 		MaxDist:       2200,
 		MaxCandidates: 5000,
