@@ -13,7 +13,7 @@ import (
 func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN int, maxDist, epsilon float64) {
 	start := time.Now()
 	t.Log("Creating search index...")
-	indexer.Train(data.Train)
+	indexer.Train(data.TrainVecs, data.TrainIds)
 	t.Logf("Training finished in %v", time.Since(start))
 
 	t.Log("Predicting...")
@@ -84,15 +84,12 @@ func testLSH(t *testing.T, config *bench.SearchConfig, data *bench.BenchData) {
 	lshConfig := lsh.Config{
 		IndexConfig: lsh.IndexConfig{
 			BatchSize:     config.BatchSize,
-			Bias:          config.Mean,
-			Std:           config.Std,
 			MaxCandidates: config.MaxCandidates,
 		},
 		HasherConfig: lsh.HasherConfig{
-			NPermutes:                 config.NPermutes,
-			NPlanes:                   config.NPlanes,
-			Dims:                      config.NDims,
-			PlaneOriginDistMultiplier: config.PlaneOriginDistMultiplier,
+			NTrees:   config.NTrees,
+			KMinVecs: config.KMinVecs,
+			Dims:     config.NDims,
 		},
 	}
 	s := kv.NewKVStore()
@@ -127,25 +124,22 @@ func TestEuclideanFashionMnist(t *testing.T) {
 		MaxNN:         10,
 		MaxDist:       2200,
 		MaxCandidates: 30000,
-		Epsilon:       0.2,
+		Epsilon:       0.05,
 	}
-	t.Run("NN", func(t *testing.T) {
-		testNearestNeighbors(t, config, data)
-	})
+	// t.Run("NN", func(t *testing.T) {
+	// 	testNearestNeighbors(t, config, data)
+	// })
 
 	config = &bench.SearchConfig{
-		NDims:                     784,
-		BatchSize:                 250,
-		NPlanes:                   10,
-		NPermutes:                 20,
-		Metric:                    lsh.NewL2(),
-		MaxNN:                     10,
-		Epsilon:                   0.2,
-		MaxDist:                   2200,
-		MaxCandidates:             5000,
-		Mean:                      data.Mean,
-		Std:                       nil,
-		PlaneOriginDistMultiplier: 0.0,
+		NDims:         784,
+		BatchSize:     1000,
+		KMinVecs:      500,
+		NTrees:        10,
+		Metric:        lsh.NewL2(),
+		MaxNN:         5,
+		Epsilon:       0.05,
+		MaxDist:       2200,
+		MaxCandidates: 5000,
 	}
 	t.Run("LSH", func(t *testing.T) {
 		testLSH(t, config, data)

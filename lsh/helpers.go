@@ -84,34 +84,34 @@ func GetMeanStdSampled(data [][]float64, sampleSize int) ([]float64, []float64, 
 }
 
 // GetMeanStdSampledRecords duplucate of GetMeanStdSample but for the Record data type, must be refactored later
-func GetMeanStdSampledRecords(data []Record, sampleSize int) ([]float64, []float64, error) {
-	if len(data) == 0 {
+func GetMeanStdSampledRecords(vecs [][]float64, sampleSize int) ([]float64, []float64, error) {
+	if len(vecs) == 0 {
 		return nil, nil, dataSliceEmptyErr
 	}
 	if sampleSize <= 0 {
 		return nil, nil, sampleSizeErr
 	}
 	sample := make([]int, sampleSize)
-	if len(data) <= sampleSize {
-		sampleSize = len(data)
+	if len(vecs) <= sampleSize {
+		sampleSize = len(vecs)
 		for i := 0; i < sampleSize; i++ {
 			sample[i] = i
 		}
 	} else {
 		for i := 0; i < sampleSize; i++ {
-			sample[i] = GenerateRandomInt(0, len(data))
+			sample[i] = GenerateRandomInt(0, len(vecs))
 		}
 	}
 	sampleSizeF := float64(sampleSize)
-	vecLen := len(data[0].Vec)
+	vecLen := len(vecs[0])
 	mean := mat.NewVecDense(vecLen, nil)
 	for _, idx := range sample {
-		mean.AddVec(mean, mat.NewVecDense(vecLen, data[idx].Vec))
+		mean.AddVec(mean, mat.NewVecDense(vecLen, vecs[idx]))
 	}
 	mean.ScaleVec(1/sampleSizeF, mean)
-	std := make([]float64, len(data[0].Vec))
+	std := make([]float64, len(vecs[0]))
 	for _, idx := range sample {
-		for j, val := range data[idx].Vec {
+		for j, val := range vecs[idx] {
 			shifted := val - mean.AtVec(j)
 			std[j] += math.Sqrt(shifted * shifted)
 		}

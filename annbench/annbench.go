@@ -20,22 +20,20 @@ type BenchDataConfig struct {
 }
 
 type SearchConfig struct {
-	Metric                    lsh.Metric
-	MaxDist                   float64
-	NDims                     int
-	NPlanes                   int
-	NPermutes                 int
-	MaxNN                     int
-	Epsilon                   float64
-	MaxCandidates             int
-	BatchSize                 int
-	Mean                      []float64
-	Std                       []float64
-	PlaneOriginDistMultiplier float64
+	Metric        lsh.Metric
+	MaxDist       float64
+	NDims         int
+	KMinVecs      int
+	NTrees        int
+	MaxNN         int
+	Epsilon       float64
+	MaxCandidates int
+	BatchSize     int
 }
 
 type BenchData struct {
-	Train        []lsh.Record
+	TrainVecs    [][]float64
+	TrainIds     []string
 	Test         [][]float64
 	TrainIndices map[string]int
 	Neighbors    [][]int
@@ -64,14 +62,14 @@ func NewNNMock(maxCandidates int, store store.Store, metric lsh.Metric) *NNMock 
 	}
 }
 
-func (nn *NNMock) Train(records []lsh.Record) error {
+func (nn *NNMock) Train(vecs [][]float64, ids []string) error {
 	err := nn.index.Clear()
 	if err != nil {
 		return err
 	}
-	for _, rec := range records {
-		nn.index.SetVector(rec.ID, rec.Vec)
-		nn.index.SetHash("0", rec.ID)
+	for i, vec := range vecs {
+		nn.index.SetVector(ids[i], vec)
+		nn.index.SetHash("0", ids[i])
 	}
 	return nil
 }
@@ -106,8 +104,9 @@ func (nn *NNMock) Search(query []float64, maxNN int, distanceThrsh float64) ([]l
 			heap.Push(
 				minHeap,
 				lsh.Neighbor{
-					Record: lsh.Record{ID: id, Vec: vec},
-					Dist:   dist,
+					ID:   id,
+					Vec:  vec,
+					Dist: dist,
 				},
 			)
 		}
@@ -226,21 +225,21 @@ func PrepHdf5BenchDataset(config *BenchDataConfig) (*BenchData, error) {
 	if err != nil {
 		return nil, err
 	}
-	data.Train = make([]lsh.Record, len(train)/config.TrainDim)
+	data.TrainVecs = make([][]float64, len(train)/config.TrainDim)
+	data.TrainIds = make([]string, len(train)/config.TrainDim)
 	for i := 0; i <= len(train)-config.TrainDim; i = i + config.TrainDim {
-		data.Train[i/config.TrainDim] = lsh.Record{
-			ID:  guuid.NewString(),
-			Vec: lsh.ConvertTo64(train[i : i+config.TrainDim]),
-		}
+		idx := i / config.TrainDim
+		data.TrainVecs[idx] = lsh.ConvertTo64(train[i : i+config.TrainDim])
+		data.TrainIds[idx] = guuid.NewString()
 	}
 	train = nil
 
 	data.TrainIndices = make(map[string]int)
-	for i := range data.Train {
-		data.TrainIndices[data.Train[i].ID] = i
+	for i := range data.TrainVecs {
+		data.TrainIndices[data.TrainIds[i]] = i
 	}
 
-	data.Mean, data.Std, err = lsh.GetMeanStdSampledRecords(data.Train, config.SampleSize)
+	data.Mean, data.Std, err = lsh.GetMeanStdSampledRecords(data.TrainVecs, config.SampleSize)
 	if err != nil {
 		return nil, err
 	}
