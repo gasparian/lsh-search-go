@@ -4,15 +4,27 @@ import (
 	bench "github.com/gasparian/lsh-search-go/annbench"
 	lsh "github.com/gasparian/lsh-search-go/lsh"
 	"github.com/gasparian/lsh-search-go/store/kv"
+	"gonum.org/v1/gonum/blas/blas64"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
-func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN int, maxDist, epsilon float64) {
+func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, config *bench.SearchConfig) {
 	start := time.Now()
 	t.Log("Creating search index...")
+	// NOTE: normalizing vectors if using angular distance metric
+	if config.Angular {
+		for i := range data.TrainVecs {
+			inpVec := lsh.NewVec(data.TrainVecs[i])
+			normed := lsh.NewVec(make([]float64, config.NDims))
+			if data.TrainNorms[i] > bench.Tol {
+				blas64.Axpy(1/data.TrainNorms[i], inpVec, normed)
+			}
+			data.TrainVecs[i] = normed.Data
+		}
+	}
 	indexer.Train(data.TrainVecs, data.TrainIds)
 	t.Logf("Training finished in %v", time.Since(start))
 
@@ -33,7 +45,7 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN
 			defer wg.Done()
 			for j := range batch {
 				start := time.Now()
-				closest, err := indexer.Search(batch[j], maxNN, maxDist)
+				closest, err := indexer.Search(batch[j], config.MaxNN, config.MaxDist)
 				if err != nil {
 					panic(err)
 				}
@@ -53,10 +65,10 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN
 		}
 		p, r := bench.DistanceBasedPrecisionRecall(
 			closestPointsArr,
-			data.Neighbors[pred.Idx][:maxNN],
+			data.Neighbors[pred.Idx][:config.MaxNN],
 			pred.Neighbors,
-			data.Distances[pred.Idx][:maxNN],
-			epsilon,
+			data.Distances[pred.Idx][:config.MaxNN],
+			config.Epsilon,
 		)
 		precision += p
 		recall += r
@@ -77,7 +89,7 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, maxNN
 func testNearestNeighbors(t *testing.T, config *bench.SearchConfig, data *bench.BenchData) {
 	s := kv.NewKVStore()
 	nn := bench.NewNNMock(config.MaxCandidates, s, config.Metric)
-	testIndexer(t, nn, data, config.MaxNN, config.MaxDist, config.Epsilon)
+	testIndexer(t, nn, data, config)
 }
 
 func testLSH(t *testing.T, config *bench.SearchConfig, data *bench.BenchData) {
@@ -97,7 +109,7 @@ func testLSH(t *testing.T, config *bench.SearchConfig, data *bench.BenchData) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testIndexer(t, lshIndex, data, config.MaxNN, config.MaxDist, config.Epsilon)
+	testIndexer(t, lshIndex, data, config)
 }
 
 func TestEuclideanFashionMnist(t *testing.T) {
@@ -125,10 +137,11 @@ func TestEuclideanFashionMnist(t *testing.T) {
 		MaxDist:       2200,
 		MaxCandidates: 30000,
 		Epsilon:       0.05,
+		Angular:       false,
 	}
-	t.Run("NN", func(t *testing.T) {
-		testNearestNeighbors(t, config, data)
-	})
+	// t.Run("NN", func(t *testing.T) {
+	// 	testNearestNeighbors(t, config, data)
+	// })
 
 	config = &bench.SearchConfig{
 		NDims:         784,
@@ -140,6 +153,7 @@ func TestEuclideanFashionMnist(t *testing.T) {
 		Epsilon:       0.05,
 		MaxDist:       2200,
 		MaxCandidates: 5000,
+		Angular:       false,
 	}
 	t.Run("LSH", func(t *testing.T) {
 		testLSH(t, config, data)
@@ -171,20 +185,23 @@ func TestAngularNYTimes(t *testing.T) {
 		MaxNN:         10,
 		MaxDist:       0.9,
 		MaxCandidates: 30000,
+		Epsilon:       0.05,
+		Angular:       true,
 	}
-	t.Run("NN", func(t *testing.T) {
-		testNearestNeighbors(t, config, data)
-	})
+	// t.Run("NN", func(t *testing.T) {
+	// 	testNearestNeighbors(t, config, data)
+	// })
 
 	config = &bench.SearchConfig{
 		Metric:        lsh.NewCosine(),
 		NDims:         256,
-		BatchSize:     250,
-		NTrees:        10,
-		KMinVecs:      20,
+		BatchSize:     500,
+		NTrees:        20,
+		KMinVecs:      300,
 		MaxNN:         10,
-		MaxDist:       0.9,
-		MaxCandidates: 5000,
+		MaxDist:       0.8,
+		MaxCandidates: 10000,
+		Angular:       true,
 	}
 	t.Run("LSH", func(t *testing.T) {
 		testLSH(t, config, data)
@@ -217,11 +234,12 @@ func TestEuclideanSift(t *testing.T) {
 		MaxDist:       400,
 		MaxCandidates: 200000,
 		Epsilon:       0.05,
+		Angular:       false,
 	}
 
-	t.Run("NN", func(t *testing.T) {
-		testNearestNeighbors(t, config, data)
-	})
+	// t.Run("NN", func(t *testing.T) {
+	// 	testNearestNeighbors(t, config, data)
+	// })
 
 	config = &bench.SearchConfig{
 		Metric:    lsh.NewL2(),
@@ -232,6 +250,7 @@ func TestEuclideanSift(t *testing.T) {
 		MaxNN:     10,
 		MaxDist:   300,
 		Epsilon:   0.05,
+		Angular:   false,
 	}
 	t.Run("LSH", func(t *testing.T) {
 		testLSH(t, config, data)
@@ -259,18 +278,28 @@ func TestAngularGlove(t *testing.T) {
 	t.Log("Ground truth distances range: ", minDist, maxDist)
 
 	config := &bench.SearchConfig{
-		Metric:    lsh.NewCosine(),
-		NDims:     200,
-		BatchSize: 500,
-		KMinVecs:  300,
-		NTrees:    10,
-		MaxNN:     100,
-		MaxDist:   0.9,
+		Metric:        lsh.NewCosine(),
+		MaxNN:         10,
+		MaxDist:       0.9,
+		MaxCandidates: 100000,
+		Epsilon:       0.05,
+		Angular:       true,
 	}
+	// t.Run("NN", func(t *testing.T) {
+	// 	testNearestNeighbors(t, config, data)
+	// })
 
-	t.Run("NN", func(t *testing.T) {
-		testNearestNeighbors(t, config, data)
-	})
+	config = &bench.SearchConfig{
+		Metric:    lsh.NewL2(),
+		NDims:     128,
+		BatchSize: 500,
+		NTrees:    20,
+		KMinVecs:  300,
+		MaxNN:     10,
+		MaxDist:   0.9,
+		Epsilon:   0.05,
+		Angular:   true,
+	}
 	t.Run("LSH", func(t *testing.T) {
 		testLSH(t, config, data)
 	})

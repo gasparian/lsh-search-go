@@ -5,11 +5,16 @@ import (
 	lsh "github.com/gasparian/lsh-search-go/lsh"
 	"github.com/gasparian/lsh-search-go/store"
 	guuid "github.com/google/uuid"
+	"gonum.org/v1/gonum/blas/blas64"
 	"gonum.org/v1/hdf5"
 	"math"
 	"path/filepath"
 	"sort"
 	"sync"
+)
+
+const (
+	Tol = 1e-6
 )
 
 type BenchDataConfig struct {
@@ -21,6 +26,7 @@ type BenchDataConfig struct {
 
 type SearchConfig struct {
 	Metric        lsh.Metric
+	Angular       bool
 	MaxDist       float64
 	NDims         int
 	KMinVecs      int
@@ -33,6 +39,7 @@ type SearchConfig struct {
 
 type BenchData struct {
 	TrainVecs    [][]float64
+	TrainNorms   map[int]float64
 	TrainIds     []string
 	Test         [][]float64
 	TrainIndices map[string]int
@@ -225,12 +232,16 @@ func PrepHdf5BenchDataset(config *BenchDataConfig) (*BenchData, error) {
 	if err != nil {
 		return nil, err
 	}
-	data.TrainVecs = make([][]float64, len(train)/config.TrainDim)
-	data.TrainIds = make([]string, len(train)/config.TrainDim)
+	data.TrainNorms = make(map[int]float64)
+	data.TrainVecs = make([][]float64, 0)
+	data.TrainIds = make([]string, 0)
 	for i := 0; i <= len(train)-config.TrainDim; i = i + config.TrainDim {
 		idx := i / config.TrainDim
-		data.TrainVecs[idx] = lsh.ConvertTo64(train[i : i+config.TrainDim])
-		data.TrainIds[idx] = guuid.NewString()
+		vec := lsh.ConvertTo64(train[i : i+config.TrainDim])
+		inpVec := lsh.NewVec(vec)
+		data.TrainNorms[idx] = blas64.Nrm2(inpVec)
+		data.TrainVecs = append(data.TrainVecs, vec)
+		data.TrainIds = append(data.TrainIds, guuid.NewString())
 	}
 	train = nil
 
@@ -251,7 +262,9 @@ func PrepHdf5BenchDataset(config *BenchDataConfig) (*BenchData, error) {
 	}
 	data.Test = make([][]float64, len(test)/config.TrainDim)
 	for i := 0; i <= len(test)-config.TrainDim; i = i + config.TrainDim {
-		data.Test[i/config.TrainDim] = lsh.ConvertTo64(test[i : i+config.TrainDim])
+		idx := i / config.TrainDim
+		vec := lsh.ConvertTo64(test[i : i+config.TrainDim])
+		data.Test[idx] = vec
 	}
 	test = nil
 
