@@ -18,23 +18,18 @@ And kudos to https://github.com/erikbern, who popularized the topic of ANN searc
 
 ### Locality sensitive hashing short reference   
 
-LSH implies space partitioning with random hyperplanes and search across "buckets" formed by intersections of those planes.  
-Recipe for creating LSH search index:  
-  1. Generate *k* random hyper planes.  
-  2. Calculate bit hash for each point in a dataset, relying on it's position relative to the each generated plane. Store points with the same hash in a separate hash table.  
-  3. Repeat the process *l* times --> so at the end we store *l* search indeces.  
-  4. For each query point generate *l* hashes of length *k* and search for nearest neighbors in prepared hash tables.  
+LSH implies space partitioning with random hyperplanes and search across "buckets" formed by intersections of those planes. My implementation is closer to the [Annoy](https://github.com/spotify/annoy), since during index construction, I picking up two random points and calculate the plane that lies in the middle between those points, and then repeat this process recursevely for points that lies on each side of this newly generated plane.   
+So we can expect that nearby vectors have the higher probability to be in the same "bucket".  
+To maximize the number of detected nearest neighbors during the search, usually it's enough to run ~10-100 plane generations (`NTrees` parameter) with different random seed.  
+For each query vector we generate a set of hashes (one per single "tree"), based on dot-product between each plane and the query vector, and then we add all the candidates to the min-heap to finally get *k*-closest to our query vector.  
 
-We can expect that nearby vectors have the higher probability to be in the same bucket.  
-Storing all vectors in many hash tables requires much space, but searching for nearby vectors can then be done faster, as many distant vectors are not considered for reductions. So we will always have the trade-off between space usage and search time.  
-
-Here is visual example of space partitioning:  
+Here is just super-simple visual example of space partitioning:  
 <p align="center"> <img src="https://github.com/gasparian/lsh-search-go/blob/master/pics/biased.jpg" height=400/> </p>  
 
 I prefer to use simple rules while tuning the algorithm:  
-  - more planes permutations you create --> more space you use, more time for creating search index you need, but more accurate the model could become;  
-  - more planes you generate --> more "buckets" with less points you get --> search becomes faster, but can be less accurate (more false negative errors, potentially);  
-  - larger distance threshold you make --> more "candidate" points you will have during the search phase, so you can satisfy the "max. nearest neighbors" condition faster, but decrease accuracy.  
+  - more "trees" (or planes premutations) you create --> more space you use, more time for creating search index you need, but more accurate the model could become;  
+  - decreasing the minimum amount of points in a "bucket" can make search faster, but it can be less accurate (more false negative errors, potentially);  
+  - larger distance threshold you make --> more "candidate" points you will have during the search phase, so you can satisfy the "max. nearest neighbors" condition faster, but potentially decrease accuracy.  
 
 ### API  
 
@@ -45,7 +40,7 @@ You need to implement only two interfaces:
 
 LSH index object has a super-simple [interface](https://github.com/gasparian/lsh-search-go/blob/d32f31c39cdb89cc8132901ddcdd7090a7454264/lsh/lsh.go#L25):  
  - `NewLsh(config lsh.Config) (*LSHIndex, error)` is for creating the new instance of index by given config;  
- - `Train(records []lsh.Record) error` for filling search index with vectors (each `lsh.Record` must contain unique id and `[]float64` vector itself);  
+ - `Train(records [][]float64, ids []string) error` for filling search index with vectors (each `lsh.Record` must contain unique id and `[]float64` vector itself);  
  - `Search(query []float64, maxNN int, distanceThrsh float64) ([]lsh.Record, error)` to find `MaxNN` nearest neighbors to the query vector;  
 
 Here is the usage example:  
@@ -58,9 +53,9 @@ import (
 )
 
 // Create train dataset as a pair of unique id and vector
-var trainData []lsh.Record = ...
+var trainVecs [][]float64 = ...
+var trainIds []string = ...
 sampleSize := 20000
-mean, std, _ := lsh.GetMeanStdSampledRecords(trainData, sampleSize)
 var queryPoint []float64 = ...
 
 const (
@@ -73,23 +68,13 @@ lshConfig := lsh.Config{
     IndexConfig: lsh.IndexConfig{
         BatchSize:     250,  // How much points to process in a single goroutine 
                              // during the training phase
-        Bias:          mean, // Optionally, you can use some bias vector, 
-                             // to "center" the data points before the
-                             // hash calculation on train and search, 
-                             // since planes are generated near the 
-                             // center of coordinates.
-                             // Usually I use mean vector here.
-                             // (you can pass nil or the empty slice)
-        Std:           std,  // Std used for standart scaling, can be nil or empty slice
-                             // (e.g. when you use angular metrics)
         MaxCandidates: 5000, // Maximum number of points that will be stored
                              // in a min heap, where we then get MaxNN vectors
     },
     HasherConfig: lsh.HasherConfig{
-        NPermutes: 10,                  // Number of planes permutations to generate
-        NPlanes:   20,                  // Number of planes in a single permutation to generate
-        Dims:      784,                 // Space dimensionality
-        PlaneOriginDistMultiplier: 1.0, // Defines how far from origin planes will be generated
+        NTrees:   10,        // Number of planes trees (planes permutations) to generate
+        KMinVecs: 500,       // Minimum number of points to stop growing planes tree
+        Dims:     784,       // Space dimensionality
     },
 }
 // Store implementation, you can use yours
@@ -102,7 +87,7 @@ if err != nil {
 }
 
 // Create search index; It will take some significant amount of time
-lshIndex.Train(trainData)
+lshIndex.Train(trainVecs, trainIds)
 
 // Perform search
 closest, err := lshIndex.Search(queryPoint, maxNN, distanceThrsh)

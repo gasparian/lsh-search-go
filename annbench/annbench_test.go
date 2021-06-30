@@ -242,15 +242,16 @@ func TestEuclideanSift(t *testing.T) {
 	// })
 
 	config = &bench.SearchConfig{
-		Metric:    lsh.NewL2(),
-		NDims:     128,
-		BatchSize: 500,
-		NTrees:    40,
-		KMinVecs:  300,
-		MaxNN:     10,
-		MaxDist:   300,
-		Epsilon:   0.05,
-		Angular:   false,
+		Metric:        lsh.NewL2(),
+		NDims:         128,
+		BatchSize:     500,
+		NTrees:        40,
+		KMinVecs:      300,
+		MaxNN:         10,
+		MaxDist:       300,
+		Epsilon:       0.05,
+		Angular:       false,
+		MaxCandidates: 10000,
 	}
 	t.Run("LSH", func(t *testing.T) {
 		testLSH(t, config, data)
@@ -290,15 +291,16 @@ func TestAngularGlove(t *testing.T) {
 	// })
 
 	config = &bench.SearchConfig{
-		Metric:    lsh.NewL2(),
-		NDims:     128,
-		BatchSize: 500,
-		NTrees:    20,
-		KMinVecs:  300,
-		MaxNN:     10,
-		MaxDist:   0.9,
-		Epsilon:   0.05,
-		Angular:   true,
+		Metric:        lsh.NewL2(),
+		NDims:         128,
+		BatchSize:     500,
+		NTrees:        20,
+		KMinVecs:      300,
+		MaxNN:         10,
+		MaxDist:       0.9,
+		Epsilon:       0.05,
+		Angular:       true,
+		MaxCandidates: 10000,
 	}
 	t.Run("LSH", func(t *testing.T) {
 		testLSH(t, config, data)
