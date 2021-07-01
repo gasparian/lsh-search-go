@@ -134,10 +134,10 @@ func NewVec(data []float64) blas64.Vector {
 }
 
 // L2 calculates l2-distance between two vectors
-type L2 int
+type L2 bool
 
 func NewL2() L2 {
-	return L2(42)
+	return L2(false)
 }
 func (l2 L2) GetDist(l, r []float64) float64 {
 	lBlas := NewVec(l)
@@ -146,6 +146,10 @@ func (l2 L2) GetDist(l, r []float64) float64 {
 	blas64.Copy(rBlas, res)
 	blas64.Axpy(-1.0, lBlas, res)
 	return blas64.Nrm2(res)
+}
+
+func (l2 L2) IsAngular() bool {
+	return bool(l2)
 }
 
 // StandartScaler ...
@@ -196,10 +200,10 @@ func IsZeroVectorBlas(v blas64.Vector) bool {
 }
 
 // Cosine calculates cosine distance between two given vectors
-type Cosine int
+type Cosine bool
 
 func NewCosine() Cosine {
-	return Cosine(42)
+	return Cosine(true)
 }
 func (c Cosine) GetDist(l, r []float64) float64 {
 	lBlas := NewVec(l)
@@ -209,6 +213,10 @@ func (c Cosine) GetDist(l, r []float64) float64 {
 	}
 	cosine := blas64.Dot(lBlas, rBlas) / (blas64.Nrm2(lBlas) * blas64.Nrm2(rBlas))
 	return 1.0 - cosine
+}
+
+func (c Cosine) IsAngular() bool {
+	return bool(c)
 }
 
 type StringSet struct {

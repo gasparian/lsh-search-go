@@ -47,6 +47,7 @@ func (h *FloatMinHeap) Pop() interface{} {
 // Metric holds implementation of needed distance metric
 type Metric interface {
 	GetDist(l, r []float64) float64
+	IsAngular() bool
 }
 
 // Indexer holds implementation of NN search index
@@ -90,6 +91,7 @@ type LSHIndex struct {
 
 // New creates new instance of hasher and index, where generated hashes will be stored
 func NewLsh(config Config, store store.Store, metric Metric) (*LSHIndex, error) {
+	config.HasherConfig.isAngularMetric = metric.IsAngular()
 	hasher := NewHasher(config.HasherConfig)
 	config.IndexConfig.mx = new(sync.RWMutex)
 	return &LSHIndex{

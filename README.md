@@ -36,7 +36,7 @@ I prefer to use simple rules while tuning the algorithm:
 The storage and hashing parts are **decoupled** from each other.  
 You need to implement only two interfaces:  
   1. [store](https://github.com/gasparian/lsh-search-go/blob/master/store/store.go), in order to use any storage you prefer.  
-  2. [metric](https://github.com/gasparian/lsh-search-go/blob/d32f31c39cdb89cc8132901ddcdd7090a7454264/lsh/lsh.go#L20), to use your custom distance metric.  
+  2. [metric](https://github.com/gasparian/lsh-search-go/blob/master/lsh/lsh.go#L20), to use your custom distance metric.  
 
 LSH index object has a super-simple [interface](https://github.com/gasparian/lsh-search-go/blob/d32f31c39cdb89cc8132901ddcdd7090a7454264/lsh/lsh.go#L25):  
  - `NewLsh(config lsh.Config) (*LSHIndex, error)` is for creating the new instance of index by given config;  

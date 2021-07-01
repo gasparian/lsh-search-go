@@ -26,7 +26,6 @@ type BenchDataConfig struct {
 
 type SearchConfig struct {
 	Metric        lsh.Metric
-	Angular       bool
 	MaxDist       float64
 	NDims         int
 	KMinVecs      int

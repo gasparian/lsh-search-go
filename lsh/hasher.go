@@ -59,9 +59,10 @@ func (node *treeNode) getHash(inp []float64) uint64 {
 }
 
 type HasherConfig struct {
-	NTrees   int
-	KMinVecs int
-	Dims     int
+	NTrees          int
+	KMinVecs        int
+	Dims            int
+	isAngularMetric bool
 }
 
 // Hasher holds N_PERMUTS number of trees
@@ -84,11 +85,11 @@ type safeHashesHolder struct {
 	v map[int]uint64
 }
 
-// getRandomPlane generates random coefficients of a plane by given pair of points
-func getRandomPlane(a, b []float64) *plane {
-	ndims := len(a)
+// planeByPoints generates random coefficients of a plane by given pair of points
+func planeByPoints(a, b blas64.Vector) *plane {
+	ndims := a.N
 	planeCoefs := &plane{}
-	points := []blas64.Vector{NewVec(a), NewVec(b)}
+	points := []blas64.Vector{a, b}
 	sort.Slice(points, func(i, j int) bool {
 		return blas64.Nrm2(points[i]) < blas64.Nrm2(points[j])
 	})
@@ -103,15 +104,15 @@ func getRandomPlane(a, b []float64) *plane {
 	return planeCoefs
 }
 
-// growTree ...
-func growTree(vecs [][]float64, node *treeNode, depth, k int) {
-	if depth > 63 || len(vecs) < 2 { // NOTE: depth <= 63 since we will use 8 byte int to store a hash
-		return
-	}
+func getRandomPlane(vecs [][]float64, isAngular bool) *plane {
 	randIndeces := make(map[int]bool)
 	randIndecesList := make([]int, 2)
 	var i int = 0
-	for i < 2 {
+	maxPoints := 2
+	if isAngular {
+		maxPoints = 1
+	}
+	for i < maxPoints {
 		idx := rand.Intn(len(vecs))
 		if _, has := randIndeces[idx]; !has {
 			randIndeces[idx] = true
@@ -119,10 +120,22 @@ func growTree(vecs [][]float64, node *treeNode, depth, k int) {
 			i++
 		}
 	}
-	node.plane = getRandomPlane(
-		vecs[randIndecesList[0]],
-		vecs[randIndecesList[1]],
-	)
+	vec1 := NewVec(vecs[randIndecesList[0]])
+	if isAngular { // NOTE: in case of angular metric we generate plane that always should intersect the origin
+		oppositeVec := NewVec(make([]float64, vec1.N))
+		blas64.Axpy(-1.0, vec1, oppositeVec)
+		return planeByPoints(vec1, oppositeVec)
+	}
+	vec2 := NewVec(vecs[randIndecesList[1]])
+	return planeByPoints(vec1, vec2)
+}
+
+// growTree ...
+func growTree(vecs [][]float64, node *treeNode, depth, k int, isAngular bool) {
+	if depth > 63 || len(vecs) < 2 { // NOTE: depth <= 63 since we will use 8 byte int to store a hash
+		return
+	}
+	node.plane = getRandomPlane(vecs, isAngular)
 	var l, r [][]float64
 	for _, v := range vecs {
 		inpVec := NewVec(v)
@@ -136,19 +149,19 @@ func growTree(vecs [][]float64, node *treeNode, depth, k int) {
 	depth++
 	if len(r) > k {
 		node.right = &treeNode{}
-		growTree(r, node.right, depth, k)
+		growTree(r, node.right, depth, k, isAngular)
 	}
 	if len(l) > k {
 		node.left = &treeNode{}
-		growTree(l, node.left, depth, k)
+		growTree(l, node.left, depth, k, isAngular)
 	}
 }
 
 // buildTree creates set of planes which will be used to calculate hash
-func buildTree(vecs [][]float64, kmin int) *treeNode {
+func buildTree(vecs [][]float64, kmin int, isAngular bool) *treeNode {
 	rand.Seed(time.Now().UnixNano())
 	tree := &treeNode{}
-	growTree(vecs, tree, 0, kmin)
+	growTree(vecs, tree, 0, kmin, isAngular)
 	return tree
 }
 
@@ -159,12 +172,13 @@ func (hasher *Hasher) build(vecs [][]float64) {
 
 	trees := make([]*treeNode, hasher.Config.NTrees)
 	kmin := hasher.Config.KMinVecs
+	isAngular := hasher.Config.isAngularMetric
 	wg := sync.WaitGroup{}
 	wg.Add(len(trees))
 	for i := 0; i < hasher.Config.NTrees; i++ {
 		go func(i int, wg *sync.WaitGroup) {
 			defer wg.Done()
-			tmpTree := buildTree(vecs, kmin)
+			tmpTree := buildTree(vecs, kmin, isAngular)
 			trees[i] = tmpTree
 		}(i, &wg)
 	}

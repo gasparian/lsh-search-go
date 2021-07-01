@@ -32,7 +32,7 @@ func TestGetHash(t *testing.T) {
 		[]float64{-1.0, -1.0},
 		[]float64{2.0, -1.0},
 	}
-	hasherInstance := buildTree(vecs, 2)
+	hasherInstance := buildTree(vecs, 2, false)
 	hash := hasherInstance.getHash(vecs[0])
 	if hash != 1 {
 		t.Fatal("Wrong hash value, must be 1")
