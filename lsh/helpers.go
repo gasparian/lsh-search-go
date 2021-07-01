@@ -41,10 +41,6 @@ func ConvertToInt(ar []int32) []int {
 	return newar
 }
 
-func GenerateRandomInt(min, max int) int {
-	return rand.Intn(max-min) + min
-}
-
 // GetMeanStd returns mean and std based on incoming NxM matrix
 func GetMeanStdSampled(data [][]float64, sampleSize int) ([]float64, []float64, error) {
 	if len(data) == 0 {
@@ -61,7 +57,7 @@ func GetMeanStdSampled(data [][]float64, sampleSize int) ([]float64, []float64, 
 		}
 	} else {
 		for i := 0; i < sampleSize; i++ {
-			sample[i] = GenerateRandomInt(0, len(data))
+			sample[i] = rand.Intn(len(data))
 		}
 	}
 	sampleSizeF := float64(sampleSize)
@@ -99,7 +95,7 @@ func GetMeanStdSampledRecords(vecs [][]float64, sampleSize int) ([]float64, []fl
 		}
 	} else {
 		for i := 0; i < sampleSize; i++ {
-			sample[i] = GenerateRandomInt(0, len(vecs))
+			sample[i] = rand.Intn(len(vecs))
 		}
 	}
 	sampleSizeF := float64(sampleSize)
@@ -194,11 +190,6 @@ func (s *StandartScaler) Scale(vec []float64) blas64.Vector {
 	return res.RawVector()
 }
 
-// IsZeroVectorBlas returns true if the sum of vectors' elements close to 0.0
-func IsZeroVectorBlas(v blas64.Vector) bool {
-	return math.Abs(blas64.Asum(v)) <= tol
-}
-
 // Cosine calculates cosine distance between two given vectors
 type Cosine bool
 
@@ -208,10 +199,12 @@ func NewCosine() Cosine {
 func (c Cosine) GetDist(l, r []float64) float64 {
 	lBlas := NewVec(l)
 	rBlas := NewVec(r)
-	if IsZeroVectorBlas(lBlas) || IsZeroVectorBlas(rBlas) {
+	lNorm := blas64.Nrm2(lBlas)
+	rNorm := blas64.Nrm2(rBlas)
+	if lNorm <= tol || rNorm <= tol {
 		return 1.0 // NOTE: zero vectors are wrong with angular metric
 	}
-	cosine := blas64.Dot(lBlas, rBlas) / (blas64.Nrm2(lBlas) * blas64.Nrm2(rBlas))
+	cosine := blas64.Dot(lBlas, rBlas) / (lNorm * rNorm)
 	return 1.0 - cosine
 }
 

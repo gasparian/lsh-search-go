@@ -147,18 +147,6 @@ func TestNewVec(t *testing.T) {
 	}
 }
 
-func TestIsZeroVec(t *testing.T) {
-	t.Parallel()
-	v1 := NewVec([]float64{0.0, 0.0})
-	v2 := NewVec([]float64{0.0, 1.0})
-	if !IsZeroVectorBlas(v1) {
-		t.Error("Provided vector should be zero vector")
-	}
-	if IsZeroVectorBlas(v2) {
-		t.Error("Provided vector should be non-zero vector")
-	}
-}
-
 func TestStats(t *testing.T) {
 	t.Parallel()
 	rand.Seed(time.Now().UnixNano())

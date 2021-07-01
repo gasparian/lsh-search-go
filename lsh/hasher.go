@@ -112,8 +112,12 @@ func getRandomPlane(vecs [][]float64, isAngular bool) *plane {
 	if isAngular {
 		maxPoints = 1
 	}
-	for i < maxPoints {
+	for i < maxPoints && i < len(vecs)*3 {
 		idx := rand.Intn(len(vecs))
+		norm := blas64.Nrm2(NewVec(vecs[idx]))
+		if norm <= tol {
+			continue
+		}
 		if _, has := randIndeces[idx]; !has {
 			randIndeces[idx] = true
 			randIndecesList[i] = idx
