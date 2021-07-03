@@ -201,10 +201,11 @@ func (c Cosine) GetDist(l, r []float64) float64 {
 	rBlas := NewVec(r)
 	lNorm := blas64.Nrm2(lBlas)
 	rNorm := blas64.Nrm2(rBlas)
-	if lNorm <= tol || rNorm <= tol {
+	if (lNorm * rNorm) <= tol {
 		return 1.0 // NOTE: zero vectors are wrong with angular metric
 	}
 	cosine := blas64.Dot(lBlas, rBlas) / (lNorm * rNorm)
+	cosine = (cosine + 1) / 2 // NOTE: [-1, 1] -> [0, 1]
 	return 1.0 - cosine
 }
 

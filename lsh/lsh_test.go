@@ -32,7 +32,7 @@ func TestGetHash(t *testing.T) {
 		[]float64{-1.0, -1.0},
 		[]float64{2.0, -1.0},
 	}
-	hasherInstance := buildTree(vecs, 2, false)
+	hasherInstance := buildTree(vecs, HasherConfig{KMinVecs: 2, isAngularMetric: false})
 	hash := hasherInstance.getHash(vecs[0])
 	if hash != 1 {
 		t.Fatal("Wrong hash value, must be 1")
@@ -43,6 +43,7 @@ func TestGetHash(t *testing.T) {
 	}
 }
 
+// TODO: fix tests according to the new cosine sim. calculation algorithm
 func TestCosineSim(t *testing.T) {
 	cosine := NewCosine()
 	dist := cosine.GetDist(
@@ -64,7 +65,7 @@ func TestCosineSim(t *testing.T) {
 		[]float64{0.0, 1.0},
 		[]float64{0.0, 1.0},
 	)
-	if math.Abs(dist-0.0) > tol {
+	if math.Abs(dist) > tol {
 		t.Error("Cosine similarity must be 0.0 for equal vectors")
 	}
 	dist = cosine.GetDist(
@@ -245,7 +246,7 @@ func testLSH(metric Metric, config Config, maxNN int, distanceThrsh float64, tra
 		}
 		t.Log("LSH nearest neighbors: ", nns)
 		if len(nns) < 3 || len(nns) > 4 {
-			t.Errorf("Query point must have 3-4 neighbors, got %v", len(nns))
+			t.Fatalf("Query point must have 3-4 neighbors, got %v", len(nns))
 		}
 	})
 	return lsh

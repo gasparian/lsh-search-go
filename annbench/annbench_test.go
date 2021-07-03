@@ -10,6 +10,10 @@ import (
 	"time"
 )
 
+const (
+	tol = 1e-6
+)
+
 func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, config *bench.SearchConfig) {
 	start := time.Now()
 	t.Log("Creating search index...")
@@ -126,9 +130,9 @@ func TestEuclideanFashionMnist(t *testing.T) {
 		MaxCandidates: 30000,
 		Epsilon:       0.05,
 	}
-	// t.Run("NN", func(t *testing.T) {
-	// 	testNearestNeighbors(t, config, data)
-	// })
+	t.Run("NN", func(t *testing.T) {
+		testNearestNeighbors(t, config, data)
+	})
 
 	config = &bench.SearchConfig{
 		NDims:         784,
@@ -140,52 +144,6 @@ func TestEuclideanFashionMnist(t *testing.T) {
 		Epsilon:       0.05,
 		MaxDist:       2200,
 		MaxCandidates: 5000,
-	}
-	t.Run("LSH", func(t *testing.T) {
-		testLSH(t, config, data)
-	})
-}
-
-func TestAngularNYTimes(t *testing.T) {
-	dataConfig := &bench.BenchDataConfig{
-		DatasetPath:  "../test-data/nytimes-256-angular.hdf5",
-		SampleSize:   60000,
-		TrainDim:     256,
-		NeighborsDim: 100,
-	}
-	data, err := bench.PrepHdf5BenchDataset(dataConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-	minStd, maxStd := bench.GetFloat64Range([][]float64{data.Std})
-	t.Log("Dimensions std's range: ", minStd, maxStd)
-	minMean, maxMean := bench.GetFloat64Range([][]float64{data.Mean})
-	t.Log("Dimensions mean's range: ", minMean, maxMean)
-
-	// NOTE: look at the ground truth distances values
-	minDist, maxDist := bench.GetFloat64Range(data.Distances)
-	t.Log("Ground truth distances range: ", minDist, maxDist)
-
-	config := &bench.SearchConfig{
-		Metric:        lsh.NewCosine(),
-		MaxNN:         10,
-		MaxDist:       0.9,
-		MaxCandidates: 30000,
-		Epsilon:       0.05,
-	}
-	// t.Run("NN", func(t *testing.T) {
-	// 	testNearestNeighbors(t, config, data)
-	// })
-
-	config = &bench.SearchConfig{
-		Metric:        lsh.NewCosine(),
-		NDims:         256,
-		BatchSize:     500,
-		NTrees:        20,
-		KMinVecs:      300,
-		MaxNN:         10,
-		MaxDist:       0.8,
-		MaxCandidates: 10000,
 	}
 	t.Run("LSH", func(t *testing.T) {
 		testLSH(t, config, data)
@@ -220,9 +178,9 @@ func TestEuclideanSift(t *testing.T) {
 		Epsilon:       0.05,
 	}
 
-	// t.Run("NN", func(t *testing.T) {
-	// 	testNearestNeighbors(t, config, data)
-	// })
+	t.Run("NN", func(t *testing.T) {
+		testNearestNeighbors(t, config, data)
+	})
 
 	config = &bench.SearchConfig{
 		Metric:        lsh.NewL2(),
@@ -273,12 +231,12 @@ func TestAngularGlove(t *testing.T) {
 
 	config = &bench.SearchConfig{
 		Metric:        lsh.NewCosine(),
-		NDims:         128,
+		NDims:         200,
 		BatchSize:     500,
-		NTrees:        30,
-		KMinVecs:      500,
+		NTrees:        20,
+		KMinVecs:      1000,
 		MaxNN:         10,
-		MaxDist:       0.8,
+		MaxDist:       0.75,
 		Epsilon:       0.05,
 		MaxCandidates: 10000,
 	}

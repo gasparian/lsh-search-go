@@ -119,9 +119,9 @@ If you want to run benchmarks, where LSH compared to the regular NN search, firs
 ```
 make install-hdf5 && make download-annbench-data
 ```  
-And just run go test:  
+And just run go test passing the needed test name:  
 ```
-make annbench
+make annbench test=TestEuclideanFashionMnist
 ```  
 
 Search parameters that you can find [here](https://github.com/gasparian/lsh-search-go/blob/master/annbench/annbench_test.go) has been selected "empirically", based on precision and recall metrics measured on validation dataset.  
@@ -134,7 +134,6 @@ The following datasets has been used:
 | Dataset           | N dimensions |  Train examples | Test examples |   Metric  |
 |-------------------|:------------:|:---------------:|:-------------:|:----------|
 | Fashion MNIST     |      784     |     60000       |     10000     | Euclidean |
-| NY times          |      256     |     290000      |     10000     | Cosine    |
 | SIFT              |      128     |     1000000     |     10000     | Euclidean |
 | GloVe             |      200     |     1183514     |     10000     | Cosine    |  
 
@@ -143,7 +142,7 @@ Both precision and recall has been calculated using distance-based definition of
 <p align="center"> <img src="https://github.com/gasparian/lsh-search-go/blob/master/pics/recall_metric.png" width=600/> </p>  
 
 In all experiments ε=0.05.  
-Don't pay too much attention to the absolute time values in the tables, since it highly depends on the test algorithm itself - it's better to keep in mind only the relative difference between search times.  
+I picked parameters manually, to get the best tradeoff between speed and accuracy.  
 
 [Fashion MNIST](https://github.com/zalandoresearch/fashion-mnist):  
 | Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision  |  Recall  |
@@ -151,27 +150,17 @@ Don't pay too much attention to the absolute time values in the tables, since it
 | Exact nearest neighbors |       0.37      |         767          |     30000      |    0.999    |  0.998   |
 | LSH                     |      12.29      |         24.6         |     5000       |    0.947    |  0.946   |  
 
-[NY times](https://archive.ics.uci.edu/ml/datasets/bag+of+words):  <<< try divide vectors by L2 norm as a prep. step
-| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision* |  Recall* |
-|-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
-| Exact nearest neighbors |       1.79      |        1222          |     100000     |    0.958    |  0.957   |
-| LSH                     |       792       |        272           |      5000      |    0.825    |  0.825   |  
-
-*such low metric values even in case of exact nearest neighbors may be related to the fact that dataset contains zero vectors, which can corrupt angular metric calculation, depending on how handled such corner-cases  
-
 [SIFT](https://corpus-texmex.irisa.fr/):  
 | Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision  |  Recall  |
 |-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
 | Exact nearest neighbors |       6.38      |        4881          |     200000     |    0.990    |  0.990   |
 | LSH                     |       653       |        104           |     10000      |    0.940    |  0.935   |  
 
+So seems like it works with both datasets, giving the **30-50x** speed up, with just a slightly lower metrics values.  
+But still I didn't succeed with for cosine metrics validation dataset. The metrics values in case of lsh has been always low and processing time - high. Keep investigating that.  
+
 [GloVe](http://nlp.stanford.edu/projects/glove/):  ???
 | Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision  |  Recall  |
 |-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
 | Exact nearest neighbors |       7.47      |        4782          |     100000     |    0.999    |   0.999  |
-| LSH                     |      XXXXX      |        XXXXX         |      XXXX      |    XXXX     |   XXXX   |  
-
-I picked parameters manually, to get the best tradeoff between speed and accuracy.  
-
-### Known problems  
-*TO DO*  
+| LSH                     |       ????      |        ?????         |     ?????      |    ????     |   ????   |  

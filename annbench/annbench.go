@@ -232,15 +232,15 @@ func PrepHdf5BenchDataset(config *BenchDataConfig) (*BenchData, error) {
 		return nil, err
 	}
 	data.TrainNorms = make(map[int]float64)
-	data.TrainVecs = make([][]float64, 0)
-	data.TrainIds = make([]string, 0)
+	data.TrainVecs = make([][]float64, len(train)/config.TrainDim)
+	data.TrainIds = make([]string, len(train)/config.TrainDim)
 	for i := 0; i <= len(train)-config.TrainDim; i = i + config.TrainDim {
 		idx := i / config.TrainDim
 		vec := lsh.ConvertTo64(train[i : i+config.TrainDim])
 		inpVec := lsh.NewVec(vec)
 		data.TrainNorms[idx] = blas64.Nrm2(inpVec)
-		data.TrainVecs = append(data.TrainVecs, vec)
-		data.TrainIds = append(data.TrainIds, guuid.NewString())
+		data.TrainVecs[idx] = vec
+		data.TrainIds[idx] = guuid.NewString()
 	}
 	train = nil
 
