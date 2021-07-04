@@ -33,11 +33,11 @@ func TestGetHash(t *testing.T) {
 		[]float64{2.0, -1.0},
 	}
 	hasherInstance := buildTree(vecs, HasherConfig{KMinVecs: 2, isAngularMetric: false})
-	hash := hasherInstance.getHash(vecs[0])
+	hash := hasherInstance.getHash(NewVec(vecs[0]))
 	if hash != 1 {
 		t.Fatal("Wrong hash value, must be 1")
 	}
-	hash = hasherInstance.getHash(vecs[1])
+	hash = hasherInstance.getHash(NewVec(vecs[1]))
 	if hash != 0 {
 		t.Fatal("Wrong hash value, must be 0")
 	}
@@ -225,7 +225,7 @@ func TestScaler(t *testing.T) {
 	}
 }
 
-func testLSH(metric Metric, config Config, maxNN int, distanceThrsh float64, trainSet [][]float64, trainIds []string, t *testing.T) Indexer {
+func testLSH(metric Metric, config Config, maxNN int, distanceThrsh float64, trainSet [][]float64, trainIds []string, t *testing.T) {
 	s := kv.NewKVStore()
 	lsh, err := NewLsh(config, s, metric)
 	if err != nil {
@@ -249,7 +249,33 @@ func testLSH(metric Metric, config Config, maxNN int, distanceThrsh float64, tra
 			t.Fatalf("Query point must have 3-4 neighbors, got %v", len(nns))
 		}
 	})
-	return lsh
+
+	t.Run("LshSearchConcurrent", func(t *testing.T) {
+		q := []float64{0.08, 0.1}
+		N := 10
+		errs := make(chan error, N)
+		wg := sync.WaitGroup{}
+		wg.Add(N)
+		for i := 0; i < N; i++ {
+			go func(maxNN int, distanceThrsh float64) {
+				defer wg.Done()
+				_, err := lsh.Search(q, maxNN, distanceThrsh)
+				errs <- err
+			}(maxNN, distanceThrsh)
+		}
+		wg.Wait()
+		close(errs)
+
+		for {
+			err, ok := <-errs
+			if !ok {
+				break
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
 }
 
 func getTestLSHData() ([][]float64, []string) {
@@ -289,34 +315,7 @@ func TestLshCosine(t *testing.T) {
 	}
 	metric := NewCosine()
 
-	lsh := testLSH(metric, config, maxNN, distanceThrsh, inpVecs, trainIds, t)
-
-	t.Run("LshSearchConcurrent", func(t *testing.T) {
-		q := []float64{0.08, 0.1}
-		N := 10
-		errs := make(chan error, N)
-		wg := sync.WaitGroup{}
-		wg.Add(N)
-		for i := 0; i < N; i++ {
-			go func(maxNN int, distanceThrsh float64) {
-				defer wg.Done()
-				_, err := lsh.Search(q, maxNN, distanceThrsh)
-				errs <- err
-			}(maxNN, distanceThrsh)
-		}
-		wg.Wait()
-		close(errs)
-
-		for {
-			err, ok := <-errs
-			if !ok {
-				break
-			}
-			if err != nil {
-				t.Error(err)
-			}
-		}
-	})
+	testLSH(metric, config, maxNN, distanceThrsh, inpVecs, trainIds, t)
 }
 
 func TestLshL2(t *testing.T) {
@@ -338,5 +337,5 @@ func TestLshL2(t *testing.T) {
 		},
 	}
 	metric := NewL2()
-	_ = testLSH(metric, config, maxNN, distanceThrsh, inpVecs, trainIds, t)
+	testLSH(metric, config, maxNN, distanceThrsh, inpVecs, trainIds, t)
 }

@@ -8,6 +8,8 @@ download-annbench-data:
 	mkdir -p $(ANNBENCH_DATA)
 	echo "=== Downloading fashion mnist dataset... ==="
 	$(call DOWNLOAD,$(ANNBENCH_DATA),http://ann-benchmarks.com/fashion-mnist-784-euclidean.hdf5)
+	echo "=== Downloading NY times dataset... ==="
+	$(call DOWNLOAD,$(ANNBENCH_DATA),http://ann-benchmarks.com/nytimes-256-angular.hdf5)
 	echo "=== Downloading SIFT dataset... ==="
 	$(call DOWNLOAD,$(ANNBENCH_DATA),http://ann-benchmarks.com/sift-128-euclidean.hdf5)
 	echo "=== Downloading Glove dataset... ==="

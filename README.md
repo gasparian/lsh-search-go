@@ -18,18 +18,19 @@ And kudos to https://github.com/erikbern, who popularized the topic of ANN searc
 
 ### Locality sensitive hashing short reference   
 
-LSH implies space partitioning with random hyperplanes and search across "buckets" formed by intersections of those planes. My implementation is closer to the [Annoy](https://github.com/spotify/annoy), since during index construction, I picking up two random points and calculate the plane that lies in the middle between those points, and then repeat this process recursevely for points that lies on each side of this newly generated plane.   
+LSH implies space partitioning with random hyperplanes and search across "buckets" formed by intersections of those planes.  
+My implementation is closer to the earlier versions of [Annoy](https://github.com/spotify/annoy), since during index construction, I picking up two random points and calculate the plane that lies in the middle between those points, and then repeat this process recursevely for points that lies on each side of this newly generated plane.   
 So we can expect that nearby vectors have the higher probability to be in the same "bucket".  
 To maximize the number of detected nearest neighbors during the search, usually it's enough to run ~10-100 plane generations (`NTrees` parameter) with different random seed.  
-For each query vector we generate a set of hashes (one per single "tree"), based on dot-product between each plane and the query vector, and then we add all the candidates to the min-heap to finally get *k*-closest to our query vector.  
+For each query vector we generate a set of hashes (one per single "tree"), based on dot-product between each plane and the query vector, and then we add all the candidates to the min-heap to finally get *k*-closest vectors to our query vector.  
 
 Here is just super-simple visual example of space partitioning:  
 <p align="center"> <img src="https://github.com/gasparian/lsh-search-go/blob/master/pics/biased.jpg" height=400/> </p>  
 
 I prefer to use simple rules while tuning the algorithm:  
-  - more "trees" (or planes premutations) you create --> more space you use, more time for creating search index you need, but more accurate the model could become;  
+  - more "trees" you create --> more space you use, more time for creating search index you need, but more accurate the model could become (search time becomes unsignificantly higher too, though);  
   - decreasing the minimum amount of points in a "bucket" can make search faster, but it can be less accurate (more false negative errors, potentially);  
-  - larger distance threshold you make --> more "candidate" points you will have during the search phase, so you can satisfy the "max. nearest neighbors" condition faster, but potentially decrease accuracy.  
+  - larger distance threshold you make --> more "candidate" points you will have during the search phase, so you can satisfy the "max. nearest neighbors" condition faster, but potentially decrease the accuracy.  
 
 ### API  
 
@@ -135,6 +136,7 @@ The following datasets has been used:
 |-------------------|:------------:|:---------------:|:-------------:|:----------|
 | Fashion MNIST     |      784     |     60000       |     10000     | Euclidean |
 | SIFT              |      128     |     1000000     |     10000     | Euclidean |
+| NY times          |      256     |     290000      |     10000     | Cosine    |
 | GloVe             |      200     |     1183514     |     10000     | Cosine    |  
 
 I end up using **10 closest** nearest neighbors to calculate the metrics.   
@@ -157,7 +159,14 @@ I picked parameters manually, to get the best tradeoff between speed and accurac
 | LSH                     |       653       |        104           |     10000      |    0.940    |  0.935   |  
 
 So seems like it works with both datasets, giving the **30-50x** speed up, with just a slightly lower metrics values.  
-But still I didn't succeed with for cosine metrics validation dataset. The metrics values in case of lsh has been always low and processing time - high. Keep investigating that.  
+
+For cosine datasets results are slightly worser - only **~10x** speed up. Also for both datasets I generated way more trees (>100) comparing to the previous two datasets.  
+Unfortunately, I can't say yet exactly why it happening, but if you have an idea - get it touch with me!)  
+[NY times](https://archive.ics.uci.edu/ml/datasets/bag+of+words):  
+| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision* |  Recall* |
+|-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
+| Exact nearest neighbors |       1.79      |        1222          |     100000     |    0.958    |  0.957   |
+| LSH                     |       ???       |        ???           |      ????      |    ?????    |  ?????   |  
 
 [GloVe](http://nlp.stanford.edu/projects/glove/):  ???
 | Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision  |  Recall  |

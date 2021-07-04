@@ -7,7 +7,6 @@ import (
 	"gonum.org/v1/gonum/blas/blas64"
 	"math"
 	"math/rand"
-	"sort"
 	"sync"
 	"time"
 )
@@ -40,9 +39,9 @@ func traverse(node *treeNode, hash uint64, inpVec blas64.Vector, depth int) uint
 	if node == nil || node.plane == nil {
 		return hash
 	}
-	vec := NewVec(make([]float64, inpVec.N))
-	blas64.Copy(inpVec, vec)
-	prodSign := node.plane.getProductSign(vec)
+	// vec := NewVec(make([]float64, inpVec.N))
+	// blas64.Copy(inpVec, vec)
+	prodSign := node.plane.getProductSign(inpVec)
 	if !prodSign {
 		return traverse(node.right, hash, inpVec, depth+1)
 
@@ -52,10 +51,9 @@ func traverse(node *treeNode, hash uint64, inpVec blas64.Vector, depth int) uint
 }
 
 // getHash calculates LSH code
-func (node *treeNode) getHash(inp []float64) uint64 {
-	inpVec := NewVec(inp)
+func (node *treeNode) getHash(vec blas64.Vector) uint64 {
 	var hash uint64
-	return traverse(node, hash, inpVec, 0)
+	return traverse(node, hash, vec, 0)
 }
 
 type HasherConfig struct {
@@ -86,13 +84,8 @@ type safeHashesHolder struct {
 }
 
 // planeByPoints generates random coefficients of a plane by given pair of points
-func planeByPoints(a, b blas64.Vector) *plane {
-	ndims := a.N
+func planeByPoints(points []blas64.Vector, ndims int) *plane {
 	planeCoefs := &plane{}
-	points := []blas64.Vector{a, b}
-	sort.Slice(points, func(i, j int) bool {
-		return blas64.Nrm2(points[i]) < blas64.Nrm2(points[j])
-	})
 	centerPoint := NewVec(make([]float64, ndims))
 	for _, p := range points {
 		blas64.Axpy(0.5, p, centerPoint)
@@ -104,23 +97,40 @@ func planeByPoints(a, b blas64.Vector) *plane {
 	return planeCoefs
 }
 
-// TODO: do we need to use special algorithm to generate plane in case of alngular metric?
 func getRandomPlane(vecs [][]float64, isAngular bool) *plane {
 	randIndeces := make(map[int]bool)
-	randIndecesList := make([]int, 2)
+	randVecs := make([]blas64.Vector, 2)
+	norms := make([]float64, 2)
+	ndims := len(vecs[0])
 	var i int = 0
 	maxPoints := 2
 	for i < maxPoints && i < len(vecs)*3 {
 		idx := rand.Intn(len(vecs))
 		if _, has := randIndeces[idx]; !has {
 			randIndeces[idx] = true
-			randIndecesList[i] = idx
+			randVecs[i] = NewVec(vecs[idx])
+			norms[i] = blas64.Nrm2(randVecs[i])
 			i++
 		}
 	}
-	vec1 := NewVec(vecs[randIndecesList[0]])
-	vec2 := NewVec(vecs[randIndecesList[1]])
-	return planeByPoints(vec1, vec2)
+	if norms[0] > norms[1] {
+		randVecs[0], randVecs[1] = randVecs[1], randVecs[0]
+		norms[0], norms[1] = norms[1], norms[0]
+	}
+	// NOTE: normilize vectors when dealing with angular distance metric (not sure)
+	if isAngular {
+		normedVecs := make([]blas64.Vector, len(randVecs))
+		for i, vec := range randVecs {
+			normedVec := NewVec(make([]float64, ndims))
+			norm := norms[i]
+			if norm > tol {
+				blas64.Axpy(1/norm, vec, normedVec)
+			}
+			normedVecs[i] = normedVec
+		}
+		return planeByPoints(normedVecs, ndims)
+	}
+	return planeByPoints(randVecs, ndims)
 }
 
 // growTree ...
@@ -178,10 +188,21 @@ func (hasher *Hasher) build(vecs [][]float64) {
 }
 
 // getHashes returns map of calculated lsh values for a given vector
-func (hasher *Hasher) getHashes(vec []float64) map[int]uint64 {
+func (hasher *Hasher) getHashes(inpVec []float64) map[int]uint64 {
 	hasher.mutex.RLock()
 	defer hasher.mutex.RUnlock()
 
+	vec := NewVec(make([]float64, len(inpVec)))
+	copy(vec.Data, inpVec)
+	// NOTE: norm vector when using angular matric (since normed vectors has been used for planes generation in this case)
+	if hasher.Config.isAngularMetric {
+		normed := NewVec(make([]float64, len(inpVec)))
+		norm := blas64.Nrm2(vec)
+		if norm > tol {
+			blas64.Axpy(1/norm, vec, normed)
+			blas64.Copy(normed, vec)
+		}
+	}
 	hashes := &safeHashesHolder{v: make(map[int]uint64)}
 	wg := sync.WaitGroup{}
 	wg.Add(len(hasher.trees))

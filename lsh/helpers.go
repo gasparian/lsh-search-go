@@ -196,17 +196,21 @@ type Cosine bool
 func NewCosine() Cosine {
 	return Cosine(true)
 }
+
 func (c Cosine) GetDist(l, r []float64) float64 {
 	lBlas := NewVec(l)
 	rBlas := NewVec(r)
 	lNorm := blas64.Nrm2(lBlas)
 	rNorm := blas64.Nrm2(rBlas)
-	if (lNorm * rNorm) <= tol {
-		return 1.0 // NOTE: zero vectors are wrong with angular metric
+	var dist float64 = 1.0
+	if (lNorm * rNorm) > tol {
+		cosine := blas64.Dot(lBlas, rBlas) / (lNorm * rNorm)
+		dist = 1.0 - cosine
 	}
-	cosine := blas64.Dot(lBlas, rBlas) / (lNorm * rNorm)
-	cosine = (cosine + 1) / 2 // NOTE: [-1, 1] -> [0, 1]
-	return 1.0 - cosine
+	if dist < tol {
+		dist = 0
+	}
+	return dist
 }
 
 func (c Cosine) IsAngular() bool {

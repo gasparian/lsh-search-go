@@ -22,7 +22,7 @@ func testIndexer(t *testing.T, indexer lsh.Indexer, data *bench.BenchData, confi
 
 	t.Log("Predicting...")
 	start = time.Now()
-	N := 10000 // NOTE: for debug it's convenient to change this to lower value in sake of speed up
+	N := 10000 // NOTE: for debug it's convenient to change this to lower value in sake of speed up (default is 10k)
 	batchSize := 1000
 	var elapsedTimeMs int64
 	predCh := make(chan bench.Prediction, N)
@@ -130,9 +130,9 @@ func TestEuclideanFashionMnist(t *testing.T) {
 		MaxCandidates: 30000,
 		Epsilon:       0.05,
 	}
-	t.Run("NN", func(t *testing.T) {
-		testNearestNeighbors(t, config, data)
-	})
+	// t.Run("NN", func(t *testing.T) {
+	// 	testNearestNeighbors(t, config, data)
+	// })
 
 	config = &bench.SearchConfig{
 		NDims:         784,
@@ -198,6 +198,52 @@ func TestEuclideanSift(t *testing.T) {
 	})
 }
 
+func TestAngularNYTimes(t *testing.T) {
+	dataConfig := &bench.BenchDataConfig{
+		DatasetPath:  "../test-data/nytimes-256-angular.hdf5",
+		SampleSize:   60000,
+		TrainDim:     256,
+		NeighborsDim: 100,
+	}
+	data, err := bench.PrepHdf5BenchDataset(dataConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	minStd, maxStd := bench.GetFloat64Range([][]float64{data.Std})
+	t.Log("Dimensions std's range: ", minStd, maxStd)
+	minMean, maxMean := bench.GetFloat64Range([][]float64{data.Mean})
+	t.Log("Dimensions mean's range: ", minMean, maxMean)
+
+	// NOTE: look at the ground truth distances values
+	minDist, maxDist := bench.GetFloat64Range(data.Distances)
+	t.Log("Ground truth distances range: ", minDist, maxDist)
+
+	config := &bench.SearchConfig{
+		Metric:        lsh.NewCosine(),
+		MaxNN:         10,
+		MaxDist:       0.9,
+		MaxCandidates: 30000,
+	}
+	// t.Run("NN", func(t *testing.T) {
+	// 	testNearestNeighbors(t, config, data)
+	// })
+
+	config = &bench.SearchConfig{
+		Metric:        lsh.NewCosine(),
+		NDims:         256,
+		BatchSize:     500,
+		NTrees:        200,
+		KMinVecs:      250,
+		MaxNN:         10,
+		MaxDist:       0.85,
+		Epsilon:       0.05,
+		MaxCandidates: 20000,
+	}
+	t.Run("LSH", func(t *testing.T) {
+		testLSH(t, config, data)
+	})
+}
+
 func TestAngularGlove(t *testing.T) {
 	dataConfig := &bench.BenchDataConfig{
 		DatasetPath:  "../test-data/glove-200-angular.hdf5",
@@ -233,12 +279,12 @@ func TestAngularGlove(t *testing.T) {
 		Metric:        lsh.NewCosine(),
 		NDims:         200,
 		BatchSize:     500,
-		NTrees:        20,
-		KMinVecs:      1000,
+		NTrees:        40,
+		KMinVecs:      500,
 		MaxNN:         10,
 		MaxDist:       0.75,
 		Epsilon:       0.05,
-		MaxCandidates: 10000,
+		MaxCandidates: 20000,
 	}
 	t.Run("LSH", func(t *testing.T) {
 		testLSH(t, config, data)
