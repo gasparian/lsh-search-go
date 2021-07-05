@@ -14,12 +14,12 @@ I've decided to go with the LSH algorithm first, since:
   The largest downside I see here - is that LSH needs too much memory to store the index.  
 
 So this repo contains library that has the functionality to create LSH index and perform search by given query vector.  
-And kudos to https://github.com/erikbern, who popularized the topic of ANN search in recent time, with [annoy](https://github.com/spotify/annoy) and [ann-benchmarks](https://github.com/erikbern/ann-benchmarks).  
+And kudos to https://github.com/erikbern, who, I think, popularized the topic of ANN search in recent time, with [annoy](https://github.com/spotify/annoy) and [ann-benchmarks](https://github.com/erikbern/ann-benchmarks).  
 
 ### Locality sensitive hashing short reference   
 
 LSH implies space partitioning with random hyperplanes and search across "buckets" formed by intersections of those planes.  
-My implementation is closer to the earlier versions of [Annoy](https://github.com/spotify/annoy), since during index construction, I picking up two random points and calculate the plane that lies in the middle between those points, and then repeat this process recursevely for points that lies on each side of this newly generated plane.   
+My implementation is closer to the earlier versions of [Annoy](https://github.com/spotify/annoy), rather then "classic" LSH, since during index construction, I picking up two random points and calculate the plane that lies in the middle between those points, and then repeat this process recursevely for points that lies on each side of this newly generated plane.   
 So we can expect that nearby vectors have the higher probability to be in the same "bucket".  
 To maximize the number of detected nearest neighbors during the search, usually it's enough to run ~10-100 plane generations (`NTrees` parameter) with different random seed.  
 For each query vector we generate a set of hashes (one per single "tree"), based on dot-product between each plane and the query vector, and then we add all the candidates to the min-heap to finally get *k*-closest vectors to our query vector.  
@@ -143,33 +143,34 @@ I end up using **10 closest** nearest neighbors to calculate the metrics.
 Both precision and recall has been calculated using distance-based definition of these metrics, like in the [ANN-Benchmarks](https://arxiv.org/pdf/1807.05614.pdf) paper. See the example of "approximate" recall:  
 <p align="center"> <img src="https://github.com/gasparian/lsh-search-go/blob/master/pics/recall_metric.png" width=600/> </p>  
 
-In all experiments ε=0.05.  
+In all experiments I set ε=0.05.  
 I picked parameters manually, to get the best tradeoff between speed and accuracy.  
+It can be fine-tuned, but it takes a lot of time to play with parameters.  
 
 [Fashion MNIST](https://github.com/zalandoresearch/fashion-mnist):  
-| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision  |  Recall  |
-|-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
-| Exact nearest neighbors |       0.37      |         767          |     30000      |    0.999    |  0.998   |
-| LSH                     |      12.29      |         24.6         |     5000       |    0.947    |  0.946   |  
+| Approach                | Traning time, s | Avg. search time, ms |  Precision  |  Recall  |
+|-------------------------|:---------------:|:--------------------:|:-----------:|:---------|
+| Exact nearest neighbors |       0.37      |         767          |    0.999    |  0.998   |
+| LSH                     |      12.29      |         24.6         |    0.947    |  0.946   |  
 
 [SIFT](https://corpus-texmex.irisa.fr/):  
-| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision  |  Recall  |
-|-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
-| Exact nearest neighbors |       6.38      |        4881          |     200000     |    0.990    |  0.990   |
-| LSH                     |       653       |        104           |     10000      |    0.940    |  0.935   |  
+| Approach                | Traning time, s | Avg. search time, ms |  Precision  |  Recall  |
+|-------------------------|:---------------:|:--------------------:|:-----------:|:---------|
+| Exact nearest neighbors |       6.38      |        4881          |    0.990    |  0.990   |
+| LSH                     |       653       |        104           |    0.940    |  0.935   |  
 
 So seems like it works with both datasets, giving the **30-50x** speed up, with just a slightly lower metrics values.  
 
-For cosine datasets results are slightly worser - only **~10x** speed up. Also for both datasets I generated way more trees (>100) comparing to the previous two datasets.  
+For cosine datasets results are slightly worser - only **~XXXx** speed up. Also for both datasets I generated way more trees (>100) comparing to the previous two datasets.  
 Unfortunately, I can't say yet exactly why it happening, but if you have an idea - get it touch with me!)  
 [NY times](https://archive.ics.uci.edu/ml/datasets/bag+of+words):  
-| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision* |  Recall* |
-|-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
-| Exact nearest neighbors |       1.79      |        1222          |     100000     |    0.958    |  0.957   |
-| LSH                     |       ???       |        ???           |      ????      |    ?????    |  ?????   |  
+| Approach                | Traning time, s | Avg. search time, ms |  Precision* |  Recall* |
+|-------------------------|:---------------:|:--------------------:|:-----------:|:---------|
+| Exact nearest neighbors |       1.79      |        1222          |    0.958    |  0.957   |
+| LSH                     |       700       |        268           |    0.868    |  0.868   |  
 
-[GloVe](http://nlp.stanford.edu/projects/glove/):  ???
-| Approach                | Traning time, s | Avg. search time, ms | Max Candidates |  Precision  |  Recall  |
-|-------------------------|:---------------:|:--------------------:|:--------------:|:-----------:|:---------|
-| Exact nearest neighbors |       7.47      |        4782          |     100000     |    0.999    |   0.999  |
-| LSH                     |       ????      |        ?????         |     ?????      |    ????     |   ????   |  
+[GloVe](http://nlp.stanford.edu/projects/glove/):  
+| Approach                | Traning time, s | Avg. search time, ms |  Precision  |  Recall  |
+|-------------------------|:---------------:|:--------------------:|:-----------:|:---------|
+| Exact nearest neighbors |       7.47      |        4782          |    0.999    |   0.999  |
+| LSH                     |       ????      |        ????          |    ????     |   ????   |  
