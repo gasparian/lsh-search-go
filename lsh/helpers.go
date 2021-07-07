@@ -190,31 +190,59 @@ func (s *StandartScaler) Scale(vec []float64) blas64.Vector {
 	return res.RawVector()
 }
 
-// Cosine calculates cosine distance between two given vectors
-type Cosine bool
+// Angular calculates cosine distance between two given vectors
+type Angular bool
 
-func NewCosine() Cosine {
-	return Cosine(true)
+func NewAngular() Angular {
+	return Angular(true)
 }
 
-func (c Cosine) GetDist(l, r []float64) float64 {
+// NOTE: using Euclidean distance of normalized vectors as angular distance: sqrt(2(1-cos(u,v)))
+// func (c Angular) GetDist(l, r []float64) float64 {
+// 	lBlas := NewVec(l)
+// 	rBlas := NewVec(r)
+// 	lNorm := blas64.Nrm2(lBlas)
+// 	rNorm := blas64.Nrm2(rBlas)
+// 	var dist float64 = 2.0
+// 	lrNorm := lNorm * rNorm
+// 	if lrNorm > tol {
+// 		cosine := blas64.Dot(lBlas, rBlas) / lrNorm
+// 		dist = 2.0 - 2.0*cosine
+// 	}
+// 	if dist < tol {
+// 		return 0.0
+// 	}
+// 	return math.Sqrt(dist)
+// }
+
+// NOTE: just regular cosine distance
+func (c Angular) GetDist(l, r []float64) float64 {
 	lBlas := NewVec(l)
 	rBlas := NewVec(r)
 	lNorm := blas64.Nrm2(lBlas)
 	rNorm := blas64.Nrm2(rBlas)
 	var dist float64 = 1.0
-	if (lNorm * rNorm) > tol {
-		cosine := blas64.Dot(lBlas, rBlas) / (lNorm * rNorm)
+	lrNorm := lNorm * rNorm
+	if lrNorm > tol {
+		cosine := blas64.Dot(lBlas, rBlas) / lrNorm
 		dist = 1.0 - cosine
 	}
 	if dist < tol {
-		dist = 0
+		return 0.0
 	}
 	return dist
 }
 
-func (c Cosine) IsAngular() bool {
+func (c Angular) IsAngular() bool {
 	return bool(c)
+}
+
+func AngularToCosineDist(angular float64) float64 {
+	return (angular * angular) / 2
+}
+
+func CosineDistToAngular(cosine float64) float64 {
+	return math.Sqrt(2 * cosine)
 }
 
 type StringSet struct {

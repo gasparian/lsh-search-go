@@ -45,7 +45,7 @@ func TestGetHash(t *testing.T) {
 
 // TODO: fix tests according to the new cosine sim. calculation algorithm
 func TestCosineSim(t *testing.T) {
-	cosine := NewCosine()
+	cosine := NewAngular()
 	dist := cosine.GetDist(
 		[]float64{0.0, 0.0, 0.0},
 		[]float64{0.0, 1.0, 0.0},
@@ -313,7 +313,7 @@ func TestLshCosine(t *testing.T) {
 			Dims:     2,
 		},
 	}
-	metric := NewCosine()
+	metric := NewAngular()
 
 	testLSH(metric, config, maxNN, distanceThrsh, inpVecs, trainIds, t)
 }
