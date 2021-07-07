@@ -21,7 +21,8 @@ It worth to mention, that I heavily relayed on [annoy](https://github.com/spotif
 LSH implies space partitioning with random hyperplanes and search across "buckets" formed by intersections of those planes. So we can expect that nearby vectors have the higher probability to be in the same "bucket".  
 My implementation is closer to the earlier versions of [Annoy](https://github.com/spotify/annoy), rather then "classic" LSH, since during index construction, I picking up two random points and calculate the plane that lies in the middle between those points, and then repeat this process recursevely for points that lies on each side of this newly generated plane.   
 To maximize the number of detected nearest neighbors during the search, usually it's enough to run ~10-100 plane generations (`NTrees` parameter).  
-For each query vector we generate a set of hashes (one per single "tree"), based on which side of each plane the query point lies on, and then we add all the candidates to the min-heap to finally get *k*-closest point to our query point.  
+So during "training" stage we end up with many trees that contains plane coefs in the leaves. As a final step, we just need to generate hashes for each vector in a train set, by travesrsing built trees, and keep those hashes in some storage.  
+For each *query* vector we generate a set of hashes (one per single "tree"), based on which side of each plane the query point lies on, and then we add all the candidates to the min-heap to finally get *k*-closest point to our query point.  
 
 Here is just super-simple visual example of the random space partitioning:  
 <p align="center"> <img src="https://github.com/gasparian/lsh-search-go/blob/master/pics/biased.jpg" height=400/> </p>  
@@ -55,7 +56,7 @@ import (
 // Create train dataset as a pair of unique id and vector
 var trainVecs [][]float64 = ...
 var trainIds []string = ...
-sampleSize := 20000
+sampleSize := 10000
 var queryPoint []float64 = ...
 
 const (
