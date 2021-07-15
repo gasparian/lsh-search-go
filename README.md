@@ -161,6 +161,8 @@ It can be fine-tuned, but it takes a lot of time to play with parameters.
 
 So seems like it works with both datasets, giving the **30-70x** speed up, with just a slightly lower metrics values.  
 
+#### Known problems  
+
 For cosine datasets results are worser - only slightly speed up with the large decrease in metrics. Also for both datasets I generated way more trees (>100) comparing to the previous two datasets.  
 Unfortunately, I can't say yet exactly why it happening, still working on that...  
 [NY times](https://archive.ics.uci.edu/ml/datasets/bag+of+words):  
