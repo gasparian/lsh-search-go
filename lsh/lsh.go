@@ -19,28 +19,30 @@ type Neighbor struct {
 	Dist float64
 }
 
-type FloatMinHeap []Neighbor
+type NeighborMinHeap []*Neighbor
 
-func (h FloatMinHeap) Len() int {
+func (h NeighborMinHeap) Len() int {
 	return len(h)
 }
 
-func (h FloatMinHeap) Less(i, j int) bool {
+func (h NeighborMinHeap) Less(i, j int) bool {
 	return h[i].Dist < h[j].Dist
 }
 
-func (h FloatMinHeap) Swap(i, j int) {
+func (h NeighborMinHeap) Swap(i, j int) {
 	h[i], h[j] = h[j], h[i]
 }
 
-func (h *FloatMinHeap) Push(x interface{}) {
-	*h = append(*h, x.(Neighbor))
+func (h *NeighborMinHeap) Push(x interface{}) {
+	*h = append(*h, x.(*Neighbor))
 }
 
-func (h *FloatMinHeap) Pop() interface{} {
-	tailIndex := h.Len() - 1
-	tail := (*h)[tailIndex]
-	*h = (*h)[:tailIndex]
+func (h *NeighborMinHeap) Pop() interface{} {
+	old := *h
+	tailIndex := old.Len() - 1
+	tail := old[tailIndex]
+	old[tailIndex] = nil
+	*h = old[:tailIndex]
 	return tail
 }
 
@@ -138,7 +140,7 @@ func (lsh *LSHIndex) Search(query []float64, maxNN int, distanceThrsh float64) (
 	maxCandidates := lsh.config.getMaxCandidates()
 	hashes := lsh.hasher.getHashes(query)
 	closestSet := make(map[string]bool)
-	minHeap := new(FloatMinHeap)
+	minHeap := new(NeighborMinHeap)
 	for perm, hash := range hashes {
 		if minHeap.Len() >= maxCandidates {
 			break
@@ -178,7 +180,7 @@ func (lsh *LSHIndex) Search(query []float64, maxNN int, distanceThrsh float64) (
 					closestSet[id] = true
 					heap.Push(
 						minHeap,
-						Neighbor{
+						&Neighbor{
 							ID:   id,
 							Vec:  vec,
 							Dist: dist,
@@ -191,7 +193,7 @@ func (lsh *LSHIndex) Search(query []float64, maxNN int, distanceThrsh float64) (
 	}
 	closest := make([]Neighbor, 0)
 	for i := 0; i < maxNN && minHeap.Len() > 0; i++ {
-		closest = append(closest, heap.Pop(minHeap).(Neighbor))
+		closest = append(closest, *heap.Pop(minHeap).(*Neighbor))
 	}
 	return closest, nil
 }

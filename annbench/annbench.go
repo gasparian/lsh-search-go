@@ -86,7 +86,7 @@ func (nn *NNMock) Search(query []float64, maxNN int, distanceThrsh float64) ([]l
 	nn.mx.RUnlock()
 
 	closestSet := make(map[string]bool)
-	minHeap := new(lsh.FloatMinHeap)
+	minHeap := new(lsh.NeighborMinHeap)
 
 	iter, _ := nn.index.GetHashIterator("0")
 	for {
@@ -109,7 +109,7 @@ func (nn *NNMock) Search(query []float64, maxNN int, distanceThrsh float64) ([]l
 			closestSet[id] = true
 			heap.Push(
 				minHeap,
-				lsh.Neighbor{
+				&lsh.Neighbor{
 					ID:   id,
 					Vec:  vec,
 					Dist: dist,
@@ -119,7 +119,7 @@ func (nn *NNMock) Search(query []float64, maxNN int, distanceThrsh float64) ([]l
 	}
 	closest := make([]lsh.Neighbor, 0)
 	for i := 0; i < maxNN && minHeap.Len() > 0; i++ {
-		closest = append(closest, heap.Pop(minHeap).(lsh.Neighbor))
+		closest = append(closest, *heap.Pop(minHeap).(*lsh.Neighbor))
 	}
 	return closest, nil
 }
